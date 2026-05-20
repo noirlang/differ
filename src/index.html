@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>differ</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script src="main.js" defer></script>
+</head>
+<body>
+  <div id="app">
+    <header class="topbar">
+      <button class="brand" id="btn-home" type="button" title="Go to home" aria-label="Go to home">
+        <span class="brand-mark" aria-hidden="true">
+          <img src="assets/differ-white.svg" alt="" />
+        </span>
+        <span>
+          <strong>differ</strong>
+          <small>Git change explorer</small>
+        </span>
+      </button>
+
+      <button class="icon-btn primary" id="btn-open-repo" type="button" title="Open Git repository" aria-label="Open Git repository">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M3 7.5A2.5 2.5 0 0 1 5.5 5h4l2 2.5h7A2.5 2.5 0 0 1 21 10v7.5a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5z"></path>
+        </svg>
+        <span>Open Repo</span>
+      </button>
+
+      <label class="search-box" id="search-box" style="display:none;">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="11" cy="11" r="7"></circle>
+          <path d="m20 20-3.5-3.5"></path>
+        </svg>
+        <input id="search-input" type="search" placeholder="search commits, hashes, authors" autocomplete="off" />
+      </label>
+
+      <div class="repo-info" id="repo-info" style="display:none;">
+        <span class="repo-pill">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7.5A2.5 2.5 0 0 1 6.5 5h4l2 2.5h5A2.5 2.5 0 0 1 20 10v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"></path></svg>
+          <span id="repo-name"></span>
+        </span>
+        <span class="repo-pill">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3v12"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="6" r="3"></circle><path d="M18 9a9 9 0 0 1-9 9"></path></svg>
+          <span id="active-branch">-</span>
+        </span>
+        <span class="repo-pill"><span id="branch-count">0</span> branch</span>
+        <span class="repo-pill"><span id="commit-count">0</span> commit</span>
+        <span class="repo-pill sync-pill" id="top-sync-pill">no origin</span>
+      </div>
+    </header>
+
+    <main class="main-content" id="main-content" style="display:none;">
+      <aside class="sidebar" aria-label="Repository navigation">
+        <section class="repo-card">
+          <div class="repo-kicker">Repository</div>
+          <div class="repo-title" id="side-repo-name">-</div>
+          <div class="repo-path" id="repo-path">-</div>
+          <div class="repo-metrics">
+            <span><strong id="side-commit-count">0</strong> commit</span>
+            <span><strong id="side-author-count">0</strong> people</span>
+          </div>
+          <div class="sync-card" id="sync-card">
+            <div>
+              <strong id="origin-label">no origin</strong>
+              <small id="push-label">waiting for remote connection</small>
+            </div>
+            <button class="mini-btn" id="btn-push-origin" type="button" disabled>Push</button>
+          </div>
+        </section>
+
+        <section class="sidebar-section workspace-section">
+          <div class="section-head">
+            <span>Changes</span>
+            <button class="section-icon-btn" id="btn-refresh-status" type="button" title="Refresh status" aria-label="Refresh status">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 0 1-15.5 6.3L3 16"></path><path d="M3 21v-5h5"></path><path d="M3 12A9 9 0 0 1 18.5 5.7L21 8"></path><path d="M21 3v5h-5"></path></svg>
+            </button>
+          </div>
+          <div class="worktree-list" id="worktree-list"></div>
+          <div class="commit-box">
+            <textarea id="commit-message-input" rows="2" placeholder="Commit message"></textarea>
+            <button class="commit-action" id="btn-commit-selected" type="button" disabled>Commit selected files</button>
+          </div>
+        </section>
+
+        <section class="sidebar-section branches-section">
+          <div class="section-head">
+            <span>Branches</span>
+            <span class="section-count" id="side-branch-count">0</span>
+          </div>
+          <div class="sidebar-list" id="branch-list"></div>
+        </section>
+
+        <section class="sidebar-section tree-section">
+          <div class="section-head">
+            <span>Project Tree</span>
+          </div>
+          <div class="sidebar-list file-tree" id="file-tree"></div>
+        </section>
+
+        <section class="sidebar-section team-section">
+          <div class="section-head">
+            <span>Contributors</span>
+            <button class="section-text-btn" id="btn-show-contributors" type="button">Top 3</button>
+          </div>
+          <div class="team-list" id="team-list"></div>
+        </section>
+      </aside>
+
+      <section class="history-panel" aria-label="Commit history">
+        <div class="panel-head">
+          <div>
+            <div class="panel-kicker">History</div>
+            <h1>Commit History</h1>
+          </div>
+          <p id="history-subtitle">Development history in the selected repository</p>
+        </div>
+
+        <div class="commit-list-header" aria-hidden="true">
+          <span>Graph / Hash</span>
+          <span>Commit Message</span>
+          <span>Author</span>
+          <span>Date</span>
+        </div>
+        <div class="commit-list" id="commit-list"></div>
+      </section>
+
+      <aside class="detail-panel" aria-label="Commit details">
+        <div class="empty-state" id="detail-empty">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7z"></path>
+            <path d="M14 2v5h5"></path>
+            <path d="M9 13h6"></path>
+            <path d="M9 17h4"></path>
+          </svg>
+          <strong>No commit selected</strong>
+          <span>Select a commit from the history to inspect changes, files, and author details.</span>
+        </div>
+
+        <div class="detail-content" id="detail-content" style="display:none;">
+          <div class="detail-header">
+            <div class="detail-title-row">
+              <div class="detail-avatar-slot" id="detail-avatar"></div>
+              <div class="detail-title-copy">
+                <div class="detail-eyebrow">Commit Detail</div>
+                <h2 id="detail-message"></h2>
+              </div>
+            </div>
+            <div class="detail-meta">
+              <span>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 21a8 8 0 0 0-16 0"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                <span id="detail-author"></span>
+              </span>
+              <span>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"></rect><path d="M16 2v4M8 2v4M3 10h18"></path></svg>
+                <span id="detail-date"></span>
+              </span>
+              <span>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"></circle><path d="M4 12h4M16 12h4"></path></svg>
+                <span id="detail-hash"></span>
+              </span>
+            </div>
+            <div class="change-summary" id="changed-summary"></div>
+          </div>
+
+          <div class="detail-tabs" role="tablist" aria-label="Commit detail tabs">
+            <button class="detail-tab active" type="button" data-tab="diff">Changes</button>
+            <button class="detail-tab" type="button" data-tab="files">Files</button>
+          </div>
+
+          <div class="changed-files" id="changed-files"></div>
+          <div class="diff-container" id="diff-container"></div>
+        </div>
+      </aside>
+    </main>
+
+    <section class="welcome-screen" id="welcome-screen">
+      <div class="welcome-copy">
+        <div class="welcome-mark">
+          <img src="assets/differ-white.svg" alt="" />
+        </div>
+        <h2>Review commits, authors, and changed files in one focused timeline.</h2>
+        <p>Open a repository to inspect branches, project files, commit messages, authors, and diffs in one workspace.</p>
+        <button class="welcome-btn" id="btn-welcome-open" type="button">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M3 7.5A2.5 2.5 0 0 1 5.5 5h4l2 2.5h7A2.5 2.5 0 0 1 21 10v7.5a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5z"></path>
+          </svg>
+          Open Git Repository
+        </button>
+
+        <div class="recent-repos" id="recent-repos" hidden>
+          <div class="recent-repos-head">
+            <span>Recent repositories</span>
+            <small>Last 5</small>
+          </div>
+          <div class="recent-repo-list" id="recent-repo-list"></div>
+        </div>
+      </div>
+
+      <div class="welcome-preview" aria-hidden="true">
+        <div class="preview-sidebar">
+          <span></span><span></span><span></span><span></span>
+        </div>
+        <div class="preview-graph">
+          <i></i><i></i><i></i><i></i><i></i>
+        </div>
+        <div class="preview-diff">
+          <span></span><span></span><span></span><span></span>
+        </div>
+      </div>
+    </section>
+
+    <div class="modal-overlay" id="contributors-modal" hidden>
+      <div class="contributors-modal" role="dialog" aria-modal="true" aria-labelledby="contributors-title">
+        <div class="modal-head">
+          <div>
+            <span>Contributors</span>
+            <h2 id="contributors-title">Contribution Ranking</h2>
+          </div>
+          <button class="modal-close" id="btn-close-contributors" type="button" aria-label="Close">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>
+          </button>
+        </div>
+        <div class="contributors-podium" id="contributors-podium"></div>
+        <div class="contributors-ranking" id="contributors-ranking"></div>
+      </div>
+    </div>
+
+    <footer class="statusbar" id="statusbar">
+      <span id="status-text">Ready</span>
+    </footer>
+  </div>
+</body>
+</html>
