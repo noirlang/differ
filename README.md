@@ -10,7 +10,14 @@
 
 ## Demo Video
 
-<video src="https://github.com/noirlang/differ/releases/download/v0.0.0-demo-video/export-1779297124271.mp4" controls="controls" width="100%"></video>
+> Demo video will be added here after it is uploaded through a GitHub issue.
+
+<!--
+Replace this placeholder with the GitHub issue video URL when the recording is ready.
+Example:
+
+https://github.com/user-attachments/assets/00000000-0000-0000-0000-000000000000
+-->
 
 <p align="center">
   <img alt="CI" src="https://github.com/noirlang/differ/actions/workflows/ci.yml/badge.svg" />
