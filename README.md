@@ -10,14 +10,12 @@
 
 ## Demo Video
 
-> Demo video will be added here after it is uploaded through a GitHub issue.
+https://github.com/user-attachments/assets/3553d66b-7a10-4a68-9e22-307517186350
 
-<!--
-Replace this placeholder with the GitHub issue video URL when the recording is ready.
-Example:
 
-https://github.com/user-attachments/assets/00000000-0000-0000-0000-000000000000
--->
+
+
+
 
 <p align="center">
   <img alt="CI" src="https://github.com/noirlang/differ/actions/workflows/ci.yml/badge.svg" />
