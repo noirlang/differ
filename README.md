@@ -10,7 +10,7 @@
 
 ## Demo Video
 
-https://github.com/noirlang/differ/releases/download/v0.0.0-demo-video/export-1779297124271.mp4-->
+<video src="https://github.com/noirlang/differ/releases/download/v0.0.0-demo-video/export-1779297124271.mp4" controls="controls" width="100%"></video>
 
 <p align="center">
   <img alt="CI" src="https://github.com/noirlang/differ/actions/workflows/ci.yml/badge.svg" />
