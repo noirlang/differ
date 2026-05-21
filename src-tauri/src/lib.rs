@@ -684,6 +684,35 @@ fn push_origin(state: State<'_, Mutex<AppState>>) -> Result<String, String> {
     }
 }
 
+#[tauri::command]
+fn add_origin(state: State<'_, Mutex<AppState>>, url: String) -> Result<String, String> {
+    let app_state = state.lock().map_err(|e| e.to_string())?;
+    let repo = app_state.repo.as_ref().ok_or("Repository is not open")?;
+
+    let url_trimmed = url.trim();
+    if url_trimmed.is_empty() {
+        return Err("Remote URL cannot be empty".to_string());
+    }
+
+    run_git(repo, &["remote", "add", "origin", url_trimmed])
+}
+
+#[tauri::command]
+fn merge_branches(
+    state: State<'_, Mutex<AppState>>,
+    source: String,
+    target: String,
+) -> Result<String, String> {
+    let app_state = state.lock().map_err(|e| e.to_string())?;
+    let repo = app_state.repo.as_ref().ok_or("Repository is not open")?;
+
+    // 1. Checkout target branch first
+    run_git(repo, &["checkout", &target])?;
+
+    // 2. Perform merge
+    run_git(repo, &["merge", &source])
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -704,6 +733,8 @@ pub fn run() {
             commit_changes,
             get_sync_status,
             push_origin,
+            add_origin,
+            merge_branches,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
