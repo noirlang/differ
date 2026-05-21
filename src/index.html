@@ -61,11 +61,29 @@
             <span><strong id="side-author-count">0</strong> people</span>
           </div>
           <div class="sync-card" id="sync-card">
-            <div>
-              <strong id="origin-label">no origin</strong>
-              <small id="push-label">waiting for remote connection</small>
+            <div class="sync-card-content" id="sync-card-content">
+              <div>
+                <strong id="origin-label">no origin</strong>
+                <small id="push-label">waiting for remote connection</small>
+              </div>
+              <button class="mini-btn" id="btn-push-origin" type="button" disabled>Push</button>
             </div>
-            <button class="mini-btn" id="btn-push-origin" type="button" disabled>Push</button>
+
+            <button class="mini-btn primary" id="btn-show-add-origin" type="button" style="display: none; width: 100%;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width: 12px; height: 12px; margin-right: 4px; display: inline-block; vertical-align: middle;">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+              <span>Add Remote Origin</span>
+            </button>
+
+            <div class="add-origin-form" id="add-origin-form" style="display: none;">
+              <input type="url" id="remote-url-input" placeholder="Remote URL (https://... or git@...)" autocomplete="off" />
+              <div class="form-actions">
+                <button class="mini-btn cancel" id="btn-cancel-origin" type="button">Cancel</button>
+                <button class="mini-btn primary" id="btn-save-origin" type="button">Save Remote</button>
+              </div>
+            </div>
           </div>
         </section>
 
@@ -79,6 +97,13 @@
           <div class="worktree-list" id="worktree-list"></div>
           <div class="commit-box">
             <textarea id="commit-message-input" rows="2" placeholder="Commit message"></textarea>
+            <div class="coauthors-container">
+              <div class="coauthors-list" id="coauthors-list"></div>
+              <div class="coauthor-input-wrapper">
+                <div class="coauthor-suggestions" id="coauthor-suggestions" style="display: none;"></div>
+                <input id="coauthor-username-input" type="text" placeholder="Co-author (e.g. @username)" autocomplete="off" />
+              </div>
+            </div>
             <button class="commit-action" id="btn-commit-selected" type="button" disabled>Commit selected files</button>
           </div>
         </section>
@@ -139,11 +164,13 @@
 
         <div class="detail-content" id="detail-content" style="display:none;">
           <div class="detail-header">
-            <div class="detail-title-row">
-              <div class="detail-avatar-slot" id="detail-avatar"></div>
-              <div class="detail-title-copy">
-                <div class="detail-eyebrow">Commit Detail</div>
-                <h2 id="detail-message"></h2>
+            <div class="detail-title-row" style="display: flex; width: 100%; align-items: flex-start; justify-content: space-between;">
+              <div style="display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0;">
+                <div class="detail-avatar-slot" id="detail-avatar"></div>
+                <div class="detail-title-copy" style="flex: 1; min-width: 0;">
+                    <span class="detail-eyebrow">Commit Detail</span>
+                  <h2 id="detail-message"></h2>
+                </div>
               </div>
             </div>
             <div class="detail-meta">
@@ -166,10 +193,12 @@
           <div class="detail-tabs" role="tablist" aria-label="Commit detail tabs">
             <button class="detail-tab active" type="button" data-tab="diff">Changes</button>
             <button class="detail-tab" type="button" data-tab="files">Files</button>
+            <button class="detail-tab" type="button" data-tab="description">Description</button>
           </div>
 
           <div class="changed-files" id="changed-files"></div>
           <div class="diff-container" id="diff-container"></div>
+          <div class="commit-description-view" id="commit-description-view" style="display: none;"></div>
         </div>
       </aside>
     </main>
@@ -225,6 +254,49 @@
         <div class="contributors-ranking" id="contributors-ranking"></div>
       </div>
     </div>
+
+    <div class="modal-overlay" id="merge-modal" hidden>
+      <div class="merge-modal" role="dialog" aria-modal="true" aria-labelledby="merge-title">
+        <div class="modal-head">
+          <div>
+            <span>Merge Branches</span>
+            <h2 id="merge-title">Merge Branch</h2>
+          </div>
+          <button class="modal-close" id="btn-close-merge" type="button" aria-label="Close">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>
+          </button>
+        </div>
+
+        <div class="modal-body">
+          <div class="merge-flow-diagram">
+            <div class="merge-node source">
+              <span class="label">Source Branch</span>
+              <strong id="merge-source-label">-</strong>
+            </div>
+            <div class="merge-connector">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+                <polyline points="12 5 19 12 12 19"></polyline>
+              </svg>
+            </div>
+            <div class="merge-node target">
+              <span class="label">Target Branch</span>
+              <strong id="merge-target-label">-</strong>
+            </div>
+          </div>
+
+          <div class="merge-form-group">
+            <label for="merge-target-select">Merge into branch:</label>
+            <select id="merge-target-select"></select>
+          </div>
+
+          <div class="merge-modal-actions">
+            <button class="mini-btn cancel" id="btn-cancel-merge" type="button">Cancel</button>
+            <button class="mini-btn primary" id="btn-confirm-merge" type="button">Confirm Merge</button>
+          </div>
+        </div>
+      </div>
+
 
     <footer class="statusbar" id="statusbar">
       <span id="status-text">Ready</span>
