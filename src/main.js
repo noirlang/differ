@@ -22,6 +22,8 @@ const state = {
   pendingAvatarFetches: new Set(),
   failedAvatarFetches: new Set(),
   avatarRefreshTimer: null,
+  selectedCoauthors: [],
+  coauthorSuggestions: [],
 };
 
 const $ = (id) => document.getElementById(id);
@@ -48,10 +50,19 @@ const els = {
   originLabel: $('origin-label'),
   pushLabel: $('push-label'),
   btnPushOrigin: $('btn-push-origin'),
+  syncCardContent: $('sync-card-content'),
+  btnShowAddOrigin: $('btn-show-add-origin'),
+  addOriginForm: $('add-origin-form'),
+  remoteUrlInput: $('remote-url-input'),
+  btnCancelOrigin: $('btn-cancel-origin'),
+  btnSaveOrigin: $('btn-save-origin'),
   btnRefreshStatus: $('btn-refresh-status'),
   worktreeList: $('worktree-list'),
   commitMessageInput: $('commit-message-input'),
   btnCommitSelected: $('btn-commit-selected'),
+  coauthorList: $('coauthors-list'),
+  coauthorInput: $('coauthor-username-input'),
+  coauthorSuggestions: $('coauthor-suggestions'),
   searchBox: $('search-box'),
   searchInput: $('search-input'),
   branchList: $('branch-list'),
@@ -62,6 +73,13 @@ const els = {
   btnCloseContributors: $('btn-close-contributors'),
   contributorsPodium: $('contributors-podium'),
   contributorsRanking: $('contributors-ranking'),
+  mergeModal: $('merge-modal'),
+  btnCloseMerge: $('btn-close-merge'),
+  btnCancelMerge: $('btn-cancel-merge'),
+  btnConfirmMerge: $('btn-confirm-merge'),
+  mergeSourceLabel: $('merge-source-label'),
+  mergeTargetLabel: $('merge-target-label'),
+  mergeTargetSelect: $('merge-target-select'),
   historySubtitle: $('history-subtitle'),
   commitList: $('commit-list'),
   detailEmpty: $('detail-empty'),
@@ -74,6 +92,7 @@ const els = {
   changedSummary: $('changed-summary'),
   changedFiles: $('changed-files'),
   diffContainer: $('diff-container'),
+  commitDescriptionView: $('commit-description-view'),
   statusText: $('status-text'),
 };
 
@@ -129,6 +148,31 @@ function getGithubUsername(author) {
   if (noreply) return noreply[1];
   if (legacyNoreply) return legacyNoreply[1];
   return null;
+}
+
+function parseCoauthorsFromMessage(message = '') {
+  const coauthors = [];
+  const lines = message.split('\n');
+  const regex = /^Co-authored-by:\s*([^<]+)<([^>]+)>/i;
+
+  lines.forEach((line) => {
+    const match = line.trim().match(regex);
+    if (match) {
+      const name = match[1].trim();
+      const email = match[2].trim();
+      let githubUsername = null;
+      const noreply = email.match(/^(?:\d+\+)?([A-Za-z0-9-]+(?:\[bot\])?)@users\.noreply\.github\.com$/i);
+      if (noreply) githubUsername = noreply[1];
+
+      coauthors.push({
+        name,
+        email,
+        githubUsername,
+      });
+    }
+  });
+
+  return coauthors;
 }
 
 function normalizeContributorHandle(value = '') {
@@ -540,6 +584,9 @@ async function openRepo(repoPath = null) {
     state.fileTree = [];
     state.worktreeFiles = [];
     state.selectedWorktreePaths.clear();
+    state.selectedCoauthors = [];
+    els.coauthorInput.value = '';
+    renderCoauthors();
     state.syncStatus = null;
     state.avatarCache.clear();
     state.pendingAvatarFetches.clear();
@@ -623,6 +670,10 @@ function renderSyncStatus() {
     els.originLabel.textContent = 'no origin';
     els.pushLabel.textContent = 'waiting for remote connection';
     els.btnPushOrigin.disabled = true;
+
+    els.syncCardContent.style.display = 'grid';
+    els.btnShowAddOrigin.style.display = 'none';
+    els.addOriginForm.style.display = 'none';
     return;
   }
 
@@ -632,8 +683,21 @@ function renderSyncStatus() {
     els.pushLabel.textContent = 'no remote connection';
     els.btnPushOrigin.textContent = 'Push';
     els.btnPushOrigin.disabled = true;
+
+    els.syncCardContent.style.display = 'none';
+    if (els.addOriginForm.style.display !== 'flex') {
+      els.btnShowAddOrigin.style.display = 'block';
+      els.addOriginForm.style.display = 'none';
+    } else {
+      els.btnShowAddOrigin.style.display = 'none';
+      els.addOriginForm.style.display = 'flex';
+    }
     return;
   }
+
+  els.syncCardContent.style.display = 'grid';
+  els.btnShowAddOrigin.style.display = 'none';
+  els.addOriginForm.style.display = 'none';
 
   const originText = sync.origin_url || 'origin connected';
   els.topSyncPill.textContent = sync.unpushed_count > 0
@@ -725,12 +789,23 @@ async function commitSelectedChanges() {
     return;
   }
 
+  let finalMessage = message;
+  if (state.selectedCoauthors && state.selectedCoauthors.length > 0) {
+    finalMessage += '\n\n';
+    state.selectedCoauthors.forEach((author) => {
+      finalMessage += `Co-authored-by: ${author.name} <${author.email}>\n`;
+    });
+    finalMessage = finalMessage.trim();
+  }
+
   try {
     els.btnCommitSelected.disabled = true;
     setStatus('Creating commit...');
-    await invoke('commit_changes', { paths, message });
+    await invoke('commit_changes', { paths, message: finalMessage });
     state.selectedWorktreePaths.clear();
+    state.selectedCoauthors = [];
     els.commitMessageInput.value = '';
+    renderCoauthors();
     await refreshRepositoryData({ selectLatest: true });
     setStatus('Commit created');
   } catch (err) {
@@ -758,37 +833,167 @@ async function pushOrigin() {
   }
 }
 
+function showAddOriginForm() {
+  els.btnShowAddOrigin.style.display = 'none';
+  els.addOriginForm.style.display = 'flex';
+  els.remoteUrlInput.value = '';
+  els.remoteUrlInput.focus();
+}
+
+function hideAddOriginForm() {
+  els.addOriginForm.style.display = 'none';
+  els.btnShowAddOrigin.style.display = 'block';
+}
+
+async function saveRemoteOrigin() {
+  const url = els.remoteUrlInput.value.trim();
+  if (!url) {
+    alert('Please enter a valid remote URL.');
+    els.remoteUrlInput.focus();
+    return;
+  }
+
+  try {
+    els.btnSaveOrigin.disabled = true;
+    els.btnSaveOrigin.textContent = 'Saving...';
+    setStatus('Adding remote origin...');
+
+    await invoke('add_origin', { url });
+
+    els.remoteUrlInput.value = '';
+    els.addOriginForm.style.display = 'none';
+    setStatus('Remote origin added successfully');
+
+    await loadSyncStatus();
+  } catch (err) {
+    console.error(err);
+    setStatus('Failed to add remote origin');
+    alert(`Failed to add remote origin: ${err}`);
+  } finally {
+    els.btnSaveOrigin.disabled = false;
+    els.btnSaveOrigin.textContent = 'Save Remote';
+  }
+}
+
+state.activeMergeSource = null;
+
+function openMergeModal(sourceBranch) {
+  state.activeMergeSource = sourceBranch;
+
+  const localBranches = state.branches.filter((b) => !b.is_remote && b.name !== 'detached');
+  const activeBranch = state.branches.find((b) => b.is_head);
+  const activeBranchName = activeBranch ? activeBranch.name : '';
+
+  els.mergeSourceLabel.textContent = sourceBranch;
+  els.mergeTargetLabel.textContent = activeBranchName || '-';
+
+  const targetBranches = localBranches.filter((b) => b.name !== sourceBranch);
+
+  if (targetBranches.length === 0) {
+    alert('No other local branches available to merge into.');
+    return;
+  }
+
+  els.mergeTargetSelect.innerHTML = targetBranches.map((b) => {
+    const selected = b.name === activeBranchName ? 'selected' : '';
+    return `<option value="${escapeHtml(b.name)}" ${selected}>${escapeHtml(b.name)}</option>`;
+  }).join('');
+
+  els.mergeTargetSelect.onchange = (e) => {
+    els.mergeTargetLabel.textContent = e.target.value;
+  };
+
+  els.mergeModal.removeAttribute('hidden');
+}
+
+function closeMergeModal() {
+  els.mergeModal.setAttribute('hidden', '');
+  state.activeMergeSource = null;
+}
+
+async function confirmMerge() {
+  const source = state.activeMergeSource;
+  const target = els.mergeTargetSelect.value;
+  if (!source || !target) return;
+
+  try {
+    els.btnConfirmMerge.disabled = true;
+    els.btnConfirmMerge.textContent = 'Merging...';
+    setStatus(`Merging ${source} into ${target}...`);
+
+    await invoke('merge_branches', { source, target });
+
+    setStatus(`Merged ${source} into ${target} successfully`);
+    closeMergeModal();
+
+    await refreshRepositoryData();
+  } catch (err) {
+    console.error(err);
+    setStatus('Merge failed');
+    alert(`Merge failed: ${err}`);
+  } finally {
+    els.btnConfirmMerge.disabled = false;
+    els.btnConfirmMerge.textContent = 'Confirm Merge';
+  }
+}
 function renderBranches() {
   const branchRows = [
-    `<button class="branch-item ${state.selectedBranch ? '' : 'active'}" type="button" data-branch="">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h16"></path><path d="M4 6h16"></path><path d="M4 18h16"></path></svg>
-      <span class="branch-name">All History</span>
-      <span class="branch-badge">all</span>
-    </button>`,
+    `<div class="branch-row-container ${!state.selectedBranch ? 'active' : ''}">
+      <button class="branch-item" type="button" data-branch="">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h16"></path><path d="M4 6h16"></path><path d="M4 18h16"></path></svg>
+        <span class="branch-name">All History</span>
+        <span class="branch-badge">all</span>
+      </button>
+    </div>`,
   ];
 
   for (const branch of state.branches) {
     const active = state.selectedBranch === branch.name || (!state.selectedBranch && branch.is_head);
     const badge = branch.is_head ? 'HEAD' : branch.is_remote ? 'remote' : 'local';
+
+    const isDetached = branch.name === 'detached';
+    const canMerge = !branch.is_remote && !isDetached;
+
     branchRows.push(`
-      <button class="branch-item ${active ? 'active' : ''}" type="button" data-branch="${escapeHtml(branch.name)}">
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M6 3v12"></path>
-          <circle cx="6" cy="18" r="3"></circle>
-          <circle cx="18" cy="6" r="3"></circle>
-          <path d="M18 9a9 9 0 0 1-9 9"></path>
-        </svg>
-        <span class="branch-name">${escapeHtml(branch.name)}</span>
-        <span class="branch-badge ${branch.is_head ? 'head' : ''}">${badge}</span>
-      </button>
+      <div class="branch-row-container ${active ? 'active' : ''}">
+        <button class="branch-item" type="button" data-branch="${escapeHtml(branch.name)}">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M6 3v12"></path>
+            <circle cx="6" cy="18" r="3"></circle>
+            <circle cx="18" cy="6" r="3"></circle>
+            <path d="M18 9a9 9 0 0 1-9 9"></path>
+          </svg>
+          <span class="branch-name">${escapeHtml(branch.name)}</span>
+          <span class="branch-badge ${branch.is_head ? 'head' : ''}">${badge}</span>
+        </button>
+        ${canMerge ? `
+        <button class="branch-merge-btn" type="button" data-branch="${escapeHtml(branch.name)}" title="Merge branch...">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="6" y1="3" x2="6" y2="15"></line>
+            <circle cx="18" cy="6" r="3"></circle>
+            <circle cx="6" cy="18" r="3"></circle>
+            <path d="M18 9a9 9 0 0 1-9 9"></path>
+          </svg>
+        </button>
+        ` : ''}
+      </div>
     `);
   }
 
   els.branchList.innerHTML = branchRows.join('');
+
   els.branchList.querySelectorAll('.branch-item').forEach((item) => {
     item.addEventListener('click', () => {
       const branch = item.dataset.branch || null;
       loadCommits(branch);
+    });
+  });
+
+  els.branchList.querySelectorAll('.branch-merge-btn').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const branchName = btn.dataset.branch;
+      openMergeModal(branchName);
     });
   });
 }
@@ -945,6 +1150,15 @@ function renderCommits() {
     const localOnly = commit.is_unpushed ? 'local-only' : '';
     const syncLabel = commit.is_unpushed ? '<span class="commit-state-label">unpushed</span>' : '';
 
+    const coauthors = parseCoauthorsFromMessage(commit.message);
+    const coauthorsTitle = coauthors.length > 0 ? ` + Co-authored by: ${coauthors.map(c => c.name).join(', ')}` : '';
+    const avatarHtml = coauthors.length > 0
+      ? `<span class="avatar-stack" title="${escapeHtml(commit.author_name || 'Unknown')}${escapeHtml(coauthorsTitle)}">
+           ${renderAuthorAvatar(commit)}
+           ${coauthors.map(co => renderAuthorAvatar(co, 'mini')).join('')}
+         </span>`
+      : renderAuthorAvatar(commit);
+
     return `
       <button class="commit-row ${selected} ${localOnly}" type="button" data-commit-id="${commit.id}" style="--row-delay:${Math.min(index * 12, 220)}ms">
         <span class="commit-graph-cell" style="--lane:${lane};--lane-count:${laneCount};--graph-color:${color};">
@@ -958,8 +1172,8 @@ function renderCommits() {
           <span class="commit-message">${escapeHtml(firstLine(commit.message))}</span>
         </span>
         <span class="commit-author-cell">
-          ${renderAuthorAvatar(commit)}
-          <span class="author-name">${escapeHtml(commit.author_name || 'Unknown')}</span>
+          ${avatarHtml}
+          <span class="author-name" title="${escapeHtml(commit.author_name || 'Unknown')}${escapeHtml(coauthorsTitle)}">${escapeHtml(commit.author_name || 'Unknown')}</span>
         </span>
         <span class="commit-date-cell">${formatDate(commit.timestamp)}</span>
       </button>
@@ -991,6 +1205,9 @@ async function selectCommit(commitId) {
   els.detailHash.textContent = commit.id;
   hydrateAvatarFallbacks(els.detailAvatar);
   queueGithubAvatarFetches([commit]);
+
+  renderCommitDescription(commit);
+  activateDetailTab(state.detailTab);
 
   try {
     await Promise.all([
@@ -1140,10 +1357,306 @@ function activateDetailTab(tabName) {
     tab.classList.toggle('active', tab.dataset.tab === tabName);
   });
 
-  const filesOnly = tabName === 'files';
-  els.diffContainer.style.display = filesOnly ? 'none' : 'block';
-  els.changedFiles.classList.toggle('files-mode', filesOnly);
+  if (tabName === 'diff') {
+    els.changedFiles.style.display = 'block';
+    els.changedFiles.classList.remove('files-mode');
+    els.diffContainer.style.display = 'block';
+    els.commitDescriptionView.style.display = 'none';
+  } else if (tabName === 'files') {
+    els.changedFiles.style.display = 'block';
+    els.changedFiles.classList.add('files-mode');
+    els.diffContainer.style.display = 'none';
+    els.commitDescriptionView.style.display = 'none';
+  } else if (tabName === 'description') {
+    els.changedFiles.style.display = 'none';
+    els.diffContainer.style.display = 'none';
+    els.commitDescriptionView.style.display = 'flex';
+  }
 }
+
+function renderCommitDescription(commit) {
+  const subject = firstLine(commit.message);
+  const lines = commit.message.split('\n');
+  const bodyLines = lines.slice(1);
+
+  const coauthors = parseCoauthorsFromMessage(commit.message);
+  const cleanBodyLines = bodyLines.filter((line) => !line.trim().match(/^Co-authored-by:\s*/i));
+  const cleanBody = cleanBodyLines.join('\n').trim();
+
+  let coauthorsHtml = '';
+  if (coauthors.length > 0) {
+    const coauthorCards = coauthors.map((co) => {
+      const initials = escapeHtml(getInitials(co.name));
+      const avatarHtml = renderAuthorAvatar(co, 'large');
+
+      const githubLink = co.githubUsername
+        ? `<a class="description-coauthor-github-link" href="https://github.com/${encodeURIComponent(co.githubUsername)}" target="_blank" rel="noopener noreferrer" title="View on GitHub">
+             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+               <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path>
+             </svg>
+           </a>`
+        : '';
+
+      return `
+        <div class="description-coauthor-card">
+          ${avatarHtml}
+          <div class="description-coauthor-info">
+            <strong>${escapeHtml(co.name)}</strong>
+            <small>${escapeHtml(co.email)}</small>
+          </div>
+          ${githubLink}
+        </div>
+      `;
+    }).join('');
+
+    coauthorsHtml = `
+      <div class="description-coauthors-section">
+        <h3 class="description-coauthors-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+            <circle cx="9" cy="7" r="4"></circle>
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+          </svg>
+          Co-authors
+        </h3>
+        <div class="description-coauthors-list">
+          ${coauthorCards}
+        </div>
+      </div>
+    `;
+  }
+
+  els.commitDescriptionView.innerHTML = `
+    <div class="description-header">${escapeHtml(subject)}</div>
+    ${cleanBody ? `<div class="description-body">${escapeHtml(cleanBody)}</div>` : '<div class="description-body italic text-dim">No commit description body.</div>'}
+    ${coauthorsHtml}
+  `;
+
+  hydrateAvatarFallbacks(els.commitDescriptionView);
+}
+
+/* ==================================
+   Co-Authors feature logic
+   ================================== */
+state.activeCoauthorSuggestionIndex = -1;
+
+function renderCoauthors() {
+  els.coauthorList.innerHTML = state.selectedCoauthors.map((author, index) => {
+    const initials = escapeHtml(getInitials(author.name));
+    const avatarHtml = author.avatarUrl
+      ? `<img src="${escapeHtml(author.avatarUrl)}" alt="" loading="lazy" referrerpolicy="no-referrer">`
+      : `<span class="avatar-fallback">${initials}</span>`;
+
+    return `
+      <div class="coauthor-tag" title="${escapeHtml(author.email)}">
+        <span class="author-avatar has-image">
+          ${avatarHtml}
+        </span>
+        <strong>${escapeHtml(author.name)}</strong>
+        <button class="remove-btn" type="button" data-idx="${index}" aria-label="Remove co-author">×</button>
+      </div>
+    `;
+  }).join('');
+
+  els.coauthorList.querySelectorAll('.remove-btn').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const idx = Number.parseInt(btn.dataset.idx, 10);
+      state.selectedCoauthors.splice(idx, 1);
+      renderCoauthors();
+    });
+  });
+}
+
+function renderCoauthorSuggestions(suggestions) {
+  state.coauthorSuggestions = suggestions;
+  if (suggestions.length === 0) {
+    els.coauthorSuggestions.style.display = 'none';
+    els.coauthorSuggestions.innerHTML = '';
+    return;
+  }
+
+  els.coauthorSuggestions.style.display = 'flex';
+  els.coauthorSuggestions.innerHTML = suggestions.map((s, idx) => {
+    const active = state.activeCoauthorSuggestionIndex === idx ? 'active' : '';
+    const srcClass = s.isGithubApiResult ? 'github' : 'local';
+    const srcText = s.isGithubApiResult ? 'GitHub' : 'Local';
+    const avatarHtml = s.avatarUrl
+      ? `<span class="author-avatar has-image"><img src="${escapeHtml(s.avatarUrl)}" alt="" loading="lazy" referrerpolicy="no-referrer"></span>`
+      : `<span class="author-avatar"><span class="avatar-fallback">${escapeHtml(getInitials(s.name))}</span></span>`;
+
+    return `
+      <button class="suggestion-item ${active}" type="button" data-idx="${idx}">
+        ${avatarHtml}
+        <div class="suggestion-info">
+          <strong>${escapeHtml(s.name)}</strong>
+          <small>${s.githubUsername ? `@${escapeHtml(s.githubUsername)} · ` : ''}${escapeHtml(s.email)}</small>
+        </div>
+        <span class="suggestion-source ${srcClass}">${srcText}</span>
+      </button>
+    `;
+  }).join('');
+
+  els.coauthorSuggestions.querySelectorAll('.suggestion-item').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const idx = Number.parseInt(btn.dataset.idx, 10);
+      selectCoauthorSuggestion(idx);
+    });
+  });
+}
+
+function selectCoauthorSuggestion(idx) {
+  const selected = state.coauthorSuggestions[idx];
+  if (!selected || selected.isPlaceholder) return;
+
+  const alreadyAdded = state.selectedCoauthors.some(
+    (c) => c.email.toLowerCase() === selected.email.toLowerCase(),
+  );
+
+  if (!alreadyAdded) {
+    state.selectedCoauthors.push({
+      name: selected.name,
+      email: selected.email,
+      githubUsername: selected.githubUsername,
+      avatarUrl: selected.avatarUrl,
+    });
+    renderCoauthors();
+  }
+
+  els.coauthorInput.value = '';
+  renderCoauthorSuggestions([]);
+  state.activeCoauthorSuggestionIndex = -1;
+  els.coauthorInput.focus();
+}
+
+function updateSuggestionsWithGithubResult(gitHubUser) {
+  const alreadyExists = state.coauthorSuggestions.some(
+    (s) => s.githubUsername && s.githubUsername.toLowerCase() === gitHubUser.githubUsername.toLowerCase() && !s.isPlaceholder,
+  );
+
+  if (alreadyExists) return;
+
+  const currentSuggestions = [...state.coauthorSuggestions];
+  const cleanSuggestions = currentSuggestions.filter((s) => !s.isPlaceholder);
+
+  cleanSuggestions.unshift(gitHubUser);
+  if (state.activeCoauthorSuggestionIndex === -1 && cleanSuggestions.length > 0) {
+    state.activeCoauthorSuggestionIndex = 0;
+  }
+  renderCoauthorSuggestions(cleanSuggestions);
+}
+
+let coauthorGithubSearchTimeout = null;
+
+function lookupGithubCoauthor(query) {
+  if (coauthorGithubSearchTimeout) window.clearTimeout(coauthorGithubSearchTimeout);
+
+  if (!query || query.length < 2) return;
+
+  coauthorGithubSearchTimeout = window.setTimeout(() => {
+    fetch(`https://api.github.com/users/${encodeURIComponent(query)}`)
+      .then((response) => {
+        if (response.ok) return response.json();
+        throw new Error('Not found');
+      })
+      .then((data) => {
+        const inputVal = els.coauthorInput.value.trim().replace(/^@/, '').toLowerCase();
+        if (inputVal === query.toLowerCase()) {
+          const gitHubUser = {
+            name: data.name || data.login,
+            email: data.email || `${data.id}+${data.login}@users.noreply.github.com`,
+            githubUsername: data.login,
+            avatarUrl: data.avatar_url,
+            isGithubApiResult: true,
+          };
+          updateSuggestionsWithGithubResult(gitHubUser);
+        }
+      })
+      .catch((err) => {
+        console.log('GitHub user lookup failed:', err);
+      });
+  }, 400);
+}
+
+function handleCoauthorInput(e) {
+  const value = e.target.value.trim();
+  const query = value.replace(/^@/, '');
+
+  if (!query) {
+    renderCoauthorSuggestions([]);
+    state.activeCoauthorSuggestionIndex = -1;
+    return;
+  }
+
+  const allAuthors = getAuthorStats();
+  const localMatches = allAuthors
+    .filter((author) => {
+      const nameMatch = author.name.toLowerCase().includes(query.toLowerCase());
+      const handleMatch = author.githubUsername && author.githubUsername.toLowerCase().includes(query.toLowerCase());
+      const emailMatch = author.email.toLowerCase().includes(query.toLowerCase());
+      return nameMatch || handleMatch || emailMatch;
+    })
+    .map((author) => {
+      const avatarSource = getAuthorAvatarSource(author);
+      return {
+        name: author.name,
+        email: author.email,
+        githubUsername: avatarSource?.username || author.githubUsername,
+        avatarUrl: avatarSource?.url,
+        isGithubApiResult: false,
+      };
+    })
+    .slice(0, 5);
+
+  const suggestions = [...localMatches];
+
+  if (query.length >= 2) {
+    const alreadyMatchedLocalGithub = localMatches.some(
+      (m) => m.githubUsername && m.githubUsername.toLowerCase() === query.toLowerCase(),
+    );
+
+    if (!alreadyMatchedLocalGithub) {
+      suggestions.push({
+        name: `GitHub: @${query}`,
+        email: 'GitHub user lookup...',
+        githubUsername: query,
+        isGithubApiResult: true,
+        isPlaceholder: true,
+      });
+
+      lookupGithubCoauthor(query);
+    }
+  }
+
+  state.activeCoauthorSuggestionIndex = suggestions.length > 0 ? 0 : -1;
+  renderCoauthorSuggestions(suggestions);
+}
+
+function handleCoauthorKeyDown(e) {
+  if (state.coauthorSuggestions.length === 0) return;
+
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    state.activeCoauthorSuggestionIndex = (state.activeCoauthorSuggestionIndex + 1) % state.coauthorSuggestions.length;
+    renderCoauthorSuggestions(state.coauthorSuggestions);
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    state.activeCoauthorSuggestionIndex = (state.activeCoauthorSuggestionIndex - 1 + state.coauthorSuggestions.length) % state.coauthorSuggestions.length;
+    renderCoauthorSuggestions(state.coauthorSuggestions);
+  } else if (e.key === 'Enter') {
+    e.preventDefault();
+    if (state.activeCoauthorSuggestionIndex !== -1) {
+      selectCoauthorSuggestion(state.activeCoauthorSuggestionIndex);
+    }
+  } else if (e.key === 'Escape') {
+    e.preventDefault();
+    renderCoauthorSuggestions([]);
+    state.activeCoauthorSuggestionIndex = -1;
+    els.coauthorInput.blur();
+  }
+}
+
 
 function initEventHandlers() {
   els.btnHome.addEventListener('click', showHomeScreen);
@@ -1161,11 +1674,36 @@ function initEventHandlers() {
   });
   els.btnCommitSelected.addEventListener('click', commitSelectedChanges);
   els.btnPushOrigin.addEventListener('click', pushOrigin);
+  els.btnShowAddOrigin.addEventListener('click', showAddOriginForm);
+  els.btnCancelOrigin.addEventListener('click', hideAddOriginForm);
+  els.btnSaveOrigin.addEventListener('click', saveRemoteOrigin);
+  els.remoteUrlInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      saveRemoteOrigin();
+    }
+  });
   els.commitMessageInput.addEventListener('input', updateCommitAction);
   els.btnShowContributors.addEventListener('click', openContributorsModal);
   els.btnCloseContributors.addEventListener('click', closeContributorsModal);
   els.contributorsModal.addEventListener('click', (event) => {
     if (event.target === els.contributorsModal) closeContributorsModal();
+  });
+
+  els.btnCloseMerge.addEventListener('click', closeMergeModal);
+  els.btnCancelMerge.addEventListener('click', closeMergeModal);
+  els.btnConfirmMerge.addEventListener('click', confirmMerge);
+  els.mergeModal.addEventListener('click', (event) => {
+    if (event.target === els.mergeModal) closeMergeModal();
+  });
+
+  els.coauthorInput.addEventListener('input', handleCoauthorInput);
+  els.coauthorInput.addEventListener('keydown', handleCoauthorKeyDown);
+  document.addEventListener('click', (event) => {
+    if (!els.coauthorInput.contains(event.target) && !els.coauthorSuggestions.contains(event.target)) {
+      renderCoauthorSuggestions([]);
+      state.activeCoauthorSuggestionIndex = -1;
+    }
   });
 
   els.searchInput.addEventListener('input', (event) => {
