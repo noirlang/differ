@@ -26,9 +26,22 @@
   "bundle": {
     "active": true,
     "targets": "all",
+    "publisher": "noirLang",
+    "homepage": "https://github.com/noirlang/differ",
+    "license": "GPL-3.0-or-later",
     "category": "DeveloperTool",
     "shortDescription": "Git change explorer",
     "longDescription": "differ is a focused desktop Git change explorer for commit history, contributors, diffs, working tree status, and repository sync state.",
+    "windows": {
+      "allowDowngrades": false,
+      "webviewInstallMode": {
+        "type": "downloadBootstrapper",
+        "silent": true
+      },
+      "wix": {
+        "language": "en-US"
+      }
+    },
     "linux": {
       "appimage": {
         "bundleMediaFramework": true

@@ -6,8 +6,12 @@
   "license": "GPL-3.0-or-later",
   "type": "module",
   "scripts": {
-    "dev": "GDK_BACKEND=x11 WEBKIT_DISABLE_DMABUF_RENDERER=1 tauri dev",
+    "dev": "tauri dev",
+    "dev:linux": "GDK_BACKEND=x11 WEBKIT_DISABLE_DMABUF_RENDERER=1 tauri dev",
     "dev:wayland": "WEBKIT_DISABLE_DMABUF_RENDERER=1 tauri dev",
+    "build": "tauri build",
+    "build:windows": "tauri build --bundles msi",
+    "build:linux:appimage": "scripts/build-appimage-ubuntu.sh",
     "tauri": "tauri"
   },
   "devDependencies": {

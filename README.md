@@ -117,6 +117,8 @@ The application is designed for teams that need a clean way to review what chang
 
 Linux users need the standard WebKitGTK and Tauri desktop dependencies installed for their distribution.
 
+Windows users need Windows 10 or newer, the Microsoft Edge WebView2 Runtime, Git for Windows available in `PATH`, and the Rust MSVC toolchain when building from source.
+
 ## Getting Started
 
 Install dependencies:
@@ -131,10 +133,10 @@ Run the desktop app:
 npm run dev
 ```
 
-On Linux Wayland sessions, WebKitGTK can sometimes fail with a GDK protocol error. The default `dev` script forces XWayland:
+On Linux Wayland sessions, WebKitGTK can sometimes fail with a GDK protocol error. Use the Linux-specific script to force XWayland:
 
 ```bash
-npm run dev
+npm run dev:linux
 ```
 
 To try native Wayland:
@@ -149,6 +151,18 @@ Run the Tauri development app:
 
 ```bash
 npm run dev
+```
+
+Build a Windows MSI installer on Windows:
+
+```bash
+npm run build:windows
+```
+
+Build the Linux AppImage through the Ubuntu-based packaging script:
+
+```bash
+npm run build:linux:appimage
 ```
 
 Validate the Rust backend:
@@ -198,13 +212,17 @@ The home screen stores the last 5 opened Git repositories in local app storage. 
 
 ### GDK protocol error on Wayland
 
-Use the default development command first:
+Use the Linux-specific development command first:
 
 ```bash
-npm run dev
+npm run dev:linux
 ```
 
 It sets `GDK_BACKEND=x11` and `WEBKIT_DISABLE_DMABUF_RENDERER=1` for a more stable Linux development session.
+
+### Git is not found on Windows
+
+Install Git for Windows, enable command-line `PATH` integration during setup, then restart `differ` or your terminal before running the app again.
 
 ### Repository opens but push is disabled
 
