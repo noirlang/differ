@@ -1,7 +1,12 @@
 use git2::{BranchType, DiffDelta, DiffOptions, Oid, Repository, Sort, Status, StatusOptions};
 use serde::{Deserialize, Serialize};
-use std::{cell::RefCell, collections::HashSet, path::Path, process::Command, sync::Mutex};
+#[cfg(target_os = "windows")]
+use std::os::windows::process::CommandExt;
+use std::{cell::RefCell, collections::HashSet, io, path::Path, process::Command, sync::Mutex};
 use tauri::State;
+
+#[cfg(target_os = "windows")]
+const CREATE_NO_WINDOW: u32 = 0x08000000;
 
 struct AppState {
     repo: Option<Repository>,
@@ -154,13 +159,52 @@ fn repo_workdir(repo: &Repository) -> Result<&Path, String> {
     })
 }
 
+fn normalize_git_path(path: &Path) -> String {
+    path.to_string_lossy().replace('\\', "/")
+}
+
+fn git_not_found_message() -> String {
+    #[cfg(target_os = "windows")]
+    {
+        "git.exe was not found. Install Git for Windows and make sure it is available in PATH."
+            .to_string()
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        "git was not found. Install Git and make sure it is available in PATH.".to_string()
+    }
+}
+
+fn git_command() -> Command {
+    #[cfg(target_os = "windows")]
+    {
+        let mut command = Command::new("git");
+        command.creation_flags(CREATE_NO_WINDOW);
+        command
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        Command::new("git")
+    }
+}
+
 fn run_git(repo: &Repository, args: &[&str]) -> Result<String, String> {
-    let output = Command::new("git")
+    let output = git_command()
         .arg("-C")
         .arg(repo_workdir(repo)?)
         .args(args)
+        .env("GIT_TERMINAL_PROMPT", "0")
+        .env("GCM_INTERACTIVE", "never")
         .output()
-        .map_err(|e| format!("git could not be executed: {}", e))?;
+        .map_err(|e| {
+            if e.kind() == io::ErrorKind::NotFound {
+                git_not_found_message()
+            } else {
+                format!("git could not be executed: {}", e)
+            }
+        })?;
 
     if output.status.success() {
         Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
@@ -212,7 +256,7 @@ fn delta_path(delta: DiffDelta<'_>) -> Option<String> {
         .new_file()
         .path()
         .or_else(|| delta.old_file().path())
-        .map(|path| path.to_string_lossy().to_string())
+        .map(normalize_git_path)
 }
 
 #[tauri::command]
@@ -418,12 +462,12 @@ fn get_commit_diff(
                 old_path: delta
                     .old_file()
                     .path()
-                    .map(|p| p.to_string_lossy().to_string())
+                    .map(normalize_git_path)
                     .unwrap_or_default(),
                 new_path: delta
                     .new_file()
                     .path()
-                    .map(|p| p.to_string_lossy().to_string())
+                    .map(normalize_git_path)
                     .unwrap_or_default(),
                 status: status.to_string(),
                 hunks: Vec::new(),
