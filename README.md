@@ -1,7 +1,10 @@
 # differ
 
 <p align="center">
-  <img src="src/assets/differ-white.png" width="96" alt="differ logo" />
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="src/assets/differ-white.svg">
+    <img src="src/assets/differ-black.svg" width="88" alt="differ logo" />
+  </picture>
 </p>
 
 <p align="center">
