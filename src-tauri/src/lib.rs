@@ -5,7 +5,14 @@ use lettre::{Message, SmtpTransport, Transport};
 use serde::{Deserialize, Serialize};
 #[cfg(target_os = "windows")]
 use std::os::windows::process::CommandExt;
-use std::{cell::RefCell, collections::HashSet, io, path::Path, process::{Command, Stdio}, sync::Mutex};
+use std::{
+    cell::RefCell,
+    collections::HashSet,
+    io,
+    path::Path,
+    process::{Command, Stdio},
+    sync::Mutex,
+};
 use tauri::State;
 
 #[cfg(target_os = "windows")]
@@ -851,7 +858,10 @@ fn commit_changes_with_options(
             sign_email = String::new();
         }
         if !sign_name.is_empty() && !sign_email.is_empty() {
-            message.push_str(&format!("\n\nSigned-off-by: {} <{}>", sign_name, sign_email));
+            message.push_str(&format!(
+                "\n\nSigned-off-by: {} <{}>",
+                sign_name, sign_email
+            ));
         }
     }
 
@@ -997,7 +1007,10 @@ fn detect_os_and_distro() -> (String, String) {
                         .to_string();
                     break;
                 } else if line.starts_with("NAME=") && distro.is_empty() {
-                    distro = line.trim_start_matches("NAME=").trim_matches('"').to_string();
+                    distro = line
+                        .trim_start_matches("NAME=")
+                        .trim_matches('"')
+                        .to_string();
                 }
             }
         }
@@ -1051,7 +1064,10 @@ fn detect_ram_gb() -> f32 {
     {
         let mut cmd = Command::new("wmic");
         cmd.creation_flags(CREATE_NO_WINDOW);
-        if let Ok(output) = cmd.args(&["ComputerSystem", "get", "TotalPhysicalMemory"]).output() {
+        if let Ok(output) = cmd
+            .args(&["ComputerSystem", "get", "TotalPhysicalMemory"])
+            .output()
+        {
             for line in String::from_utf8_lossy(&output.stdout).lines() {
                 if let Ok(bytes) = line.trim().parse::<f32>() {
                     return (bytes / 1024.0 / 1024.0 / 1024.0 * 10.0).round() / 10.0;
@@ -1069,7 +1085,10 @@ fn detect_gpu_and_vram() -> (String, f32) {
     cmd.creation_flags(CREATE_NO_WINDOW);
 
     if let Ok(output) = cmd
-        .args(&["--query-gpu=name,memory.total", "--format=csv,noheader,nounits"])
+        .args(&[
+            "--query-gpu=name,memory.total",
+            "--format=csv,noheader,nounits",
+        ])
         .output()
     {
         if output.status.success() {
@@ -1125,7 +1144,12 @@ fn check_ollama_cli_and_daemon() -> (bool, bool, Vec<String>) {
     curl_cmd.creation_flags(CREATE_NO_WINDOW);
 
     if let Ok(output) = curl_cmd
-        .args(&["-s", "--connect-timeout", "2", "http://127.0.0.1:11434/api/tags"])
+        .args(&[
+            "-s",
+            "--connect-timeout",
+            "2",
+            "http://127.0.0.1:11434/api/tags",
+        ])
         .output()
     {
         if output.status.success() {
@@ -1263,12 +1287,14 @@ async fn generate_ai_commit_message(
                 if let Some(p_vec) = &paths {
                     if !p_vec.is_empty() {
                         for path in p_vec {
-                            let d_head = run_git(repo, &["diff", "HEAD", "--", path]).unwrap_or_default();
+                            let d_head =
+                                run_git(repo, &["diff", "HEAD", "--", path]).unwrap_or_default();
                             if !d_head.trim().is_empty() {
                                 diff_builder.push_str(&d_head);
                                 diff_builder.push('\n');
                             } else {
-                                let d_staged = run_git(repo, &["diff", "--cached", "--", path]).unwrap_or_default();
+                                let d_staged = run_git(repo, &["diff", "--cached", "--", path])
+                                    .unwrap_or_default();
                                 if !d_staged.trim().is_empty() {
                                     diff_builder.push_str(&d_staged);
                                     diff_builder.push('\n');
@@ -1276,9 +1302,17 @@ async fn generate_ai_commit_message(
                                     if let Some(workdir) = repo.workdir() {
                                         let full_path = workdir.join(path);
                                         if full_path.exists() && full_path.is_file() {
-                                            if let Ok(content) = std::fs::read_to_string(&full_path) {
-                                                let snippet: String = content.lines().take(40).collect::<Vec<_>>().join("\n");
-                                                diff_builder.push_str(&format!("+++ Added untracked file {}\n{}\n", path, snippet));
+                                            if let Ok(content) = std::fs::read_to_string(&full_path)
+                                            {
+                                                let snippet: String = content
+                                                    .lines()
+                                                    .take(40)
+                                                    .collect::<Vec<_>>()
+                                                    .join("\n");
+                                                diff_builder.push_str(&format!(
+                                                    "+++ Added untracked file {}\n{}\n",
+                                                    path, snippet
+                                                ));
                                             }
                                         }
                                     }
@@ -1395,8 +1429,7 @@ Diff:
             .map_err(|e| format!("Ollama request execution error: {}", e))
     })
     .await
-    .map_err(|e| format!("Task join error: {}", e))?
-    ?;
+    .map_err(|e| format!("Task join error: {}", e))??;
 
     let resp_str = String::from_utf8_lossy(&output.stdout);
 
@@ -1437,7 +1470,9 @@ Diff:
             }
         }
 
-        let types = ["feat", "fix", "docs", "style", "refactor", "perf", "test", "build", "ci", "chore"];
+        let types = [
+            "feat", "fix", "docs", "style", "refactor", "perf", "test", "build", "ci", "chore",
+        ];
         let raw_lines: Vec<&str> = combined.lines().collect();
 
         // Comprehensive blacklist of conversational/meta phrases produced by reasoning models
@@ -1667,7 +1702,15 @@ Diff:
         let clean_candidate = |line: &str| -> String {
             let mut cleaned = line.trim();
             // Strip leading markdown/quote/bullet chars
-            while cleaned.starts_with('*') || cleaned.starts_with('-') || cleaned.starts_with('`') || cleaned.starts_with('"') || cleaned.starts_with('\'') || cleaned.starts_with('#') || cleaned.starts_with('>') || cleaned.starts_with('[') {
+            while cleaned.starts_with('*')
+                || cleaned.starts_with('-')
+                || cleaned.starts_with('`')
+                || cleaned.starts_with('"')
+                || cleaned.starts_with('\'')
+                || cleaned.starts_with('#')
+                || cleaned.starts_with('>')
+                || cleaned.starts_with('[')
+            {
                 cleaned = cleaned
                     .trim_start_matches('*')
                     .trim_start_matches('-')
@@ -1680,7 +1723,14 @@ Diff:
                     .trim();
             }
             // Strip trailing markdown/quote chars
-            while cleaned.ends_with('}') || cleaned.ends_with('`') || cleaned.ends_with('"') || cleaned.ends_with('\'') || cleaned.ends_with('.') || cleaned.ends_with(')') || cleaned.ends_with(']') {
+            while cleaned.ends_with('}')
+                || cleaned.ends_with('`')
+                || cleaned.ends_with('"')
+                || cleaned.ends_with('\'')
+                || cleaned.ends_with('.')
+                || cleaned.ends_with(')')
+                || cleaned.ends_with(']')
+            {
                 cleaned = cleaned
                     .trim_end_matches('}')
                     .trim_end_matches('`')
@@ -1746,7 +1796,9 @@ Diff:
                             let rest = input[rest_offset..].trim();
                             let rest_lower = rest.to_lowercase();
                             for t2 in &types {
-                                if rest_lower.starts_with(&format!("{}:", t2)) || rest_lower.starts_with(&format!("{}(", t2)) {
+                                if rest_lower.starts_with(&format!("{}:", t2))
+                                    || rest_lower.starts_with(&format!("{}(", t2))
+                                {
                                     input = rest.to_string();
                                     changed = true;
                                     break;
@@ -1754,9 +1806,13 @@ Diff:
                             }
                         }
                     }
-                    if changed { break; }
+                    if changed {
+                        break;
+                    }
                 }
-                if !changed { break; }
+                if !changed {
+                    break;
+                }
             }
             input
         };
@@ -1849,28 +1905,62 @@ Diff:
             let word_count = cleaned.split_whitespace().count();
             let has_period = cleaned.contains('.');
             let has_comma = cleaned.contains(',');
-            let looks_like_subject = word_count <= 10 && !has_period && !has_comma
-                && !lower.starts_with("the ") && !lower.starts_with("a ") && !lower.starts_with("an ")
-                && !lower.starts_with("this ") && !lower.starts_with("it ");
+            let looks_like_subject = word_count <= 10
+                && !has_period
+                && !has_comma
+                && !lower.starts_with("the ")
+                && !lower.starts_with("a ")
+                && !lower.starts_with("an ")
+                && !lower.starts_with("this ")
+                && !lower.starts_with("it ");
 
             if !looks_like_subject {
                 continue;
             }
 
             // Guess the type from keywords
-            let prefix = if lower.contains("fix") || lower.contains("bug") || lower.contains("error") || lower.contains("crash") || lower.contains("overflow") || lower.contains("null") || lower.contains("panic") {
+            let prefix = if lower.contains("fix")
+                || lower.contains("bug")
+                || lower.contains("error")
+                || lower.contains("crash")
+                || lower.contains("overflow")
+                || lower.contains("null")
+                || lower.contains("panic")
+            {
                 "fix: "
-            } else if lower.contains("style") || lower.contains("css") || lower.contains("format") || lower.contains("lint") || lower.contains("whitespace") || lower.contains("indent") {
+            } else if lower.contains("style")
+                || lower.contains("css")
+                || lower.contains("format")
+                || lower.contains("lint")
+                || lower.contains("whitespace")
+                || lower.contains("indent")
+            {
                 "style: "
             } else if lower.contains("test") || lower.contains("spec") || lower.contains("assert") {
                 "test: "
-            } else if lower.contains("doc") || lower.contains("readme") || lower.contains("comment") || lower.contains("typo") {
+            } else if lower.contains("doc")
+                || lower.contains("readme")
+                || lower.contains("comment")
+                || lower.contains("typo")
+            {
                 "docs: "
-            } else if lower.contains("remove") || lower.contains("delete") || lower.contains("clean") || lower.contains("deprecat") {
+            } else if lower.contains("remove")
+                || lower.contains("delete")
+                || lower.contains("clean")
+                || lower.contains("deprecat")
+            {
                 "chore: "
-            } else if lower.contains("perf") || lower.contains("speed") || lower.contains("optim") || lower.contains("cache") || lower.contains("lazy") {
+            } else if lower.contains("perf")
+                || lower.contains("speed")
+                || lower.contains("optim")
+                || lower.contains("cache")
+                || lower.contains("lazy")
+            {
                 "perf: "
-            } else if lower.contains("refactor") || lower.contains("restructure") || lower.contains("reorganiz") {
+            } else if lower.contains("refactor")
+                || lower.contains("restructure")
+                || lower.contains("reorganiz")
+            {
                 "refactor: "
             } else {
                 "feat: "
@@ -1891,11 +1981,25 @@ Diff:
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
-        return Err(format!("Ollama HTTP request error: {}", if stderr.is_empty() { "HTTP 500 Connection Error" } else { &stderr }));
+        return Err(format!(
+            "Ollama HTTP request error: {}",
+            if stderr.is_empty() {
+                "HTTP 500 Connection Error"
+            } else {
+                &stderr
+            }
+        ));
     }
 
     let raw_out = String::from_utf8_lossy(&output.stdout).trim().to_string();
-    Err(format!("Ollama response parsing error: {}", if raw_out.is_empty() { "Empty stdout from Ollama" } else { &raw_out }))
+    Err(format!(
+        "Ollama response parsing error: {}",
+        if raw_out.is_empty() {
+            "Empty stdout from Ollama"
+        } else {
+            &raw_out
+        }
+    ))
 }
 
 #[tauri::command]
@@ -1916,12 +2020,14 @@ async fn generate_ai_commit_message_gemini(
                 if let Some(p_vec) = &paths {
                     if !p_vec.is_empty() {
                         for path in p_vec {
-                            let d_head = run_git(repo, &["diff", "HEAD", "--", path]).unwrap_or_default();
+                            let d_head =
+                                run_git(repo, &["diff", "HEAD", "--", path]).unwrap_or_default();
                             if !d_head.trim().is_empty() {
                                 diff_builder.push_str(&d_head);
                                 diff_builder.push('\n');
                             } else {
-                                let d_staged = run_git(repo, &["diff", "--cached", "--", path]).unwrap_or_default();
+                                let d_staged = run_git(repo, &["diff", "--cached", "--", path])
+                                    .unwrap_or_default();
                                 if !d_staged.trim().is_empty() {
                                     diff_builder.push_str(&d_staged);
                                     diff_builder.push('\n');
@@ -1929,9 +2035,17 @@ async fn generate_ai_commit_message_gemini(
                                     if let Some(workdir) = repo.workdir() {
                                         let full_path = workdir.join(path);
                                         if full_path.exists() && full_path.is_file() {
-                                            if let Ok(content) = std::fs::read_to_string(&full_path) {
-                                                let snippet: String = content.lines().take(40).collect::<Vec<_>>().join("\n");
-                                                diff_builder.push_str(&format!("+++ Added untracked file {}\n{}\n", path, snippet));
+                                            if let Ok(content) = std::fs::read_to_string(&full_path)
+                                            {
+                                                let snippet: String = content
+                                                    .lines()
+                                                    .take(40)
+                                                    .collect::<Vec<_>>()
+                                                    .join("\n");
+                                                diff_builder.push_str(&format!(
+                                                    "+++ Added untracked file {}\n{}\n",
+                                                    path, snippet
+                                                ));
                                             }
                                         }
                                     }
@@ -2046,13 +2160,16 @@ Diff:
             .map_err(|e| format!("Gemini request execution error: {}", e))
     })
     .await
-    .map_err(|e| format!("Task join error: {}", e))?
-    ?;
+    .map_err(|e| format!("Task join error: {}", e))??;
 
     let resp_str = String::from_utf8_lossy(&output.stdout);
 
     if let Ok(json) = serde_json::from_str::<serde_json::Value>(&resp_str) {
-        if let Some(err_msg) = json.get("error").and_then(|e| e.get("message")).and_then(|m| m.as_str()) {
+        if let Some(err_msg) = json
+            .get("error")
+            .and_then(|e| e.get("message"))
+            .and_then(|m| m.as_str())
+        {
             return Err(format!("Gemini API Error: {}", err_msg));
         }
 
@@ -2076,10 +2193,15 @@ Diff:
         }
 
         if combined.trim().is_empty() {
-            return Err(format!("Gemini returned empty response: {}", resp_str.chars().take(200).collect::<String>()));
+            return Err(format!(
+                "Gemini returned empty response: {}",
+                resp_str.chars().take(200).collect::<String>()
+            ));
         }
 
-        let types = ["feat", "fix", "docs", "style", "refactor", "perf", "test", "build", "ci", "chore"];
+        let types = [
+            "feat", "fix", "docs", "style", "refactor", "perf", "test", "build", "ci", "chore",
+        ];
         let raw_lines: Vec<&str> = combined.lines().collect();
 
         let is_meta = |s: &str| -> bool {
@@ -2226,7 +2348,15 @@ Diff:
 
         let clean_candidate = |line: &str| -> String {
             let mut cleaned = line.trim();
-            while cleaned.starts_with('*') || cleaned.starts_with('-') || cleaned.starts_with('`') || cleaned.starts_with('"') || cleaned.starts_with('\'') || cleaned.starts_with('#') || cleaned.starts_with('>') || cleaned.starts_with('[') {
+            while cleaned.starts_with('*')
+                || cleaned.starts_with('-')
+                || cleaned.starts_with('`')
+                || cleaned.starts_with('"')
+                || cleaned.starts_with('\'')
+                || cleaned.starts_with('#')
+                || cleaned.starts_with('>')
+                || cleaned.starts_with('[')
+            {
                 cleaned = cleaned
                     .trim_start_matches('*')
                     .trim_start_matches('-')
@@ -2238,7 +2368,14 @@ Diff:
                     .trim_start_matches('[')
                     .trim();
             }
-            while cleaned.ends_with('}') || cleaned.ends_with('`') || cleaned.ends_with('"') || cleaned.ends_with('\'') || cleaned.ends_with('.') || cleaned.ends_with(')') || cleaned.ends_with(']') {
+            while cleaned.ends_with('}')
+                || cleaned.ends_with('`')
+                || cleaned.ends_with('"')
+                || cleaned.ends_with('\'')
+                || cleaned.ends_with('.')
+                || cleaned.ends_with(')')
+                || cleaned.ends_with(']')
+            {
                 cleaned = cleaned
                     .trim_end_matches('}')
                     .trim_end_matches('`')
@@ -2294,7 +2431,9 @@ Diff:
                             let rest = input[rest_offset..].trim();
                             let rest_lower = rest.to_lowercase();
                             for t2 in &types {
-                                if rest_lower.starts_with(&format!("{}:", t2)) || rest_lower.starts_with(&format!("{}(", t2)) {
+                                if rest_lower.starts_with(&format!("{}:", t2))
+                                    || rest_lower.starts_with(&format!("{}(", t2))
+                                {
                                     input = rest.to_string();
                                     changed = true;
                                     break;
@@ -2302,9 +2441,13 @@ Diff:
                             }
                         }
                     }
-                    if changed { break; }
+                    if changed {
+                        break;
+                    }
                 }
-                if !changed { break; }
+                if !changed {
+                    break;
+                }
             }
             input
         };
@@ -2314,7 +2457,9 @@ Diff:
             let has_type = types.iter().any(|t| {
                 lower.starts_with(&format!("{}:", t)) || lower.starts_with(&format!("{}(", t))
             });
-            if !has_type { return false; }
+            if !has_type {
+                return false;
+            }
             let after_prefix = if let Some(pos) = s.find("):") {
                 s[pos + 2..].trim()
             } else if let Some(pos) = s.find(':') {
@@ -2342,7 +2487,9 @@ Diff:
 
         for line in raw_lines.iter().rev() {
             let cleaned = clean_candidate(line);
-            if is_meta(&cleaned) { continue; }
+            if is_meta(&cleaned) {
+                continue;
+            }
             if is_valid_conventional_commit(&cleaned) {
                 let mut result = strip_duplicate_prefixes(cleaned);
                 truncate_to_72(&mut result);
@@ -2353,7 +2500,9 @@ Diff:
         for line in raw_lines.iter().rev() {
             let cleaned = clean_candidate(line);
             let lower = cleaned.to_lowercase();
-            if is_meta(&cleaned) { continue; }
+            if is_meta(&cleaned) {
+                continue;
+            }
             for t in &types {
                 if lower.starts_with(&format!("{}:", t)) || lower.starts_with(&format!("{}(", t)) {
                     let mut result = strip_duplicate_prefixes(cleaned);
@@ -2365,24 +2514,45 @@ Diff:
 
         for line in raw_lines.iter().rev() {
             let cleaned = clean_candidate(line);
-            if cleaned.is_empty() || is_meta(&cleaned) || cleaned.len() < 10 { continue; }
+            if cleaned.is_empty() || is_meta(&cleaned) || cleaned.len() < 10 {
+                continue;
+            }
             let lower = cleaned.to_lowercase();
             let word_count = cleaned.split_whitespace().count();
             let has_period = cleaned.contains('.');
             let has_comma = cleaned.contains(',');
-            let looks_like_subject = word_count <= 10 && !has_period && !has_comma
-                && !lower.starts_with("the ") && !lower.starts_with("a ") && !lower.starts_with("an ")
-                && !lower.starts_with("this ") && !lower.starts_with("it ");
-            if !looks_like_subject { continue; }
-            let prefix = if lower.contains("fix") || lower.contains("bug") || lower.contains("error") || lower.contains("crash") {
+            let looks_like_subject = word_count <= 10
+                && !has_period
+                && !has_comma
+                && !lower.starts_with("the ")
+                && !lower.starts_with("a ")
+                && !lower.starts_with("an ")
+                && !lower.starts_with("this ")
+                && !lower.starts_with("it ");
+            if !looks_like_subject {
+                continue;
+            }
+            let prefix = if lower.contains("fix")
+                || lower.contains("bug")
+                || lower.contains("error")
+                || lower.contains("crash")
+            {
                 "fix: "
-            } else if lower.contains("style") || lower.contains("css") || lower.contains("format") || lower.contains("lint") {
+            } else if lower.contains("style")
+                || lower.contains("css")
+                || lower.contains("format")
+                || lower.contains("lint")
+            {
                 "style: "
             } else if lower.contains("test") || lower.contains("spec") {
                 "test: "
-            } else if lower.contains("doc") || lower.contains("readme") || lower.contains("comment") {
+            } else if lower.contains("doc") || lower.contains("readme") || lower.contains("comment")
+            {
                 "docs: "
-            } else if lower.contains("remove") || lower.contains("delete") || lower.contains("clean") {
+            } else if lower.contains("remove")
+                || lower.contains("delete")
+                || lower.contains("clean")
+            {
                 "chore: "
             } else if lower.contains("perf") || lower.contains("speed") || lower.contains("optim") {
                 "perf: "
@@ -2400,12 +2570,26 @@ Diff:
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
-        return Err(format!("Gemini HTTP error: {}", if stderr.is_empty() { "Connection failed" } else { &stderr }));
+        return Err(format!(
+            "Gemini HTTP error: {}",
+            if stderr.is_empty() {
+                "Connection failed"
+            } else {
+                &stderr
+            }
+        ));
     }
 
     let raw_out = String::from_utf8_lossy(&output.stdout).trim().to_string();
     let short_out = raw_out.chars().take(200).collect::<String>();
-    Err(format!("Gemini response error: {}", if short_out.is_empty() { "Empty response".to_string() } else { short_out }))
+    Err(format!(
+        "Gemini response error: {}",
+        if short_out.is_empty() {
+            "Empty response".to_string()
+        } else {
+            short_out
+        }
+    ))
 }
 
 #[tauri::command]
@@ -2446,24 +2630,35 @@ async fn list_gemini_models(api_key: String) -> Result<Vec<String>, String> {
 
     let resp_str = String::from_utf8_lossy(&output.stdout);
 
-    let json: serde_json::Value = serde_json::from_str(&resp_str)
-        .map_err(|e| format!("Invalid JSON response: {}", e))?;
+    let json: serde_json::Value =
+        serde_json::from_str(&resp_str).map_err(|e| format!("Invalid JSON response: {}", e))?;
 
     if let Some(err) = json.get("error") {
-        let msg = err.get("message").and_then(|m| m.as_str()).unwrap_or("Unknown error");
+        let msg = err
+            .get("message")
+            .and_then(|m| m.as_str())
+            .unwrap_or("Unknown error");
         return Err(format!("Gemini API error: {}", msg));
     }
 
-    let models_array = json.get("models")
+    let models_array = json
+        .get("models")
         .and_then(|m| m.as_array())
-        .ok_or_else(|| format!("Unexpected response structure: {}", resp_str.chars().take(200).collect::<String>()))?;
+        .ok_or_else(|| {
+            format!(
+                "Unexpected response structure: {}",
+                resp_str.chars().take(200).collect::<String>()
+            )
+        })?;
 
     let mut model_ids: Vec<String> = models_array
         .iter()
         .filter_map(|model| {
             let name = model.get("name")?.as_str()?;
             let methods = model.get("supportedGenerationMethods")?.as_array()?;
-            let supports_generate = methods.iter().any(|m| m.as_str() == Some("generateContent"));
+            let supports_generate = methods
+                .iter()
+                .any(|m| m.as_str() == Some("generateContent"));
             if !supports_generate {
                 return None;
             }
@@ -2630,7 +2825,11 @@ fn save_git_settings(
     }
     run_git(
         repo,
-        &["config", "commit.gpgsign", if gpg_sign { "true" } else { "false" }],
+        &[
+            "config",
+            "commit.gpgsign",
+            if gpg_sign { "true" } else { "false" },
+        ],
     )?;
 
     Ok("Settings saved successfully".to_string())
@@ -2689,8 +2888,15 @@ async fn send_patch_email(state: State<'_, Mutex<AppState>>) -> Result<String, S
     let from_addr = format!("{} <{}>", from_name, smtp.from_email);
 
     let email = Message::builder()
-        .from(from_addr.parse().map_err(|e| format!("Invalid from address: {}", e))?)
-        .to(smtp.to_email.parse().map_err(|e| format!("Invalid to address: {}", e))?)
+        .from(
+            from_addr
+                .parse()
+                .map_err(|e| format!("Invalid from address: {}", e))?,
+        )
+        .to(smtp
+            .to_email
+            .parse()
+            .map_err(|e| format!("Invalid to address: {}", e))?)
         .subject(format!("[differ] {}", subject))
         .header(ContentType::TEXT_PLAIN)
         .body(patch_content)
