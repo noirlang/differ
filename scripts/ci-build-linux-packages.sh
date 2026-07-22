@@ -62,8 +62,9 @@ fi
 
 if [ -f "$bundle_dir/deb/"*.deb ]; then
   cp "$bundle_dir/deb/"*.deb dist/differ-linux-x64.deb
-  dpkg-deb --field dist/differ-linux-x64.deb Depends | grep -q 'git'
-  dpkg-deb --field dist/differ-linux-x64.deb Depends | grep -q 'gnupg'
+  deb_depends="$(dpkg-deb --field dist/differ-linux-x64.deb Depends)"
+  [[ "$deb_depends" == *git* ]]
+  [[ "$deb_depends" == *gnupg* ]]
 fi
 
 if [ -f "$bundle_dir/rpm/"*.rpm ]; then
@@ -127,8 +128,10 @@ fi
 
 tar --sort=name --owner=0 --group=0 --numeric-owner --zstd \
   -cf "dist/differ-linux-x64.pkg.tar.zst" -C "$pkg_root" .PKGINFO opt usr
-tar -tf "dist/differ-linux-x64.pkg.tar.zst" | grep -qx '.PKGINFO'
-tar -xOf "dist/differ-linux-x64.pkg.tar.zst" .PKGINFO | grep -q '^depend = git$'
-tar -xOf "dist/differ-linux-x64.pkg.tar.zst" .PKGINFO | grep -q '^depend = gnupg$'
+pkg_entries="$(tar -tf "dist/differ-linux-x64.pkg.tar.zst")"
+pkg_info="$(tar -xOf "dist/differ-linux-x64.pkg.tar.zst" .PKGINFO)"
+[[ "$pkg_entries" == .PKGINFO$'\n'* ]]
+[[ "$pkg_info" == *$'\ndepend = git\n'* ]]
+[[ "$pkg_info" == *$'\ndepend = gnupg\n'* ]]
 
 rm -rf "$pkg_dir"
