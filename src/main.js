@@ -28,6 +28,45 @@ const state = {
 
 const $ = (id) => document.getElementById(id);
 
+const SETTINGS_KEY = 'differ.settings';
+
+function loadAppSettings() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}');
+    return {
+      aiProvider: saved.aiProvider || 'ollama',
+      geminiApiKey: saved.geminiApiKey || '',
+      geminiModel: saved.geminiModel || 'gemini-2.5-flash',
+      selectedModel: saved.selectedModel || 'gemma4:12b',
+      gitName: saved.gitName || '',
+      gitEmail: saved.gitEmail || '',
+      gpgKey: saved.gpgKey || 'none',
+      gpgSign: saved.gpgSign || false,
+      signedOffBy: saved.signedOffBy || false,
+      smtpEnabled: saved.smtpEnabled || false,
+    };
+  } catch {
+    return {
+      aiProvider: 'ollama',
+      geminiApiKey: '',
+      geminiModel: 'gemini-2.5-flash',
+      selectedModel: 'gemma4:12b',
+      gitName: '',
+      gitEmail: '',
+      gpgKey: 'none',
+      gpgSign: false,
+      signedOffBy: false,
+      smtpEnabled: false,
+    };
+  }
+}
+
+function saveAppSettings(settings) {
+  localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+}
+
+let appSettings = loadAppSettings();
+
 const els = {
   welcomeScreen: $('welcome-screen'),
   mainContent: $('main-content'),
@@ -44,6 +83,13 @@ const els = {
   branchCount: $('branch-count'),
   commitCount: $('commit-count'),
   topSyncPill: $('top-sync-pill'),
+  topPushBtn: $('top-push-btn'),
+  topPushBtnText: $('top-push-btn-text'),
+  btnOpenSettings: $('btn-open-settings'),
+  unpushedBanner: $('unpushed-banner'),
+  unpushedBannerCount: $('unpushed-banner-count'),
+  unpushedCommitList: $('unpushed-commit-list'),
+  btnUnpushedBannerPush: $('btn-unpushed-banner-push'),
   sideBranchCount: $('side-branch-count'),
   sideCommitCount: $('side-commit-count'),
   sideAuthorCount: $('side-author-count'),
@@ -58,8 +104,13 @@ const els = {
   btnSaveOrigin: $('btn-save-origin'),
   btnRefreshStatus: $('btn-refresh-status'),
   worktreeList: $('worktree-list'),
+  commitBox: $('commit-box'),
   commitMessageInput: $('commit-message-input'),
   btnCommitSelected: $('btn-commit-selected'),
+  btnAiGenerateCommit: $('btn-ai-generate-commit'),
+  commitAiModelTag: $('commit-ai-model-tag'),
+  commitIdentitySelect: $('commit-identity-select'),
+  commitGpgSelect: $('commit-gpg-select'),
   coauthorList: $('coauthors-list'),
   coauthorInput: $('coauthor-username-input'),
   coauthorSuggestions: $('coauthor-suggestions'),
@@ -80,6 +131,28 @@ const els = {
   mergeSourceLabel: $('merge-source-label'),
   mergeTargetLabel: $('merge-target-label'),
   mergeTargetSelect: $('merge-target-select'),
+  settingsModal: $('settings-modal'),
+  btnCloseSettings: $('btn-close-settings'),
+  btnCancelSettings: $('btn-cancel-settings'),
+  btnSaveSettings: $('btn-save-settings'),
+  settingGitName: $('setting-git-name'),
+  settingGitEmail: $('setting-git-email'),
+  settingGpgKey: $('setting-gpg-key'),
+  settingGpgSign: $('setting-gpg-sign'),
+  aiDetailsPanel: $('ai-details-panel'),
+  specOsDistro: $('spec-os-distro'),
+  specRam: $('spec-ram'),
+  specGpu: $('spec-gpu'),
+  specOllamaStatus: $('spec-ollama-status'),
+  ollamaInstallBox: $('ollama-install-box'),
+  btnInstallOllama: $('btn-install-ollama'),
+  recommendedModelTitle: $('recommended-model-title'),
+  settingAiModel: $('setting-ai-model'),
+  btnPullModel: $('btn-pull-model'),
+  modelStatusText: $('model-status-text'),
+  settingGeminiModel: $('setting-gemini-model'),
+  btnFetchGeminiModels: $('btn-fetch-gemini-models'),
+  geminiModelStatus: $('gemini-model-status'),
   historySubtitle: $('history-subtitle'),
   commitList: $('commit-list'),
   detailEmpty: $('detail-empty'),
@@ -518,6 +591,7 @@ async function refreshRepositoryData({ selectLatest = false } = {}) {
     invoke('get_file_tree', { commitId: null }),
     invoke('get_worktree_status'),
     invoke('get_sync_status'),
+    fetchAndPopulateGitSettings(),
   ]);
 
   state.branches = branches;
@@ -670,6 +744,7 @@ function renderSyncStatus() {
     els.originLabel.textContent = 'no origin';
     els.pushLabel.textContent = 'waiting for remote connection';
     els.btnPushOrigin.disabled = true;
+    els.topPushBtn.style.display = 'none';
 
     els.syncCardContent.style.display = 'grid';
     els.btnShowAddOrigin.style.display = 'none';
@@ -683,6 +758,7 @@ function renderSyncStatus() {
     els.pushLabel.textContent = 'no remote connection';
     els.btnPushOrigin.textContent = 'Push';
     els.btnPushOrigin.disabled = true;
+    els.topPushBtn.style.display = 'none';
 
     els.syncCardContent.style.display = 'none';
     if (els.addOriginForm.style.display !== 'flex') {
@@ -704,6 +780,13 @@ function renderSyncStatus() {
     ? `origin · ${sync.unpushed_count} unpushed`
     : 'origin · up to date';
   els.originLabel.textContent = originText;
+
+  if (sync.unpushed_count > 0 && sync.can_push) {
+    els.topPushBtn.style.display = 'inline-flex';
+    els.topPushBtnText.textContent = `Push (${sync.unpushed_count})`;
+  } else {
+    els.topPushBtn.style.display = 'none';
+  }
 
   if (!sync.can_push) {
     els.pushLabel.textContent = 'active branch cannot be pushed';
@@ -798,16 +881,56 @@ async function commitSelectedChanges() {
     finalMessage = finalMessage.trim();
   }
 
+  const selectedIdentityVal = els.commitIdentitySelect?.value || '';
+  let author_name = null;
+  let author_email = null;
+
+  if (selectedIdentityVal && selectedIdentityVal !== '__manage__') {
+    const found = state.gitIdentities?.find((i) => `${i.name} <${i.email}>` === selectedIdentityVal);
+    if (found) {
+      author_name = found.name;
+      author_email = found.email;
+    } else {
+      const match = selectedIdentityVal.match(/^([^<]+)\s*<([^>]+)>$/);
+      if (match) {
+        author_name = match[1].trim();
+        author_email = match[2].trim();
+      }
+    }
+  }
+
+  const gpg_key = els.commitGpgSelect.value;
+  const signedOffBy = document.getElementById('commit-signed-off-by')?.checked || false;
+
   try {
     els.btnCommitSelected.disabled = true;
     setStatus('Creating commit...');
-    await invoke('commit_changes', { paths, message: finalMessage });
+    await invoke('commit_changes_with_options', {
+      paths,
+      message: finalMessage,
+      authorName: author_name,
+      authorEmail: author_email,
+      gpgKey: gpg_key,
+      signCommit: appSettings.gpgSign,
+      signedOffBy: signedOffBy,
+    });
     state.selectedWorktreePaths.clear();
     state.selectedCoauthors = [];
     els.commitMessageInput.value = '';
     renderCoauthors();
     await refreshRepositoryData({ selectLatest: true });
     setStatus('Commit created');
+
+    if (appSettings.smtpEnabled) {
+      try {
+        setStatus('Sending patch email...');
+        const emailResult = await invoke('send_patch_email');
+        setStatus(emailResult);
+      } catch (emailErr) {
+        console.error('Patch email error:', emailErr);
+        setStatus(`Commit created but email failed: ${emailErr}`);
+      }
+    }
   } catch (err) {
     console.error(err);
     setStatus('Commit could not be created');
@@ -820,6 +943,7 @@ async function commitSelectedChanges() {
 async function pushOrigin() {
   try {
     els.btnPushOrigin.disabled = true;
+    els.topPushBtn.disabled = true;
     setStatus('Pushing...');
     await invoke('push_origin');
     await refreshRepositoryData();
@@ -829,6 +953,7 @@ async function pushOrigin() {
     setStatus('Push failed');
     alert(`Push failed: ${err}`);
   } finally {
+    els.topPushBtn.disabled = false;
     renderSyncStatus();
   }
 }
@@ -1132,6 +1257,33 @@ function renderCommits() {
     return;
   }
 
+  const unpushedCommits = commits.filter((c) => c.is_unpushed);
+  if (els.unpushedBanner) {
+    if (unpushedCommits.length > 0) {
+      els.unpushedBanner.style.display = 'flex';
+      els.unpushedBannerCount.textContent = unpushedCommits.length;
+      els.unpushedCommitList.innerHTML = unpushedCommits.map((c) => `
+        <div class="unpushed-commit-card" data-commit-id="${c.id}">
+          <div class="unpushed-commit-info">
+            <span class="unpushed-hash">${c.short_id}</span>
+            <span class="unpushed-msg">${escapeHtml(firstLine(c.message))}</span>
+          </div>
+          <div class="unpushed-meta">
+            <span>${escapeHtml(c.author_name || 'Unknown')}</span>
+            <span>&bull; ${formatDate(c.timestamp)}</span>
+            <span class="commit-state-label unpushed-badge">UNPUSHED</span>
+          </div>
+        </div>
+      `).join('');
+
+      els.unpushedCommitList.querySelectorAll('.unpushed-commit-card').forEach((card) => {
+        card.addEventListener('click', () => selectCommit(card.dataset.commitId));
+      });
+    } else {
+      els.unpushedBanner.style.display = 'none';
+    }
+  }
+
   const branchLabels = new Map();
   state.branches.forEach((branch) => {
     if (!branchLabels.has(branch.commit_id)) branchLabels.set(branch.commit_id, []);
@@ -1148,7 +1300,7 @@ function renderCommits() {
     )).join('');
     const selected = state.selectedCommit === commit.id ? 'selected' : '';
     const localOnly = commit.is_unpushed ? 'local-only' : '';
-    const syncLabel = commit.is_unpushed ? '<span class="commit-state-label">unpushed</span>' : '';
+    const syncLabel = commit.is_unpushed ? '<span class="commit-state-label unpushed-badge">unpushed</span>' : '';
 
     const coauthors = parseCoauthorsFromMessage(commit.message);
     const coauthorsTitle = coauthors.length > 0 ? ` + Co-authored by: ${coauthors.map(c => c.name).join(', ')}` : '';
@@ -1658,10 +1810,571 @@ function handleCoauthorKeyDown(e) {
 }
 
 
+let currentSystemInfo = null;
+let aiLoadingInterval = null;
+
+const aiLoadingStages = [
+  'Diff inceleniyor...',
+  'Degisiklikler analiz ediliyor...',
+  'Commit mesaji olusturuluyor...',
+  'Conventional Commit formatina donusturuluyor...',
+  'Son duzenlemeler yapiliyor...',
+];
+
+function startAiLoadingAnimation(model) {
+  const subtitleEl = $('commit-loading-subtitle');
+  if (!subtitleEl) return;
+  let stageIndex = 0;
+  subtitleEl.textContent = aiLoadingStages[0];
+  aiLoadingInterval = window.setInterval(() => {
+    stageIndex = (stageIndex + 1) % aiLoadingStages.length;
+    subtitleEl.textContent = aiLoadingStages[stageIndex];
+  }, 3000);
+}
+
+function stopAiLoadingAnimation() {
+  if (aiLoadingInterval) {
+    window.clearInterval(aiLoadingInterval);
+    aiLoadingInterval = null;
+  }
+}
+
+async function generateAiCommitMessage() {
+  const provider = appSettings.aiProvider || 'ollama';
+  if (provider === 'gemini' && !appSettings.geminiApiKey) {
+    alert('Gemini API key is not set. Please add your API key in Settings.');
+    openSettingsModal();
+    return;
+  }
+
+  const selectedPaths = [...state.selectedWorktreePaths];
+  if (selectedPaths.length === 0) {
+    alert('Please select at least one modified file to generate a commit message.');
+    return;
+  }
+
+  const currentModel = provider === 'gemini'
+    ? (appSettings.geminiModel || 'gemini-2.5-flash')
+    : (appSettings.selectedModel || 'gemma4:12b');
+  const displayTag = provider === 'gemini' ? `Gemini: ${currentModel}` : `Ollama: ${currentModel}`;
+
+  try {
+    els.btnAiGenerateCommit.disabled = true;
+    els.btnAiGenerateCommit.classList.add('is-loading');
+    els.btnAiGenerateCommit.innerHTML = `
+      <span class="spinner-icon"></span>
+      <span>AI Writing...</span>
+      <span class="ai-model-tag">${escapeHtml(displayTag)}</span>
+    `;
+    if (els.commitBox) {
+      els.commitBox.classList.add('is-loading');
+    }
+    startAiLoadingAnimation(displayTag);
+    setStatus('AI is generating commit message...');
+
+    let generatedMessage;
+    if (provider === 'gemini') {
+      generatedMessage = await invoke('generate_ai_commit_message_gemini', {
+        diff: null,
+        paths: selectedPaths,
+        model: appSettings.geminiModel || 'gemini-2.5-flash',
+        apiKey: appSettings.geminiApiKey,
+      });
+    } else {
+      generatedMessage = await invoke('generate_ai_commit_message', {
+        diff: null,
+        paths: selectedPaths,
+        model: currentModel,
+      });
+    }
+
+    if (generatedMessage) {
+      els.commitMessageInput.value = generatedMessage;
+      updateCommitAction();
+      setStatus('AI commit message generated!');
+    }
+  } catch (err) {
+    console.error(err);
+    setStatus('Failed to generate AI commit message');
+    alert(`AI Commit Error: ${err}\n\nNote: Ensure ${provider === 'gemini' ? 'your Gemini API key is valid' : `Ollama is running and model (${currentModel}) is pulled`}.`);
+  } finally {
+    stopAiLoadingAnimation();
+    els.btnAiGenerateCommit.disabled = false;
+    els.btnAiGenerateCommit.classList.remove('is-loading');
+    els.btnAiGenerateCommit.innerHTML = `
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"></path>
+      </svg>
+      <span>AI Write Commit</span>
+      <span class="ai-model-tag" id="commit-ai-model-tag">${escapeHtml(displayTag)}</span>
+    `;
+    if (els.commitBox) {
+      els.commitBox.classList.remove('is-loading');
+    }
+  }
+}
+
+async function openSettingsModal() {
+  try {
+    setStatus('Loading settings...');
+
+    let gitSettings = null;
+    try {
+      gitSettings = await invoke('get_git_settings');
+      state.gitIdentities = gitSettings.identities;
+      state.gpgKeys = gitSettings.gpg_keys;
+    } catch (e) {
+      console.log('get_git_settings error:', e);
+    }
+
+    els.settingGitName.value = appSettings.gitName || gitSettings?.current_name || '';
+    els.settingGitEmail.value = appSettings.gitEmail || gitSettings?.current_email || '';
+    els.settingGpgSign.checked = appSettings.gpgSign || gitSettings?.gpg_sign_enabled || false;
+
+    const signedOffByCheckbox = document.getElementById('commit-signed-off-by');
+    if (signedOffByCheckbox) signedOffByCheckbox.checked = appSettings.signedOffBy || false;
+
+    const provider = appSettings.aiProvider || 'ollama';
+    const radioOllama = document.getElementById('ai-provider-ollama');
+    const radioGemini = document.getElementById('ai-provider-gemini');
+    if (radioOllama) radioOllama.checked = provider === 'ollama';
+    if (radioGemini) radioGemini.checked = provider === 'gemini';
+    switchAiProviderPanel(provider);
+
+    const geminiKeyInput = document.getElementById('setting-gemini-api-key');
+    if (geminiKeyInput) geminiKeyInput.value = appSettings.geminiApiKey || '';
+
+    if (provider === 'gemini' && appSettings.geminiApiKey) {
+      fetchGeminiModels();
+    }
+
+    els.settingGpgKey.innerHTML = '<option value="none">None / Git Default</option>';
+    if (gitSettings && gitSettings.gpg_keys.length > 0) {
+      gitSettings.gpg_keys.forEach((key) => {
+        const sel = (appSettings.gpgKey === key.key_id || key.is_default) ? 'selected' : '';
+        els.settingGpgKey.innerHTML += `<option value="${escapeHtml(key.key_id)}" ${sel}>${escapeHtml(key.key_id)} (${escapeHtml(key.uid)})</option>`;
+      });
+    }
+
+    updateCommitOptionDropdowns(gitSettings);
+
+    currentSystemInfo = await invoke('get_system_info');
+    renderSystemInfo(currentSystemInfo);
+
+    await loadSmtpSettings();
+
+    els.settingsModal.removeAttribute('hidden');
+    setStatus('Settings opened');
+  } catch (err) {
+    console.error('Error opening settings:', err);
+    alert(`Error loading settings: ${err}`);
+  }
+}
+
+function switchAiProviderPanel(provider) {
+  const ollamaPanel = document.getElementById('ollama-panel');
+  const geminiPanel = document.getElementById('gemini-panel');
+  if (ollamaPanel) ollamaPanel.style.display = provider === 'ollama' ? 'block' : 'none';
+  if (geminiPanel) geminiPanel.style.display = provider === 'gemini' ? 'block' : 'none';
+}
+
+async function fetchGeminiModels() {
+  const apiKey = document.getElementById('setting-gemini-api-key')?.value?.trim();
+  const select = els.settingGeminiModel;
+  const statusEl = els.geminiModelStatus;
+
+  if (!apiKey) {
+    statusEl.textContent = 'Enter an API key first.';
+    statusEl.className = 'gemini-model-status error';
+    return;
+  }
+
+  const savedModel = appSettings.geminiModel || '';
+  statusEl.textContent = 'Fetching models...';
+  statusEl.className = 'gemini-model-status';
+
+  try {
+    els.btnFetchGeminiModels.disabled = true;
+    els.btnFetchGeminiModels.textContent = 'Loading...';
+
+    const models = await invoke('list_gemini_models', { apiKey });
+
+    if (!models || models.length === 0) {
+      statusEl.textContent = 'No generateContent models found for this key.';
+      statusEl.className = 'gemini-model-status error';
+      return;
+    }
+
+    select.innerHTML = '';
+    models.forEach((m) => {
+      const opt = document.createElement('option');
+      opt.value = m;
+      opt.textContent = m;
+      select.appendChild(opt);
+    });
+
+    if (savedModel && models.includes(savedModel)) {
+      select.value = savedModel;
+    }
+
+    statusEl.textContent = `${models.length} model(s) loaded.`;
+    statusEl.className = 'gemini-model-status ok';
+  } catch (err) {
+    console.error('fetchGeminiModels error:', err);
+    statusEl.textContent = `Error: ${err}`;
+    statusEl.className = 'gemini-model-status error';
+  } finally {
+    els.btnFetchGeminiModels.disabled = false;
+    els.btnFetchGeminiModels.textContent = 'Refresh';
+  }
+}
+
+function closeSettingsModal() {
+  els.settingsModal.setAttribute('hidden', '');
+}
+
+async function loadSmtpSettings() {
+  try {
+    const smtp = await invoke('get_smtp_settings');
+    const smtpEnabled = document.getElementById('setting-smtp-enabled');
+    const smtpFields = document.getElementById('smtp-config-fields');
+    const smtpHost = document.getElementById('setting-smtp-host');
+    const smtpPort = document.getElementById('setting-smtp-port');
+    const smtpTls = document.getElementById('setting-smtp-tls');
+    const smtpUsername = document.getElementById('setting-smtp-username');
+    const smtpPassword = document.getElementById('setting-smtp-password');
+    const smtpFrom = document.getElementById('setting-smtp-from');
+    const smtpTo = document.getElementById('setting-smtp-to');
+
+    if (smtpEnabled) smtpEnabled.checked = smtp.enabled;
+    if (smtpFields) smtpFields.style.display = smtp.enabled ? 'block' : 'none';
+    if (smtpHost) smtpHost.value = smtp.host || '';
+    if (smtpPort) smtpPort.value = smtp.port || 587;
+    if (smtpTls) smtpTls.checked = smtp.use_tls !== false;
+    if (smtpUsername) smtpUsername.value = smtp.username || '';
+    if (smtpPassword) smtpPassword.value = smtp.password || '';
+    if (smtpFrom) smtpFrom.value = smtp.from_email || '';
+    if (smtpTo) smtpTo.value = smtp.to_email || '';
+
+    if (smtpEnabled) {
+      smtpEnabled.addEventListener('change', () => {
+        if (smtpFields) smtpFields.style.display = smtpEnabled.checked ? 'block' : 'none';
+      });
+    }
+  } catch (e) {
+    console.log('loadSmtpSettings error:', e);
+  }
+}
+
+async function fetchAndPopulateGitSettings() {
+  try {
+    const gitSettings = await invoke('get_git_settings');
+    state.gitIdentities = gitSettings.identities || [];
+    state.gpgKeys = gitSettings.gpg_keys || [];
+    updateCommitOptionDropdowns(gitSettings);
+    return gitSettings;
+  } catch (err) {
+    console.error('Error fetching git settings:', err);
+    updateCommitOptionDropdowns(null);
+  }
+}
+
+function updateCommitOptionDropdowns(gitSettings) {
+  let identityHtml = '';
+  
+  if (appSettings.gitName && appSettings.gitEmail) {
+    const customVal = `${appSettings.gitName} <${appSettings.gitEmail}>`;
+    identityHtml += `<option value="${escapeHtml(customVal)}">${escapeHtml(appSettings.gitName)} &lt;${escapeHtml(appSettings.gitEmail)}&gt; (Configured)</option>`;
+  }
+  
+  if (gitSettings && gitSettings.current_name && gitSettings.current_email) {
+    const currVal = `${gitSettings.current_name} <${gitSettings.current_email}>`;
+    if (!identityHtml.includes(escapeHtml(currVal))) {
+      identityHtml += `<option value="${escapeHtml(currVal)}" selected>${escapeHtml(gitSettings.current_name)} &lt;${escapeHtml(gitSettings.current_email)}&gt; (Git Default)</option>`;
+    }
+  } else if (!identityHtml) {
+    identityHtml += `<option value="">Default Identity</option>`;
+  }
+
+  if (gitSettings && gitSettings.identities && gitSettings.identities.length > 0) {
+    gitSettings.identities.forEach((id) => {
+      const val = `${id.name} <${id.email}>`;
+      if (!identityHtml.includes(escapeHtml(val))) {
+        identityHtml += `<option value="${escapeHtml(val)}">${escapeHtml(id.name)} &lt;${escapeHtml(id.email)}&gt;</option>`;
+      }
+    });
+  }
+  
+  identityHtml += `<option value="__manage__">+ Manage in Settings...</option>`;
+  els.commitIdentitySelect.innerHTML = identityHtml;
+
+  let gpgHtml = `
+    <option value="none" ${!gitSettings?.gpg_sign_enabled ? 'selected' : ''}>No Signing (--no-gpg-sign)</option>
+    <option value="default" ${gitSettings?.gpg_sign_enabled ? 'selected' : ''}>Default Key (-S)</option>
+  `;
+
+  if (gitSettings && gitSettings.gpg_keys && gitSettings.gpg_keys.length > 0) {
+    gitSettings.gpg_keys.forEach((key) => {
+      const sel = (appSettings.gpgKey === key.key_id || key.is_default) ? 'selected' : '';
+      gpgHtml += `<option value="${escapeHtml(key.key_id)}" ${sel}>Key: ${escapeHtml(key.key_id)} (${escapeHtml(key.uid)})</option>`;
+    });
+  }
+
+  gpgHtml += `<option value="__manage__">+ Manage Keys in Settings...</option>`;
+  els.commitGpgSelect.innerHTML = gpgHtml;
+}
+
+function renderSystemInfo(sys) {
+  if (!sys) return;
+
+  els.specOsDistro.textContent = sys.distro || sys.os;
+  els.specRam.textContent = `${sys.ram_gb} GB RAM`;
+  els.specGpu.textContent = `${sys.gpu_name} (${sys.vram_gb} GB VRAM)`;
+
+  if (sys.ollama_installed && sys.ollama_running) {
+    els.specOllamaStatus.textContent = 'Installed & Running';
+    els.specOllamaStatus.style.color = '#3fb950';
+    els.ollamaInstallBox.style.display = 'none';
+  } else if (sys.ollama_installed) {
+    els.specOllamaStatus.textContent = 'Installed (Service Offline)';
+    els.specOllamaStatus.style.color = '#d29922';
+    els.ollamaInstallBox.style.display = 'none';
+  } else {
+    els.specOllamaStatus.textContent = 'Not Installed';
+    els.specOllamaStatus.style.color = '#f85149';
+    els.ollamaInstallBox.style.display = 'flex';
+  }
+
+  els.recommendedModelTitle.textContent = `${sys.recommended_model} (Top Recommended)`;
+  const currentSel = appSettings.selectedModel || sys.recommended_model || 'gemma4:12b';
+  els.commitAiModelTag.textContent = currentSel;
+
+  if (els.settingAiModel) {
+    let html = '';
+    const installedList = sys.installed_models || [];
+
+    if (installedList.length > 0) {
+      html += '<optgroup label="Installed Local Models">';
+      installedList.forEach((m) => {
+        const isSel = m === currentSel ? 'selected' : '';
+        html += `<option value="${escapeHtml(m)}" ${isSel}>${escapeHtml(m)} (Installed)</option>`;
+      });
+      html += '</optgroup>';
+    }
+
+    const defaultModels = ['gemma4:12b', 'gemma2:9b', 'gemma2:27b', 'gemma:7b', 'gemma:2b'];
+    html += '<optgroup label="Available Models to Pull">';
+    defaultModels.forEach((m) => {
+      const isInst = installedList.some((inst) => inst.includes(m));
+      if (!isInst) {
+        const isSel = m === currentSel ? 'selected' : '';
+        const rec = m === sys.recommended_model ? ' - Top Recommended' : '';
+        html += `<option value="${escapeHtml(m)}" ${isSel}>${escapeHtml(m)}${rec}</option>`;
+      }
+    });
+    html += '</optgroup>';
+
+    els.settingAiModel.innerHTML = html;
+    els.settingAiModel.value = currentSel;
+  }
+
+  updateModelPullStatus(sys, currentSel);
+}
+
+function updateModelPullStatus(sys, selectedModel) {
+  if (!sys) sys = currentSystemInfo;
+  if (!selectedModel) selectedModel = els.settingAiModel?.value || appSettings.selectedModel || 'gemma4:12b';
+
+  const isPulled = sys?.installed_models?.some((m) => m.includes(selectedModel));
+  if (isPulled) {
+    els.modelStatusText.textContent = `Status: Model (${selectedModel}) Ready`;
+    els.btnPullModel.disabled = true;
+    els.btnPullModel.textContent = 'Ready';
+  } else {
+    els.modelStatusText.textContent = `Status: Model (${selectedModel}) is not pulled yet`;
+    els.btnPullModel.disabled = false;
+    els.btnPullModel.textContent = `Pull Model (${selectedModel})`;
+  }
+}
+
+async function saveSettings() {
+  try {
+    const name = els.settingGitName.value.trim();
+    const email = els.settingGitEmail.value.trim();
+    const signingKey = els.settingGpgKey.value;
+    const gpgSign = els.settingGpgSign.checked;
+    const selectedModel = els.settingAiModel.value;
+    const signedOffBy = document.getElementById('commit-signed-off-by')?.checked || false;
+
+    const radioOllama = document.getElementById('ai-provider-ollama');
+    const aiProvider = (radioOllama && radioOllama.checked) ? 'ollama' : 'gemini';
+    const geminiKeyInput = document.getElementById('setting-gemini-api-key');
+    const geminiModelSelect = document.getElementById('setting-gemini-model');
+    const geminiApiKey = geminiKeyInput ? geminiKeyInput.value.trim() : '';
+    const geminiModel = geminiModelSelect ? geminiModelSelect.value : 'gemini-2.5-flash';
+
+    const smtpEnabled = document.getElementById('setting-smtp-enabled')?.checked || false;
+    const smtpSettings = {
+      enabled: smtpEnabled,
+      host: document.getElementById('setting-smtp-host')?.value?.trim() || '',
+      port: parseInt(document.getElementById('setting-smtp-port')?.value || '587', 10) || 587,
+      username: document.getElementById('setting-smtp-username')?.value?.trim() || '',
+      password: document.getElementById('setting-smtp-password')?.value || '',
+      fromEmail: document.getElementById('setting-smtp-from')?.value?.trim() || '',
+      toEmail: document.getElementById('setting-smtp-to')?.value?.trim() || '',
+      useTls: document.getElementById('setting-smtp-tls')?.checked || true,
+    };
+
+    appSettings = {
+      aiProvider,
+      geminiApiKey,
+      geminiModel,
+      selectedModel,
+      gitName: name,
+      gitEmail: email,
+      gpgKey: signingKey,
+      gpgSign,
+      signedOffBy,
+      smtpEnabled,
+    };
+    saveAppSettings(appSettings);
+
+    if (state.repoInfo) {
+      await invoke('save_git_settings', {
+        name,
+        email,
+        signingKey: signingKey === 'none' ? '' : signingKey,
+        gpgSign,
+      });
+    }
+
+    try {
+      await invoke('save_smtp_settings', { settings: smtpSettings });
+    } catch (e) {
+      console.log('SMTP save error:', e);
+    }
+
+    const displayTag = aiProvider === 'gemini'
+      ? `Gemini: ${geminiModel}`
+      : `Ollama: ${selectedModel}`;
+    els.commitAiModelTag.textContent = displayTag;
+    closeSettingsModal();
+    setStatus('Settings saved successfully');
+  } catch (err) {
+    console.error('Error saving settings:', err);
+    alert(`Error saving settings: ${err}`);
+  }
+}
+
+async function installOllama() {
+  try {
+    els.btnInstallOllama.disabled = true;
+    els.btnInstallOllama.textContent = 'Installing...';
+    setStatus('Installing Ollama automatically...');
+
+    const res = await invoke('install_ollama');
+    alert(`Ollama Installation Result: ${res}`);
+
+    currentSystemInfo = await invoke('get_system_info');
+    renderSystemInfo(currentSystemInfo);
+  } catch (err) {
+    console.error(err);
+    alert(`Ollama Installation Error: ${err}`);
+  } finally {
+    els.btnInstallOllama.disabled = false;
+    els.btnInstallOllama.textContent = 'Auto-Install Ollama';
+  }
+}
+
+async function pullModel() {
+  const model = appSettings.selectedModel || 'gemma4:12b';
+  try {
+    els.btnPullModel.disabled = true;
+    els.btnPullModel.textContent = 'Downloading...';
+    setStatus(`Downloading model (${model})... This may take a few minutes.`);
+
+    const res = await invoke('pull_ollama_model', { modelName: model });
+    alert(`Model Pull Result: ${res}`);
+
+    currentSystemInfo = await invoke('get_system_info');
+    renderSystemInfo(currentSystemInfo);
+  } catch (err) {
+    console.error(err);
+    alert(`Model Pull Error: ${err}`);
+  } finally {
+    els.btnPullModel.disabled = false;
+    els.btnPullModel.textContent = 'Pull / Download Model';
+  }
+}
+
 function initEventHandlers() {
   els.btnHome.addEventListener('click', showHomeScreen);
   els.btnOpenRepo.addEventListener('click', () => openRepo());
   els.btnWelcomeOpen.addEventListener('click', () => openRepo());
+  els.btnOpenSettings.addEventListener('click', openSettingsModal);
+  els.btnCloseSettings.addEventListener('click', closeSettingsModal);
+  els.btnCancelSettings.addEventListener('click', closeSettingsModal);
+  els.btnSaveSettings.addEventListener('click', saveSettings);
+  els.btnInstallOllama.addEventListener('click', installOllama);
+  els.btnPullModel.addEventListener('click', pullModel);
+  els.btnAiGenerateCommit.addEventListener('click', generateAiCommitMessage);
+  const initProvider = appSettings.aiProvider || 'ollama';
+  const initTag = initProvider === 'gemini'
+    ? `Gemini: ${appSettings.geminiModel || 'gemini-2.5-flash'}`
+    : `Ollama: ${appSettings.selectedModel || 'gemma4:12b'}`;
+  els.commitAiModelTag.textContent = initTag;
+  els.topPushBtn.addEventListener('click', pushOrigin);
+  if (els.btnUnpushedBannerPush) {
+    els.btnUnpushedBannerPush.addEventListener('click', pushOrigin);
+  }
+  els.commitIdentitySelect.addEventListener('change', (e) => {
+    if (e.target.value === '__manage__') {
+      openSettingsModal();
+      e.target.selectedIndex = 0;
+    }
+  });
+
+  els.commitGpgSelect.addEventListener('change', (e) => {
+    if (e.target.value === '__manage__') {
+      openSettingsModal();
+      e.target.selectedIndex = 0;
+    }
+  });
+
+  document.querySelectorAll('input[name="ai-provider"]').forEach((radio) => {
+    radio.addEventListener('change', (e) => {
+      switchAiProviderPanel(e.target.value);
+    });
+  });
+
+  const geminiKeyInput = document.getElementById('setting-gemini-api-key');
+  const btnToggleKey = document.getElementById('btn-toggle-gemini-key');
+  const btnCopyKey = document.getElementById('btn-copy-gemini-key');
+  if (btnToggleKey && geminiKeyInput) {
+    btnToggleKey.addEventListener('click', () => {
+      const isPassword = geminiKeyInput.type === 'password';
+      geminiKeyInput.type = isPassword ? 'text' : 'password';
+      btnToggleKey.textContent = isPassword ? 'Hide' : 'Show';
+    });
+  }
+  if (btnCopyKey && geminiKeyInput) {
+    btnCopyKey.addEventListener('click', () => {
+      if (geminiKeyInput.value) {
+        navigator.clipboard.writeText(geminiKeyInput.value);
+        btnCopyKey.textContent = 'Copied!';
+        setTimeout(() => { btnCopyKey.textContent = 'Copy'; }, 1500);
+      }
+    });
+  }
+  if (els.btnFetchGeminiModels) {
+    els.btnFetchGeminiModels.addEventListener('click', fetchGeminiModels);
+  }
+
+  els.settingAiModel.addEventListener('change', (e) => {
+    appSettings.selectedModel = e.target.value;
+    if (currentSystemInfo) renderSystemInfo(currentSystemInfo);
+  });
+
   els.btnRefreshStatus.addEventListener('click', async () => {
     try {
       setStatus('Refreshing status...');
@@ -1688,6 +2401,9 @@ function initEventHandlers() {
   els.btnCloseContributors.addEventListener('click', closeContributorsModal);
   els.contributorsModal.addEventListener('click', (event) => {
     if (event.target === els.contributorsModal) closeContributorsModal();
+  });
+  els.settingsModal.addEventListener('click', (event) => {
+    if (event.target === els.settingsModal) closeSettingsModal();
   });
 
   els.btnCloseMerge.addEventListener('click', closeMergeModal);
@@ -1728,6 +2444,10 @@ function initEventHandlers() {
 
     if (event.key === 'Escape' && !els.contributorsModal.hidden) {
       closeContributorsModal();
+      return;
+    }
+    if (event.key === 'Escape' && !els.settingsModal.hidden) {
+      closeSettingsModal();
       return;
     }
 
