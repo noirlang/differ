@@ -2222,7 +2222,7 @@ async function saveSettings() {
       password: document.getElementById('setting-smtp-password')?.value || '',
       fromEmail: document.getElementById('setting-smtp-from')?.value?.trim() || '',
       toEmail: document.getElementById('setting-smtp-to')?.value?.trim() || '',
-      useTls: document.getElementById('setting-smtp-tls')?.checked || true,
+      useTls: document.getElementById('setting-smtp-tls')?.checked ?? true,
     };
 
     appSettings = {
