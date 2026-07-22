@@ -1,7 +1,7 @@
 {
   "name": "differ",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.0.3",
   "author": "noirLang",
   "license": "GPL-3.0-or-later",
   "type": "module",

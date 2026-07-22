@@ -27,6 +27,14 @@
         <span>Open Repo</span>
       </button>
 
+      <button class="icon-btn" id="btn-open-settings" type="button" title="Settings & AI Config" aria-label="Settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.09a2 2 0 0 1-1-1.74v-.5e1a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path>
+          <circle cx="12" cy="12" r="3"></circle>
+        </svg>
+        <span>Settings</span>
+      </button>
+
       <label class="search-box" id="search-box" style="display:none;">
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <circle cx="11" cy="11" r="7"></circle>
@@ -47,6 +55,13 @@
         <span class="repo-pill"><span id="branch-count">0</span> branch</span>
         <span class="repo-pill"><span id="commit-count">0</span> commit</span>
         <span class="repo-pill sync-pill" id="top-sync-pill">no origin</span>
+        <button class="top-push-btn" id="top-push-btn" type="button" style="display:none;" title="Push commits to remote origin">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="19" x2="12" y2="5"></line>
+            <polyline points="5 12 12 5 19 12"></polyline>
+          </svg>
+          <span id="top-push-btn-text">Push</span>
+        </button>
       </div>
     </header>
 
@@ -95,8 +110,50 @@
             </button>
           </div>
           <div class="worktree-list" id="worktree-list"></div>
-          <div class="commit-box">
+          
+          <div class="commit-box" id="commit-box">
+            <div class="commit-loading-overlay" id="commit-loading-overlay">
+              <div class="commit-loading-spinner"></div>
+              <div class="commit-loading-text">
+                <span class="loading-title">AI Commit Yazılıyor</span>
+                <span class="loading-subtitle" id="commit-loading-subtitle">Diff incelenip özetleniyor...</span>
+              </div>
+            </div>
+            <div class="commit-box-header">
+              <button class="ai-generate-btn" id="btn-ai-generate-commit" type="button" title="AI Write Commit">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"></path>
+                </svg>
+                <span>AI Write Commit</span>
+                <span class="ai-model-tag" id="commit-ai-model-tag">AI</span>
+              </button>
+            </div>
+
             <textarea id="commit-message-input" rows="2" placeholder="Commit message"></textarea>
+
+            <div class="commit-options-bar">
+              <div class="commit-option-field">
+                <label for="commit-identity-select">Identity:</label>
+                <select id="commit-identity-select">
+                  <option value="">Default Identity</option>
+                </select>
+              </div>
+              <div class="commit-option-field">
+                <label for="commit-gpg-select">PGP Key:</label>
+                <select id="commit-gpg-select">
+                  <option value="none">No Signing</option>
+                  <option value="default">Default Key (-S)</option>
+                </select>
+              </div>
+              <div class="commit-option-field checkbox-field">
+                <label class="toggle-switch small">
+                  <input type="checkbox" id="commit-signed-off-by" />
+                  <span class="slider"></span>
+                </label>
+                <span>Signed-off-by</span>
+              </div>
+            </div>
+
             <div class="coauthors-container">
               <div class="coauthors-list" id="coauthors-list"></div>
               <div class="coauthor-input-wrapper">
@@ -104,6 +161,7 @@
                 <input id="coauthor-username-input" type="text" placeholder="Co-author (e.g. @username)" autocomplete="off" />
               </div>
             </div>
+            
             <button class="commit-action" id="btn-commit-selected" type="button" disabled>Commit selected files</button>
           </div>
         </section>
@@ -139,6 +197,26 @@
             <h1>Commit History</h1>
           </div>
           <p id="history-subtitle">Development history in the selected repository</p>
+        </div>
+
+        <div class="unpushed-banner" id="unpushed-banner" style="display: none;">
+          <div class="unpushed-banner-head">
+            <div class="unpushed-banner-title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="unpushed-icon">
+                <line x1="12" y1="19" x2="12" y2="5"></line>
+                <polyline points="5 12 12 5 19 12"></polyline>
+              </svg>
+              <span><strong>Unpushed Commits (<span id="unpushed-banner-count">0</span>)</strong> &mdash; Pending remote push to origin</span>
+            </div>
+            <button class="top-push-btn large" id="btn-unpushed-banner-push" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="19" x2="12" y2="5"></line>
+                <polyline points="5 12 12 5 19 12"></polyline>
+              </svg>
+              <span>Push All</span>
+            </button>
+          </div>
+          <div class="unpushed-commit-list" id="unpushed-commit-list"></div>
         </div>
 
         <div class="commit-list-header" aria-hidden="true">
@@ -239,6 +317,7 @@
       </div>
     </section>
 
+    <!-- Contributors Modal -->
     <div class="modal-overlay" id="contributors-modal" hidden>
       <div class="contributors-modal" role="dialog" aria-modal="true" aria-labelledby="contributors-title">
         <div class="modal-head">
@@ -255,6 +334,7 @@
       </div>
     </div>
 
+    <!-- Merge Modal -->
     <div class="modal-overlay" id="merge-modal" hidden>
       <div class="merge-modal" role="dialog" aria-modal="true" aria-labelledby="merge-title">
         <div class="modal-head">
@@ -296,7 +376,224 @@
           </div>
         </div>
       </div>
+    </div>
 
+    <!-- Settings & AI Config Modal -->
+    <div class="modal-overlay" id="settings-modal" hidden>
+      <div class="settings-modal" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+        <div class="modal-head">
+          <div>
+            <span>Preferences</span>
+            <h2 id="settings-title">Settings & AI Preferences</h2>
+          </div>
+          <button class="modal-close" id="btn-close-settings" type="button" aria-label="Close">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>
+          </button>
+        </div>
+
+        <div class="modal-body settings-body">
+          <!-- Git Identity & PGP Signing Section -->
+          <section class="settings-section">
+            <h3>Git Identity & PGP Signing</h3>
+            
+            <div class="settings-form-row">
+              <label for="setting-git-name">Default Git Name:</label>
+              <input type="text" id="setting-git-name" placeholder="Name" autocomplete="off" />
+            </div>
+
+            <div class="settings-form-row">
+              <label for="setting-git-email">Default Git Email:</label>
+              <input type="email" id="setting-git-email" placeholder="email@example.com" autocomplete="off" />
+            </div>
+
+            <div class="settings-form-row">
+              <label for="setting-gpg-key">Default PGP Key:</label>
+              <select id="setting-gpg-key">
+                <option value="none">None / Git Default</option>
+              </select>
+            </div>
+
+            <div class="settings-form-row checkbox-row">
+              <label class="toggle-switch">
+                <input type="checkbox" id="setting-gpg-sign" />
+                <span class="slider"></span>
+              </label>
+              <span>Automatically GPG sign commits (commit.gpgsign)</span>
+            </div>
+          </section>
+
+          <!-- AI Support Section -->
+          <section class="settings-section ai-section">
+            <div class="ai-section-header">
+              <div>
+                <h3>AI Support</h3>
+                <small>Auto-generate commit messages using AI</small>
+              </div>
+            </div>
+
+            <div class="ai-provider-selector">
+              <label class="ai-provider-card" data-provider="ollama">
+                <input type="radio" name="ai-provider" value="ollama" id="ai-provider-ollama" checked />
+                <div class="provider-card-inner">
+                  <strong>Ollama (Local)</strong>
+                  <span>Free, runs on your machine</span>
+                </div>
+              </label>
+              <label class="ai-provider-card" data-provider="gemini">
+                <input type="radio" name="ai-provider" value="gemini" id="ai-provider-gemini" />
+                <div class="provider-card-inner">
+                  <strong>Gemini (Cloud)</strong>
+                  <span>Free tier, requires API key</span>
+                </div>
+              </label>
+            </div>
+
+            <!-- Ollama Panel -->
+            <div class="ai-provider-panel" id="ollama-panel">
+              <div class="ai-details-panel" id="ai-details-panel">
+                <div class="system-specs-card">
+                  <h4>System Hardware & Environment</h4>
+                  <div class="specs-grid">
+                    <div class="spec-item">
+                      <span class="spec-label">OS / Distribution:</span>
+                      <strong id="spec-os-distro">Detecting...</strong>
+                    </div>
+                    <div class="spec-item">
+                      <span class="spec-label">System RAM:</span>
+                      <strong id="spec-ram">Detecting...</strong>
+                    </div>
+                    <div class="spec-item">
+                      <span class="spec-label">GPU & VRAM:</span>
+                      <strong id="spec-gpu">Detecting...</strong>
+                    </div>
+                    <div class="spec-item">
+                      <span class="spec-label">Ollama Status:</span>
+                      <strong id="spec-ollama-status">Checking...</strong>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="ollama-install-box" id="ollama-install-box" style="display:none;">
+                  <p id="ollama-install-msg">Ollama is not installed. Click below to automatically install Ollama for your OS.</p>
+                  <button class="mini-btn primary large" id="btn-install-ollama" type="button">Auto-Install Ollama</button>
+                </div>
+
+                <div class="model-recommendation-box" id="model-recommendation-box">
+                  <div class="recommendation-header">
+                    <span class="badge-recommended">Top Recommended Model</span>
+                    <h4 id="recommended-model-title">gemma4:12b</h4>
+                    <p id="recommended-model-desc">Optimal model recommended for your hardware specs.</p>
+                  </div>
+
+                  <div class="settings-form-row">
+                    <label for="setting-ai-model">Selected Gemma Model:</label>
+                    <select id="setting-ai-model">
+                      <option value="gemma4:12b">gemma4:12b (Top Recommended)</option>
+                      <option value="gemma2:9b">gemma2:9b</option>
+                      <option value="gemma2:27b">gemma2:27b</option>
+                      <option value="gemma:7b">gemma:7b</option>
+                      <option value="gemma:2b">gemma:2b</option>
+                    </select>
+                  </div>
+
+                  <div class="model-pull-status" id="model-pull-status">
+                    <span id="model-status-text">Status: Checking...</span>
+                    <button class="mini-btn primary" id="btn-pull-model" type="button">Pull / Download Model</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Gemini Panel -->
+            <div class="ai-provider-panel" id="gemini-panel" style="display:none;">
+              <div class="gemini-settings-card">
+                <div class="settings-form-row">
+                  <label for="setting-gemini-api-key">API Key:</label>
+                  <div class="gemini-key-row">
+                    <input type="password" id="setting-gemini-api-key" placeholder="AIza..." class="gemini-key-input" />
+                    <button class="mini-btn" id="btn-toggle-gemini-key" type="button">Show</button>
+                    <button class="mini-btn" id="btn-copy-gemini-key" type="button">Copy</button>
+                  </div>
+                  <small class="field-help">Free key from <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a>. Saved locally only.</small>
+                </div>
+
+                <div class="settings-form-row">
+                  <label for="setting-gemini-model">Model:</label>
+                  <div class="gemini-model-row">
+                    <select id="setting-gemini-model">
+                      <option value="">Enter API key and click Refresh</option>
+                    </select>
+                    <button class="mini-btn" id="btn-fetch-gemini-models" type="button">Refresh</button>
+                  </div>
+                  <small class="field-help" id="gemini-model-status"></small>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- SMTP Email Notifications Section -->
+          <section class="settings-section smtp-section">
+            <h3>SMTP Email Notifications</h3>
+            <small>Send patch files via email after each commit</small>
+
+            <div class="settings-form-row checkbox-row">
+              <label class="toggle-switch">
+                <input type="checkbox" id="setting-smtp-enabled" />
+                <span class="slider"></span>
+              </label>
+              <span>Enable SMTP patch email notifications</span>
+            </div>
+
+            <div id="smtp-config-fields" style="display:none;">
+              <div class="settings-form-row">
+                <label for="setting-smtp-host">SMTP Host:</label>
+                <input type="text" id="setting-smtp-host" placeholder="smtp.gmail.com" autocomplete="off" />
+              </div>
+
+              <div class="settings-form-row">
+                <label for="setting-smtp-port">Port:</label>
+                <input type="number" id="setting-smtp-port" value="587" min="1" max="65535" />
+              </div>
+
+              <div class="settings-form-row checkbox-row">
+                <label class="toggle-switch">
+                  <input type="checkbox" id="setting-smtp-tls" checked />
+                  <span class="slider"></span>
+                </label>
+                <span>Use STARTTLS</span>
+              </div>
+
+              <div class="settings-form-row">
+                <label for="setting-smtp-username">Username:</label>
+                <input type="text" id="setting-smtp-username" placeholder="your@email.com" autocomplete="off" />
+              </div>
+
+              <div class="settings-form-row">
+                <label for="setting-smtp-password">Password:</label>
+                <input type="password" id="setting-smtp-password" placeholder="App password" autocomplete="off" />
+              </div>
+
+              <div class="settings-form-row">
+                <label for="setting-smtp-from">From Email:</label>
+                <input type="email" id="setting-smtp-from" placeholder="sender@example.com" autocomplete="off" />
+              </div>
+
+              <div class="settings-form-row">
+                <label for="setting-smtp-to">To Email:</label>
+                <input type="email" id="setting-smtp-to" placeholder="recipient@example.com" autocomplete="off" />
+              </div>
+
+              <small class="field-help">After each commit, a patch file will be generated and sent to the recipient email via SMTP.</small>
+            </div>
+          </section>
+        </div>
+
+        <div class="modal-actions">
+          <button class="mini-btn cancel" id="btn-cancel-settings" type="button">Cancel</button>
+          <button class="mini-btn primary" id="btn-save-settings" type="button">Save Preferences</button>
+        </div>
+      </div>
+    </div>
 
     <footer class="statusbar" id="statusbar">
       <span id="status-text">Ready</span>
