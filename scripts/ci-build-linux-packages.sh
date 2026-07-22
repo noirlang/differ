@@ -38,8 +38,8 @@ curl https://sh.rustup.rs -sSf | sh -s -- -y --profile minimal --component rustf
 
 npm ci
 node --check src/main.js
-cargo fmt --all -- --check
-cargo test --locked
+cargo fmt --manifest-path src-tauri/Cargo.toml --all -- --check
+cargo test --manifest-path src-tauri/Cargo.toml --locked
 
 npm run tauri -- build --bundles appimage,deb,rpm
 
