@@ -169,6 +169,8 @@ jobs:
         working-directory: src-tauri
 
       - name: Build Windows GUI
+        env:
+          RUSTFLAGS: -C target-feature=+crt-static
         run: cargo build --release --locked
         working-directory: src-tauri
 
