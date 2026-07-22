@@ -2050,7 +2050,7 @@ async function loadSmtpSettings() {
     if (smtpFields) smtpFields.style.display = smtp.enabled ? 'block' : 'none';
     if (smtpHost) smtpHost.value = smtp.host || '';
     if (smtpPort) smtpPort.value = smtp.port || 587;
-    if (smtpTls) smtpTls.checked = smtp.use_tls !== false;
+    if (smtpTls) smtpTls.checked = smtp.useTls !== false;
     if (smtpUsername) smtpUsername.value = smtp.username || '';
     if (smtpPassword) smtpPassword.value = smtp.password || '';
     if (smtpFrom) smtpFrom.value = smtp.from_email || '';
