@@ -89,12 +89,14 @@ jobs:
 
       - name: Check formatting
         run: cargo fmt --all -- --check
+        working-directory: src-tauri
 
       - name: Check UI JavaScript
         run: node --check src/main.js
 
       - name: Run Rust tests
         run: cargo test --locked
+        working-directory: src-tauri
 
   linux-packages:
     name: AppImage, DEB, RPM and Arch
@@ -164,9 +166,11 @@ jobs:
 
       - name: Run Windows tests
         run: cargo test --locked
+        working-directory: src-tauri
 
       - name: Build Windows GUI
         run: cargo build --release --locked
+        working-directory: src-tauri
 
       - name: Verify GUI subsystem and static runtime
         shell: pwsh
