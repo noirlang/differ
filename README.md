@@ -50,6 +50,11 @@ The application is designed for teams that need a clean way to review what chang
 - Show `origin` connection state and unpushed commit count.
 - Push pending commits when a valid upstream or `origin` remote exists.
 - Keep the last 5 opened repositories on the home screen.
+- Generate AI-powered commit messages and push directly from the UI.
+- Merge branches interactively through a visual merge modal.
+- Configure application settings including SMTP email notifications and commit defaults.
+- Sync with remote origins and manage branch relationships.
+- Enjoy a refined premium dark-mode interface with custom scrollbars and white action buttons.
 
 ## Product Goals
 
@@ -71,6 +76,9 @@ The application is designed for teams that need a clean way to review what chang
 6. Check pending working tree changes.
 7. Select files, write a commit message, and create a commit.
 8. Push unpushed commits when the repository has a valid remote.
+9. Use AI to generate commit messages automatically.
+10. Merge branches through the interactive merge modal.
+11. Configure application settings for email notifications and commit defaults.
 
 ## Architecture
 
@@ -79,9 +87,11 @@ The application is designed for teams that need a clean way to review what chang
 | Layer | Technology | Responsibility |
 | --- | --- | --- |
 | Desktop shell | Tauri 2 | Native window, command bridge, app packaging |
-| Backend | Rust | Git repository access, branch data, diffs, status, commit, push |
+| Backend | Rust | Git repository access, branch data, diffs, status, commit, push, merge |
 | Git engine | `git2` and system `git` | Read repository data and execute write operations |
-| Frontend | HTML, CSS, JavaScript | Application layout, timeline, modal, filtering, interaction state |
+| Frontend | HTML, CSS, JavaScript | Application layout, timeline, modal, filtering, interaction state, settings UI |
+| AI integration | Commit generation | AI-powered commit message creation |
+| Email | SMTP | Optional email notifications for repository activity |
 | Assets | PNG and SVG | App icon, brand mark, generated platform icons |
 
 ## Repository Layout
@@ -192,6 +202,7 @@ The app reads most repository data through the Rust backend. Write operations ar
 - `commit_changes` stages and commits only the selected paths.
 - `push_origin` pushes the active branch to its upstream when available.
 - If no upstream is configured, `push_origin` attempts to push to `origin` and set upstream for the active branch.
+- `merge_branch` merges a selected branch into the current branch through an interactive modal.
 
 This keeps file commits explicit and avoids accidentally committing unrelated local changes.
 
@@ -203,6 +214,45 @@ Contributor avatars are resolved in two ways:
 - Through GitHub's commit API when the repository has a GitHub `origin` remote.
 
 When no avatar can be resolved, `differ` falls back to contributor initials.
+
+## AI Commit Generation
+
+The app integrates AI-powered commit message generation:
+
+- Generate meaningful commit messages based on staged changes.
+- Push commits directly from the UI after generation.
+- Customizable commit configuration in application settings.
+
+## Branch Merging
+
+Interactive branch management through a visual merge modal:
+
+- Select branches to merge from a dropdown.
+- Preview merge conflicts before committing.
+- Merge branches with a single click through the Rust backend.
+- Track merge status and handle conflicts gracefully.
+
+## Application Settings
+
+Configure the application through the settings panel:
+
+- **SMTP Email**: Set up email notifications for repository activity.
+  - Configure SMTP server, port, and authentication.
+  - Enable TLS for secure email delivery.
+  - Set notification recipients.
+- **Commit Configuration**: Customize default commit behavior.
+  - Set default commit message templates.
+  - Configure auto-push preferences.
+  - Manage co-author settings.
+
+## Remote Origin Sync
+
+Manage remote repository connections:
+
+- View remote origin connection status.
+- Sync branches with remote repositories.
+- Track unpushed commits and pending changes.
+- Push changes to remote origins with proper upstream configuration.
 
 ## Recent Repositories
 
@@ -240,10 +290,12 @@ Avatar loading depends on commit email metadata, a GitHub remote, and network av
 
 - Side-by-side diff mode
 - Commit search filters by file path
-- Branch comparison view
 - Exportable contributor report
 - Keyboard shortcuts for timeline navigation
 - Packaged installers for Linux, macOS, and Windows
+- Enhanced AI commit message customization
+- Batch branch operations
+- Repository statistics dashboard
 
 ## Contributing
 
