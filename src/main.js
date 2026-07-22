@@ -2053,8 +2053,8 @@ async function loadSmtpSettings() {
     if (smtpTls) smtpTls.checked = smtp.useTls !== false;
     if (smtpUsername) smtpUsername.value = smtp.username || '';
     if (smtpPassword) smtpPassword.value = smtp.password || '';
-    if (smtpFrom) smtpFrom.value = smtp.from_email || '';
-    if (smtpTo) smtpTo.value = smtp.to_email || '';
+    if (smtpFrom) smtpFrom.value = smtp.fromEmail || '';
+    if (smtpTo) smtpTo.value = smtp.toEmail || '';
 
     if (smtpEnabled) {
       smtpEnabled.addEventListener('change', () => {
