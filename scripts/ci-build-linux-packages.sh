@@ -33,7 +33,7 @@ apt-get install -y --no-install-recommends \
 curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
 apt-get install -y --no-install-recommends nodejs
 
-curl https://sh.rustup.rs -sSf | sh -s -- -y --profile minimal
+curl https://sh.rustup.rs -sSf | sh -s -- -y --profile minimal --component rustfmt
 . "${HOME}/.cargo/env"
 
 npm ci
