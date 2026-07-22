@@ -28,3 +28,4 @@ git2 = "0.20"
 chrono = { version = "0.4", features = ["serde"] }
 lettre = { version = "0.11", default-features = false, features = ["smtp-transport", "builder", "hostname", "native-tls"] }
 dirs = "6"
+native-tls = "0.2"

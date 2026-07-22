@@ -703,6 +703,7 @@ dependencies = [
  "dirs",
  "git2",
  "lettre",
+ "native-tls",
  "serde",
  "serde_json",
  "tauri",

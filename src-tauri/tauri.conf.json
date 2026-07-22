@@ -43,8 +43,32 @@
       }
     },
     "linux": {
+      "deb": {
+        "depends": [
+          "ca-certificates",
+          "git",
+          "gnupg",
+          "librsvg2-2",
+          "libsoup-3.0-0",
+          "libssl3",
+          "xdg-utils"
+        ]
+      },
+      "rpm": {
+        "depends": [
+          "ca-certificates",
+          "git",
+          "gnupg2",
+          "gtk3",
+          "librsvg2",
+          "libsoup3",
+          "openssl-libs",
+          "webkit2gtk4.1",
+          "xdg-utils"
+        ]
+      },
       "appimage": {
-        "bundleMediaFramework": true
+        "bundleMediaFramework": false
       }
     },
     "icon": [

@@ -8,10 +8,12 @@ use std::os::windows::process::CommandExt;
 use std::{
     cell::RefCell,
     collections::HashSet,
-    io,
+    io::{self, Read, Write},
+    net::TcpStream,
     path::Path,
-    process::{Command, Stdio},
+    process::Command,
     sync::Mutex,
+    time::Duration,
 };
 use tauri::State;
 
@@ -1124,6 +1126,254 @@ fn detect_gpu_and_vram() -> (String, f32) {
     ("Standard Graphics".to_string(), 2.0)
 }
 
+struct HttpResponse {
+    status_code: u16,
+    body: String,
+}
+
+fn is_success_status(status_code: u16) -> bool {
+    (200..300).contains(&status_code)
+}
+
+fn short_response_body(body: &str) -> String {
+    let trimmed = body.trim();
+    if trimmed.is_empty() {
+        "empty response".to_string()
+    } else {
+        trimmed.chars().take(300).collect::<String>()
+    }
+}
+
+fn build_http_request(
+    method: &str,
+    path: &str,
+    host_header: &str,
+    headers: &[(String, String)],
+    body: Option<&str>,
+) -> Vec<u8> {
+    let body_len = body.map(|b| b.as_bytes().len()).unwrap_or(0);
+    let mut request = format!(
+        "{} {} HTTP/1.1\r\nHost: {}\r\nUser-Agent: differ/{}\r\nAccept: application/json\r\nConnection: close\r\n",
+        method,
+        path,
+        host_header,
+        env!("CARGO_PKG_VERSION")
+    );
+
+    for (name, value) in headers {
+        let safe_name = name.replace(['\r', '\n'], "");
+        let safe_value = value.replace(['\r', '\n'], "");
+        request.push_str(&safe_name);
+        request.push_str(": ");
+        request.push_str(&safe_value);
+        request.push_str("\r\n");
+    }
+
+    if body.is_some() {
+        request.push_str(&format!("Content-Length: {}\r\n", body_len));
+    }
+
+    request.push_str("\r\n");
+    let mut bytes = request.into_bytes();
+    if let Some(body) = body {
+        bytes.extend_from_slice(body.as_bytes());
+    }
+    bytes
+}
+
+fn find_crlf(bytes: &[u8], start: usize) -> Option<usize> {
+    bytes
+        .get(start..)?
+        .windows(2)
+        .position(|window| window == b"\r\n")
+        .map(|pos| start + pos)
+}
+
+fn decode_chunked_body(bytes: &[u8]) -> Result<Vec<u8>, String> {
+    let mut pos = 0;
+    let mut decoded = Vec::new();
+
+    loop {
+        let line_end = find_crlf(bytes, pos).ok_or("Invalid chunked response")?;
+        let size_line = std::str::from_utf8(&bytes[pos..line_end])
+            .map_err(|e| format!("Invalid chunk size: {}", e))?;
+        let size_hex = size_line.split(';').next().unwrap_or("").trim();
+        let size = usize::from_str_radix(size_hex, 16)
+            .map_err(|e| format!("Invalid chunk size: {}", e))?;
+        pos = line_end + 2;
+
+        if size == 0 {
+            break;
+        }
+
+        if pos + size > bytes.len() {
+            return Err("Chunked response ended early".to_string());
+        }
+
+        decoded.extend_from_slice(&bytes[pos..pos + size]);
+        pos += size;
+
+        if bytes.get(pos..pos + 2) == Some(b"\r\n") {
+            pos += 2;
+        } else {
+            return Err("Invalid chunk terminator".to_string());
+        }
+    }
+
+    Ok(decoded)
+}
+
+fn parse_http_response(raw: &[u8]) -> Result<HttpResponse, String> {
+    let header_end = raw
+        .windows(4)
+        .position(|window| window == b"\r\n\r\n")
+        .ok_or("Invalid HTTP response: missing headers")?;
+    let header_bytes = &raw[..header_end];
+    let body_bytes = &raw[header_end + 4..];
+    let headers_text = std::str::from_utf8(header_bytes)
+        .map_err(|e| format!("Invalid HTTP response headers: {}", e))?;
+
+    let mut lines = headers_text.lines();
+    let status_line = lines
+        .next()
+        .ok_or("Invalid HTTP response: missing status line")?;
+    let status_code = status_line
+        .split_whitespace()
+        .nth(1)
+        .ok_or("Invalid HTTP response: missing status code")?
+        .parse::<u16>()
+        .map_err(|e| format!("Invalid HTTP status code: {}", e))?;
+
+    let mut chunked = false;
+    let mut content_length = None;
+
+    for line in lines {
+        if let Some((name, value)) = line.split_once(':') {
+            let name = name.trim().to_ascii_lowercase();
+            let value = value.trim();
+            if name == "transfer-encoding" && value.to_ascii_lowercase().contains("chunked") {
+                chunked = true;
+            } else if name == "content-length" {
+                content_length = value.parse::<usize>().ok();
+            }
+        }
+    }
+
+    let body = if chunked {
+        decode_chunked_body(body_bytes)?
+    } else if let Some(length) = content_length {
+        body_bytes[..body_bytes.len().min(length)].to_vec()
+    } else {
+        body_bytes.to_vec()
+    };
+
+    let body = String::from_utf8(body).map_err(|e| format!("Invalid UTF-8 response: {}", e))?;
+    Ok(HttpResponse { status_code, body })
+}
+
+fn send_plain_http_request(
+    addr: &str,
+    host_header: &str,
+    method: &str,
+    path: &str,
+    headers: &[(String, String)],
+    body: Option<&str>,
+    timeout: Duration,
+) -> Result<HttpResponse, String> {
+    let mut stream =
+        TcpStream::connect(addr).map_err(|e| format!("Connection to {} failed: {}", addr, e))?;
+    stream
+        .set_read_timeout(Some(timeout))
+        .map_err(|e| format!("Could not set read timeout: {}", e))?;
+    stream
+        .set_write_timeout(Some(timeout))
+        .map_err(|e| format!("Could not set write timeout: {}", e))?;
+
+    let request = build_http_request(method, path, host_header, headers, body);
+    stream
+        .write_all(&request)
+        .map_err(|e| format!("HTTP write failed: {}", e))?;
+    stream
+        .flush()
+        .map_err(|e| format!("HTTP flush failed: {}", e))?;
+
+    let mut raw = Vec::new();
+    stream
+        .read_to_end(&mut raw)
+        .map_err(|e| format!("HTTP read failed: {}", e))?;
+    parse_http_response(&raw)
+}
+
+fn send_https_request(
+    host: &str,
+    method: &str,
+    path: &str,
+    headers: &[(String, String)],
+    body: Option<&str>,
+    timeout: Duration,
+) -> Result<HttpResponse, String> {
+    let tcp = TcpStream::connect((host, 443))
+        .map_err(|e| format!("Connection to {} failed: {}", host, e))?;
+    tcp.set_read_timeout(Some(timeout))
+        .map_err(|e| format!("Could not set read timeout: {}", e))?;
+    tcp.set_write_timeout(Some(timeout))
+        .map_err(|e| format!("Could not set write timeout: {}", e))?;
+
+    let connector =
+        native_tls::TlsConnector::new().map_err(|e| format!("Could not initialize TLS: {}", e))?;
+    let mut stream = connector
+        .connect(host, tcp)
+        .map_err(|e| format!("TLS connection to {} failed: {}", host, e))?;
+
+    let request = build_http_request(method, path, host, headers, body);
+    stream
+        .write_all(&request)
+        .map_err(|e| format!("HTTPS write failed: {}", e))?;
+    stream
+        .flush()
+        .map_err(|e| format!("HTTPS flush failed: {}", e))?;
+
+    let mut raw = Vec::new();
+    stream
+        .read_to_end(&mut raw)
+        .map_err(|e| format!("HTTPS read failed: {}", e))?;
+    parse_http_response(&raw)
+}
+
+fn google_api_key_header(api_key: &str) -> Result<(String, String), String> {
+    let key = api_key.trim();
+    if key.is_empty() {
+        return Err("API key is empty".to_string());
+    }
+    Ok(("x-goog-api-key".to_string(), key.to_string()))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parses_content_length_response() {
+        let response =
+            parse_http_response(b"HTTP/1.1 200 OK\r\nContent-Length: 15\r\n\r\n{\"ok\":true}xxxx")
+                .expect("response should parse");
+
+        assert_eq!(response.status_code, 200);
+        assert_eq!(response.body, "{\"ok\":true}xxxx");
+    }
+
+    #[test]
+    fn parses_chunked_response() {
+        let response = parse_http_response(
+            b"HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n6\r\n{\"ok\":\r\n5\r\ntrue}\r\n0\r\n\r\n",
+        )
+        .expect("response should parse");
+
+        assert_eq!(response.status_code, 200);
+        assert_eq!(response.body, "{\"ok\":true}");
+    }
+}
+
 fn check_ollama_cli_and_daemon() -> (bool, bool, Vec<String>) {
     let mut installed = false;
     let mut running = false;
@@ -1139,22 +1389,17 @@ fn check_ollama_cli_and_daemon() -> (bool, bool, Vec<String>) {
         }
     }
 
-    let mut curl_cmd = Command::new("curl");
-    #[cfg(target_os = "windows")]
-    curl_cmd.creation_flags(CREATE_NO_WINDOW);
-
-    if let Ok(output) = curl_cmd
-        .args(&[
-            "-s",
-            "--connect-timeout",
-            "2",
-            "http://127.0.0.1:11434/api/tags",
-        ])
-        .output()
-    {
-        if output.status.success() {
-            let body = String::from_utf8_lossy(&output.stdout);
-            if let Ok(json) = serde_json::from_str::<serde_json::Value>(&body) {
+    if let Ok(response) = send_plain_http_request(
+        "127.0.0.1:11434",
+        "127.0.0.1:11434",
+        "GET",
+        "/api/tags",
+        &[],
+        None,
+        Duration::from_secs(2),
+    ) {
+        if is_success_status(response.status_code) {
+            if let Ok(json) = serde_json::from_str::<serde_json::Value>(&response.body) {
                 running = true;
                 installed = true;
                 if let Some(model_list) = json.get("models").and_then(|m| m.as_array()) {
@@ -1393,45 +1638,22 @@ Diff:
 
     let payload_str = payload.to_string();
 
-    let output = tauri::async_runtime::spawn_blocking(move || {
-        let mut curl_cmd = Command::new("curl");
-        #[cfg(target_os = "windows")]
-        curl_cmd.creation_flags(CREATE_NO_WINDOW);
-
-        curl_cmd
-            .args(&[
-                "-s",
-                "--max-time",
-                "90",
-                "-X",
-                "POST",
-                "http://127.0.0.1:11434/api/chat",
-                "-H",
-                "Content-Type: application/json",
-                "-d",
-                "@-",
-            ])
-            .stdin(Stdio::piped())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped());
-
-        let mut child = curl_cmd
-            .spawn()
-            .map_err(|e| format!("Failed to launch curl process: {}", e))?;
-
-        if let Some(mut stdin) = child.stdin.take() {
-            use std::io::Write;
-            let _ = stdin.write_all(payload_str.as_bytes());
-        }
-
-        child
-            .wait_with_output()
-            .map_err(|e| format!("Ollama request execution error: {}", e))
+    let response = tauri::async_runtime::spawn_blocking(move || {
+        send_plain_http_request(
+            "127.0.0.1:11434",
+            "127.0.0.1:11434",
+            "POST",
+            "/api/chat",
+            &[("Content-Type".to_string(), "application/json".to_string())],
+            Some(&payload_str),
+            Duration::from_secs(90),
+        )
+        .map_err(|e| format!("Ollama request execution error: {}", e))
     })
     .await
     .map_err(|e| format!("Task join error: {}", e))??;
 
-    let resp_str = String::from_utf8_lossy(&output.stdout);
+    let resp_str = response.body;
 
     if let Ok(json) = serde_json::from_str::<serde_json::Value>(&resp_str) {
         if let Some(err_msg) = json.get("error").and_then(|e| e.as_str()) {
@@ -1979,26 +2201,17 @@ Diff:
         }
     }
 
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+    if !is_success_status(response.status_code) {
         return Err(format!(
-            "Ollama HTTP request error: {}",
-            if stderr.is_empty() {
-                "HTTP 500 Connection Error"
-            } else {
-                &stderr
-            }
+            "Ollama HTTP request error: HTTP {}: {}",
+            response.status_code,
+            short_response_body(&resp_str)
         ));
     }
 
-    let raw_out = String::from_utf8_lossy(&output.stdout).trim().to_string();
     Err(format!(
         "Ollama response parsing error: {}",
-        if raw_out.is_empty() {
-            "Empty stdout from Ollama"
-        } else {
-            &raw_out
-        }
+        short_response_body(&resp_str)
     ))
 }
 
@@ -2077,7 +2290,11 @@ async fn generate_ai_commit_message_gemini(
         actual_diff.push_str("\n...[diff truncated for length]");
     }
 
-    let gemini_model = model.unwrap_or_else(|| "gemini-2.5-flash".to_string());
+    let gemini_model = model
+        .unwrap_or_else(|| "gemini-2.5-flash".to_string())
+        .trim()
+        .trim_start_matches("models/")
+        .to_string();
 
     let prompt = format!(
         "You are a commit message generator. Output ONLY the commit message line. Nothing else.
@@ -2115,54 +2332,28 @@ Diff:
         }
     });
 
-    let api_url = format!(
-        "https://generativelanguage.googleapis.com/v1beta/models/{}:generateContent",
-        gemini_model
-    );
-    let api_key_header = format!("x-goog-api-key: {}", api_key);
+    let api_path = format!("/v1beta/models/{}:generateContent", gemini_model);
+    let api_key_header = google_api_key_header(&api_key)?;
     let payload_str = payload.to_string();
 
-    let output = tauri::async_runtime::spawn_blocking(move || {
-        let mut curl_cmd = Command::new("curl");
-        #[cfg(target_os = "windows")]
-        curl_cmd.creation_flags(CREATE_NO_WINDOW);
-
-        curl_cmd
-            .args(&[
-                "-s",
-                "--max-time",
-                "30",
-                "-X",
-                "POST",
-                &api_url,
-                "-H",
-                &api_key_header,
-                "-H",
-                "Content-Type: application/json",
-                "-d",
-                "@-",
-            ])
-            .stdin(Stdio::piped())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped());
-
-        let mut child = curl_cmd
-            .spawn()
-            .map_err(|e| format!("Failed to launch curl process: {}", e))?;
-
-        if let Some(mut stdin) = child.stdin.take() {
-            use std::io::Write;
-            let _ = stdin.write_all(payload_str.as_bytes());
-        }
-
-        child
-            .wait_with_output()
-            .map_err(|e| format!("Gemini request execution error: {}", e))
+    let response = tauri::async_runtime::spawn_blocking(move || {
+        send_https_request(
+            "generativelanguage.googleapis.com",
+            "POST",
+            &api_path,
+            &[
+                api_key_header,
+                ("Content-Type".to_string(), "application/json".to_string()),
+            ],
+            Some(&payload_str),
+            Duration::from_secs(30),
+        )
+        .map_err(|e| format!("Gemini request execution error: {}", e))
     })
     .await
     .map_err(|e| format!("Task join error: {}", e))??;
 
-    let resp_str = String::from_utf8_lossy(&output.stdout);
+    let resp_str = response.body;
 
     if let Ok(json) = serde_json::from_str::<serde_json::Value>(&resp_str) {
         if let Some(err_msg) = json
@@ -2568,27 +2759,17 @@ Diff:
         }
     }
 
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+    if !is_success_status(response.status_code) {
         return Err(format!(
-            "Gemini HTTP error: {}",
-            if stderr.is_empty() {
-                "Connection failed"
-            } else {
-                &stderr
-            }
+            "Gemini HTTP error: HTTP {}: {}",
+            response.status_code,
+            short_response_body(&resp_str)
         ));
     }
 
-    let raw_out = String::from_utf8_lossy(&output.stdout).trim().to_string();
-    let short_out = raw_out.chars().take(200).collect::<String>();
     Err(format!(
         "Gemini response error: {}",
-        if short_out.is_empty() {
-            "Empty response".to_string()
-        } else {
-            short_out
-        }
+        short_response_body(&resp_str)
     ))
 }
 
@@ -2598,37 +2779,24 @@ async fn list_gemini_models(api_key: String) -> Result<Vec<String>, String> {
         return Err("API key is empty".to_string());
     }
 
-    let api_url = "https://generativelanguage.googleapis.com/v1beta/models";
-    let api_key_header = format!("x-goog-api-key: {}", api_key);
+    let api_key_header = google_api_key_header(&api_key)?;
 
-    let output = tauri::async_runtime::spawn_blocking(move || {
-        let mut curl_cmd = Command::new("curl");
-        #[cfg(target_os = "windows")]
-        curl_cmd.creation_flags(CREATE_NO_WINDOW);
-
-        curl_cmd
-            .args(&[
-                "-s",
-                "--max-time",
-                "15",
-                "-X",
-                "GET",
-                api_url,
-                "-H",
-                &api_key_header,
-            ])
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped());
-
-        curl_cmd
-            .output()
-            .map_err(|e| format!("Failed to launch curl: {}", e))
+    let response = tauri::async_runtime::spawn_blocking(move || {
+        send_https_request(
+            "generativelanguage.googleapis.com",
+            "GET",
+            "/v1beta/models",
+            &[api_key_header],
+            None,
+            Duration::from_secs(15),
+        )
+        .map_err(|e| format!("Gemini model request error: {}", e))
     })
     .await
     .map_err(|e| format!("Task join error: {}", e))?
     .map_err(|e| format!("Request error: {}", e))?;
 
-    let resp_str = String::from_utf8_lossy(&output.stdout);
+    let resp_str = response.body;
 
     let json: serde_json::Value =
         serde_json::from_str(&resp_str).map_err(|e| format!("Invalid JSON response: {}", e))?;
@@ -2639,6 +2807,14 @@ async fn list_gemini_models(api_key: String) -> Result<Vec<String>, String> {
             .and_then(|m| m.as_str())
             .unwrap_or("Unknown error");
         return Err(format!("Gemini API error: {}", msg));
+    }
+
+    if !is_success_status(response.status_code) {
+        return Err(format!(
+            "Gemini HTTP error: HTTP {}: {}",
+            response.status_code,
+            short_response_body(&resp_str)
+        ));
     }
 
     let models_array = json
