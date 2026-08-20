@@ -29,8 +29,15 @@
 
       <button class="icon-btn" id="btn-open-settings" type="button" title="Settings & AI Config" aria-label="Settings">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.09a2 2 0 0 1-1-1.74v-.5e1a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path>
-          <circle cx="12" cy="12" r="3"></circle>
+          <line x1="4" y1="21" x2="4" y2="14"></line>
+          <line x1="4" y1="10" x2="4" y2="3"></line>
+          <line x1="12" y1="21" x2="12" y2="12"></line>
+          <line x1="12" y1="8" x2="12" y2="3"></line>
+          <line x1="20" y1="21" x2="20" y2="16"></line>
+          <line x1="20" y1="12" x2="20" y2="3"></line>
+          <line x1="1" y1="14" x2="7" y2="14"></line>
+          <line x1="9" y1="8" x2="15" y2="8"></line>
+          <line x1="17" y1="16" x2="23" y2="16"></line>
         </svg>
         <span>Settings</span>
       </button>
@@ -43,11 +50,29 @@
         <input id="search-input" type="search" placeholder="search commits, hashes, authors" autocomplete="off" />
       </label>
 
+      <nav class="github-nav" id="github-nav" style="display:none;" aria-label="GitHub panels">
+        <button class="gh-nav-btn active" id="btn-gh-tab-history" type="button" data-panel="history">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 10h16M4 14h16M4 18h16"></path></svg>
+          <span>History</span>
+        </button>
+        <button class="gh-nav-btn" id="btn-gh-tab-issues" type="button" data-panel="issues">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="7"></circle><path d="M12 8v4"></path><circle cx="12" cy="16" r="0.5" fill="currentColor"></circle></svg>
+          <span>Issues</span>
+          <span class="gh-nav-count" id="gh-issues-count" style="display:none;">0</span>
+        </button>
+        <button class="gh-nav-btn" id="btn-gh-tab-prs" type="button" data-panel="prs">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="6" r="3"></circle><path d="M6 15V6"></path><path d="M18 9a9 9 0 0 1-9 9"></path></svg>
+          <span>Pull Requests</span>
+          <span class="gh-nav-count" id="gh-prs-count" style="display:none;">0</span>
+        </button>
+        <button class="gh-nav-btn" id="btn-gh-tab-actions" type="button" data-panel="actions">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+          <span>Actions</span>
+          <span class="gh-nav-count" id="gh-actions-count" style="display:none;">0</span>
+        </button>
+      </nav>
+
       <div class="repo-info" id="repo-info" style="display:none;">
-        <span class="repo-pill">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7.5A2.5 2.5 0 0 1 6.5 5h4l2 2.5h5A2.5 2.5 0 0 1 20 10v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"></path></svg>
-          <span id="repo-name"></span>
-        </span>
         <span class="repo-pill">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3v12"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="6" r="3"></circle><path d="M18 9a9 9 0 0 1-9 9"></path></svg>
           <span id="active-branch">-</span>
@@ -61,6 +86,12 @@
             <polyline points="5 12 12 5 19 12"></polyline>
           </svg>
           <span id="top-push-btn-text">Push</span>
+        </button>
+        <button class="top-nav-btn icon-only-btn detail-toggle-btn" id="btn-toggle-detail-panel" type="button" title="Commit Detail Panelini Aç/Kapat" aria-label="Toggle Commit Detail">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+            <line x1="15" y1="3" x2="15" y2="21"></line>
+          </svg>
         </button>
       </div>
     </header>
@@ -99,7 +130,20 @@
                 <button class="mini-btn primary" id="btn-save-origin" type="button">Save Remote</button>
               </div>
             </div>
+
+            <!-- Remotes Selector -->
+            <div class="remotes-bar" id="remotes-bar" style="display: flex; flex-direction: column; gap: 4px; margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--line-soft);">
+              <div style="display: flex; align-items: center; justify-content: space-between; font-size: 10px; color: var(--text-dim); text-transform: uppercase; font-weight: 700;">
+                <span>Remotes (<span id="remotes-count">0</span>)</span>
+                <div style="display: flex; gap: 4px;">
+                  <button class="section-text-btn" id="btn-fetch-remote" type="button" title="Fetch from active remote">Fetch</button>
+                  <button class="section-text-btn" id="btn-add-remote-toggle" type="button" title="Add remote">+</button>
+                </div>
+              </div>
+              <select id="select-active-remote" class="mini-select" style="width: 100%; font-size: 11px; padding: 3px 6px; font-family: var(--mono);"></select>
+            </div>
           </div>
+          <div class="editor-actions" id="editor-actions" style="display: none;"></div>
         </section>
 
         <section class="sidebar-section workspace-section">
@@ -125,8 +169,10 @@
                   <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"></path>
                 </svg>
                 <span>AI Write Commit</span>
-                <span class="ai-model-tag" id="commit-ai-model-tag">AI</span>
               </button>
+              <select id="commit-ai-model-select" class="commit-ai-select" title="Default Active AI Model">
+                <option value="ollama:gemma4:12b">Ollama: gemma4:12b</option>
+              </select>
             </div>
 
             <textarea id="commit-message-input" rows="2" placeholder="Commit message"></textarea>
@@ -162,7 +208,15 @@
               </div>
             </div>
             
-            <button class="commit-action" id="btn-commit-selected" type="button" disabled>Commit selected files</button>
+            <div class="commit-btn-row">
+              <button class="commit-action" id="btn-commit-selected" type="button" disabled>Commit selected files</button>
+              <button class="cancel-edit-btn" id="btn-cancel-edit-commit" type="button" style="display: none;" title="Commit düzenlemeyi iptal et">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+              </button>
+            </div>
           </div>
         </section>
 
@@ -172,13 +226,6 @@
             <span class="section-count" id="side-branch-count">0</span>
           </div>
           <div class="sidebar-list" id="branch-list"></div>
-        </section>
-
-        <section class="sidebar-section tree-section">
-          <div class="section-head">
-            <span>Project Tree</span>
-          </div>
-          <div class="sidebar-list file-tree" id="file-tree"></div>
         </section>
 
         <section class="sidebar-section team-section">
@@ -206,7 +253,7 @@
                 <line x1="12" y1="19" x2="12" y2="5"></line>
                 <polyline points="5 12 12 5 19 12"></polyline>
               </svg>
-              <span><strong>Unpushed Commits (<span id="unpushed-banner-count">0</span>)</strong> &mdash; Pending remote push to origin</span>
+              <span><strong>Unpushed Commits (<span id="unpushed-banner-count">0</span>)</strong> &mdash; Pending remote push to <span id="unpushed-banner-remote">origin</span></span>
             </div>
             <button class="top-push-btn large" id="btn-unpushed-banner-push" type="button">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -228,7 +275,69 @@
         <div class="commit-list" id="commit-list"></div>
       </section>
 
-      <aside class="detail-panel" aria-label="Commit details">
+      <!-- GitHub Issues Panel -->
+      <section class="github-panel" id="panel-issues" aria-label="GitHub Issues" style="display:none;">
+        <div class="panel-head">
+          <div>
+            <div class="panel-kicker">GitHub</div>
+            <h1>Issues</h1>
+          </div>
+          <div class="gh-panel-controls">
+            <div class="gh-filter-group" id="issues-filter-group">
+              <button class="gh-filter-btn active" type="button" data-filter="open">Open</button>
+              <button class="gh-filter-btn" type="button" data-filter="closed">Closed</button>
+              <button class="gh-filter-btn" type="button" data-filter="all">All</button>
+            </div>
+            <button class="icon-btn" id="btn-refresh-issues" type="button" title="Refresh issues">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 0 1-15.5 6.3L3 16"></path><path d="M3 21v-5h5"></path><path d="M3 12A9 9 0 0 1 18.5 5.7L21 8"></path><path d="M21 3v5h-5"></path></svg>
+              <span>Refresh</span>
+            </button>
+          </div>
+        </div>
+        <div class="gh-item-list" id="issues-list"></div>
+      </section>
+
+      <!-- GitHub PRs Panel -->
+      <section class="github-panel" id="panel-prs" aria-label="Pull Requests" style="display:none;">
+        <div class="panel-head">
+          <div>
+            <div class="panel-kicker">GitHub</div>
+            <h1>Pull Requests</h1>
+          </div>
+          <div class="gh-panel-controls">
+            <div class="gh-filter-group" id="prs-filter-group">
+              <button class="gh-filter-btn active" type="button" data-filter="open">Open</button>
+              <button class="gh-filter-btn" type="button" data-filter="closed">Closed</button>
+              <button class="gh-filter-btn" type="button" data-filter="merged">Merged</button>
+              <button class="gh-filter-btn" type="button" data-filter="all">All</button>
+            </div>
+            <button class="icon-btn" id="btn-refresh-prs" type="button" title="Refresh PRs">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 0 1-15.5 6.3L3 16"></path><path d="M3 21v-5h5"></path><path d="M3 12A9 9 0 0 1 18.5 5.7L21 8"></path><path d="M21 3v5h-5"></path></svg>
+              <span>Refresh</span>
+            </button>
+          </div>
+        </div>
+        <div class="gh-item-list" id="prs-list"></div>
+      </section>
+
+      <!-- GitHub Actions Panel -->
+      <section class="github-panel" id="panel-actions" aria-label="GitHub Actions" style="display:none;">
+        <div class="panel-head">
+          <div>
+            <div class="panel-kicker">GitHub</div>
+            <h1>Actions</h1>
+          </div>
+          <div class="gh-panel-controls">
+            <button class="icon-btn" id="btn-refresh-actions" type="button" title="Refresh Actions">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 0 1-15.5 6.3L3 16"></path><path d="M3 21v-5h5"></path><path d="M3 12A9 9 0 0 1 18.5 5.7L21 8"></path><path d="M21 3v5h-5"></path></svg>
+              <span>Refresh</span>
+            </button>
+          </div>
+        </div>
+        <div class="gh-item-list" id="actions-list"></div>
+      </section>
+
+      <aside class="detail-panel" id="commit-detail-panel" aria-label="Commit details">
         <div class="empty-state" id="detail-empty">
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7z"></path>
@@ -246,7 +355,15 @@
               <div style="display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0;">
                 <div class="detail-avatar-slot" id="detail-avatar"></div>
                 <div class="detail-title-copy" style="flex: 1; min-width: 0;">
+                  <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
                     <span class="detail-eyebrow">Commit Detail</span>
+                    <button class="icon-btn" id="btn-close-detail-panel" type="button" title="Detail panelini kapat">
+                      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                      </svg>
+                    </button>
+                  </div>
                   <h2 id="detail-message"></h2>
                 </div>
               </div>
@@ -378,6 +495,30 @@
       </div>
     </div>
 
+    <!-- Git Init Prompt Modal -->
+    <div class="modal-overlay" id="init-repo-modal" hidden>
+      <div class="confirm-modal" role="dialog" aria-modal="true" style="max-width: 480px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; box-shadow: 0 16px 48px rgba(0,0,0,0.6);">
+        <div class="modal-head" style="padding: 16px 20px; border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between;">
+          <div>
+            <span style="font-size: 11px; color: var(--accent); font-weight: 700; text-transform: uppercase;">Git Repository Required</span>
+            <h2 style="font-size: 16px; margin: 2px 0 0;">Initialize Git Repository?</h2>
+          </div>
+          <button class="modal-close" id="btn-cancel-init-repo" type="button" aria-label="Close">
+            <svg viewBox="0 0 24 24" aria-hidden="true" width="16" height="16"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>
+          </button>
+        </div>
+        <div class="modal-body" style="padding: 20px;">
+          <p style="margin: 0 0 10px; font-size: 13px; color: var(--text-dim);">Selected folder is not a Git repository:</p>
+          <div style="background: rgba(255,255,255,0.04); border: 1px solid var(--line-soft); border-radius: 6px; padding: 10px; font-family: var(--mono); font-size: 12px; color: var(--text); word-break: break-all; margin-bottom: 14px;" id="init-repo-path-display">-</div>
+          <p style="margin: 0; font-size: 13px; color: var(--text-dim);">Would you like to turn this folder into a Git repository (<code style="color: var(--accent);">git init</code>)?</p>
+        </div>
+        <div class="modal-actions" style="display: flex; justify-content: flex-end; gap: 8px; padding: 14px 20px; border-top: 1px solid var(--line); background: var(--panel-2);">
+          <button class="mini-btn cancel" id="btn-decline-init-repo" type="button">No, Cancel</button>
+          <button class="mini-btn primary" id="btn-confirm-init-repo" type="button">Yes, Initialize Git Repository</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Settings & AI Config Modal -->
     <div class="modal-overlay" id="settings-modal" hidden>
       <div class="settings-modal" role="dialog" aria-modal="true" aria-labelledby="settings-title">
@@ -392,6 +533,22 @@
         </div>
 
         <div class="modal-body settings-body">
+          <!-- UI Scale & Display Section -->
+          <section class="settings-section">
+            <h3>UI Scale & Interface Zoom</h3>
+            <div class="settings-form-row">
+              <label for="setting-ui-scale">UI Scale / Zoom:</label>
+              <select id="setting-ui-scale">
+                <option value="0.75">75% (Smallest)</option>
+                <option value="0.85">85% (Compact)</option>
+                <option value="0.90">90% (Slightly Compact)</option>
+                <option value="1.0" selected>100% (Default Normal)</option>
+                <option value="1.10">110% (Large)</option>
+                <option value="1.25">125% (Extra Large)</option>
+              </select>
+            </div>
+          </section>
+
           <!-- Git Identity & PGP Signing Section -->
           <section class="settings-section">
             <h3>Git Identity & PGP Signing</h3>
@@ -446,6 +603,13 @@
                   <span>Free tier, requires API key</span>
                 </div>
               </label>
+              <label class="ai-provider-card" data-provider="lmstudio">
+                <input type="radio" name="ai-provider" value="lmstudio" id="ai-provider-lmstudio" />
+                <div class="provider-card-inner">
+                  <strong>LM Studio (Local)</strong>
+                  <span>Free, OpenAI-compatible server</span>
+                </div>
+              </label>
             </div>
 
             <!-- Ollama Panel -->
@@ -487,13 +651,16 @@
 
                   <div class="settings-form-row">
                     <label for="setting-ai-model">Selected Gemma Model:</label>
-                    <select id="setting-ai-model">
-                      <option value="gemma4:12b">gemma4:12b (Top Recommended)</option>
-                      <option value="gemma2:9b">gemma2:9b</option>
-                      <option value="gemma2:27b">gemma2:27b</option>
-                      <option value="gemma:7b">gemma:7b</option>
-                      <option value="gemma:2b">gemma:2b</option>
-                    </select>
+                    <div class="gemini-model-row">
+                      <select id="setting-ai-model">
+                        <option value="gemma4:12b">gemma4:12b (Top Recommended)</option>
+                        <option value="gemma2:9b">gemma2:9b</option>
+                        <option value="gemma2:27b">gemma2:27b</option>
+                        <option value="gemma:7b">gemma:7b</option>
+                        <option value="gemma:2b">gemma:2b</option>
+                      </select>
+                      <button class="mini-btn primary" id="btn-save-ollama-default" type="button">Save as Default</button>
+                    </div>
                   </div>
 
                   <div class="model-pull-status" id="model-pull-status">
@@ -524,8 +691,37 @@
                       <option value="">Enter API key and click Refresh</option>
                     </select>
                     <button class="mini-btn" id="btn-fetch-gemini-models" type="button">Refresh</button>
+                    <button class="mini-btn primary" id="btn-save-gemini-default" type="button">Save as Default</button>
                   </div>
                   <small class="field-help" id="gemini-model-status"></small>
+                </div>
+              </div>
+            </div>
+
+            <!-- LM Studio Panel -->
+            <div class="ai-provider-panel" id="lmstudio-panel" style="display: none;">
+              <div class="system-specs-card">
+                <h4>LM Studio Server & Models</h4>
+                <div class="specs-grid">
+                  <div class="spec-item">
+                    <span class="spec-label">Server Endpoint:</span>
+                    <strong>http://127.0.0.1:1234/v1</strong>
+                  </div>
+                  <div class="spec-item">
+                    <span class="spec-label">Status:</span>
+                    <strong id="spec-lmstudio-status">Checking...</strong>
+                  </div>
+                </div>
+
+                <div class="settings-form-row" style="margin-top: 14px;">
+                  <label for="setting-lmstudio-model">LM Studio Loaded Model:</label>
+                  <div class="gemini-model-row">
+                    <select id="setting-lmstudio-model">
+                      <option value="">Checking LM Studio...</option>
+                    </select>
+                    <button class="mini-btn" id="btn-refresh-lmstudio" type="button">Refresh</button>
+                    <button class="mini-btn primary" id="btn-save-lmstudio-default" type="button">Save as Default</button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -586,11 +782,134 @@
               <small class="field-help">After each commit, a patch file will be generated and sent to the recipient email via SMTP.</small>
             </div>
           </section>
+
+          <!-- Application Update Section -->
+          <section class="settings-section update-section">
+            <div class="update-section-header">
+              <div>
+                <h3>Application Updates</h3>
+                <small>Current Version: <strong id="settings-app-version">v0.0.4</strong></small>
+              </div>
+              <button class="mini-btn primary" id="btn-check-update" type="button">
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px; vertical-align: middle;">
+                  <path d="M21 12a9 9 0 0 1-15.5 6.3L3 16"></path>
+                  <path d="M3 21v-5h5"></path>
+                  <path d="M3 12A9 9 0 0 1 18.5 5.7L21 8"></path>
+                  <path d="M21 3v5h-5"></path>
+                </svg>
+                <span>Check for Updates</span>
+              </button>
+            </div>
+
+            <div class="update-status-box" id="update-status-box" style="display: none;">
+              <div class="update-status-info" id="update-status-info"></div>
+              <div class="update-notes-box" id="update-notes-box" style="display: none;">
+                <h4 style="margin: 8px 0 4px; font-size: 12px; color: var(--text);">Release Notes</h4>
+                <div class="update-notes-content" id="update-notes-content"></div>
+              </div>
+              <div class="update-assets-box" id="update-assets-box" style="display: none;">
+                <h4 style="margin: 10px 0 4px; font-size: 12px; color: var(--text);">Release Packages (Built via Actions)</h4>
+                <div class="update-assets-list" id="update-assets-list"></div>
+              </div>
+            </div>
+          </section>
         </div>
 
         <div class="modal-actions">
           <button class="mini-btn cancel" id="btn-cancel-settings" type="button">Cancel</button>
           <button class="mini-btn primary" id="btn-save-settings" type="button">Save Preferences</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Action Log Modal -->
+    <div class="modal-overlay" id="action-log-modal" hidden>
+      <div class="action-log-modal" role="dialog" aria-modal="true" aria-labelledby="action-log-title">
+        <div class="modal-head">
+          <div>
+            <span>GitHub Actions</span>
+            <h2 id="action-log-title">Run Log</h2>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span class="action-log-meta" id="action-log-meta"></span>
+            <button class="modal-close" id="btn-close-action-log" type="button" aria-label="Close">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>
+            </button>
+          </div>
+        </div>
+        <div class="action-log-body" id="action-log-body">
+          <div class="action-log-loading" id="action-log-loading">
+            <div class="spinner"></div>
+            <span>Loading run log...</span>
+          </div>
+          <pre class="action-log-pre" id="action-log-pre" style="display:none;"></pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- PR Detail Modal -->
+    <div class="modal-overlay" id="pr-detail-modal" hidden>
+      <div class="pr-detail-modal" role="dialog" aria-modal="true" aria-labelledby="pr-detail-title">
+        <div class="modal-head">
+          <div>
+            <span>Pull Request #<span id="pr-modal-number">-</span></span>
+            <h2 id="pr-detail-title">PR Details</h2>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <button class="gh-view-btn" id="btn-open-pr-browser" type="button">
+              <svg viewBox="0 0 24 24" width="12" height="12"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+              Open on GitHub
+            </button>
+            <button class="modal-close" id="btn-close-pr-detail" type="button" aria-label="Close">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>
+            </button>
+          </div>
+        </div>
+        <div class="pr-detail-body">
+          <div class="pr-modal-info-bar">
+            <span class="gh-status-dot" id="pr-modal-status-dot"></span>
+            <span id="pr-modal-author" style="font-weight:600;color:var(--text);"></span>
+            <span id="pr-modal-branches" style="font-family:var(--mono);font-size:11px;color:var(--text-muted);"></span>
+          </div>
+
+          <div class="detail-tabs" role="tablist" style="padding:0 16px;margin-top:8px;">
+            <button class="detail-tab active" type="button" data-pr-tab="diff" id="btn-pr-tab-diff">Changes (Diff)</button>
+            <button class="detail-tab" type="button" data-pr-tab="commits" id="btn-pr-tab-commits">Commits (<span id="pr-commits-count">0</span>)</button>
+            <button class="detail-tab" type="button" data-pr-tab="body" id="btn-pr-tab-body">Description</button>
+          </div>
+
+          <div class="pr-tab-panel" id="pr-panel-diff" style="display:block;">
+            <div class="action-log-loading" id="pr-diff-loading" style="display:none;">
+              <div class="spinner"></div><span>Loading PR diff...</span>
+            </div>
+            <pre class="pr-diff-content" id="pr-diff-content"></pre>
+          </div>
+
+          <div class="pr-tab-panel" id="pr-panel-commits" style="display:none;">
+            <div class="action-log-loading" id="pr-commits-loading" style="display:none;">
+              <div class="spinner"></div><span>Loading PR commits...</span>
+            </div>
+            <div class="pr-commits-list" id="pr-commits-list"></div>
+          </div>
+
+          <div class="pr-tab-panel" id="pr-panel-body" style="display:none;">
+            <div class="pr-body-content" id="pr-body-content"></div>
+          </div>
+        </div>
+
+        <div class="modal-actions" style="justify-content:space-between;padding:12px 16px;">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <select id="pr-merge-method" class="mini-select">
+              <option value="merge">Create a merge commit (--merge)</option>
+              <option value="squash">Squash and merge (--squash)</option>
+              <option value="rebase">Rebase and merge (--rebase)</option>
+            </select>
+            <button class="mini-btn primary" id="btn-confirm-pr-merge" type="button" style="background:#238636;border-color:#2ea043;color:#fff;">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;"><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="6" r="3"></circle><path d="M6 15V6"></path><path d="M18 9a9 9 0 0 1-9 9"></path></svg>
+              Merge Pull Request
+            </button>
+          </div>
+          <button class="mini-btn cancel" id="btn-close-pr-modal-bottom" type="button">Close</button>
         </div>
       </div>
     </div>
