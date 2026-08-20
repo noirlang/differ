@@ -24,11 +24,30 @@ const state = {
   avatarRefreshTimer: null,
   selectedCoauthors: [],
   coauthorSuggestions: [],
+  ghPanel: 'history',  // 'history' | 'issues' | 'prs' | 'actions'
+  ghIssues: [],
+  ghPrs: [],
+  ghActions: [],
+  ghIssueFilter: 'open',
+  ghPrFilter: 'open',
+  ghAuthenticated: false,
+  ghUser: '',
+  remotes: [],
+  activeRemote: 'origin',
 };
 
 const $ = (id) => document.getElementById(id);
 
 const SETTINGS_KEY = 'differ.settings';
+
+function applyUiScale(scale) {
+  const val = parseFloat(scale) || 1.0;
+  document.documentElement.style.zoom = val;
+  if (typeof appSettings !== 'undefined' && appSettings) {
+    appSettings.uiScale = String(val);
+    saveAppSettings(appSettings);
+  }
+}
 
 function loadAppSettings() {
   try {
@@ -37,6 +56,7 @@ function loadAppSettings() {
       aiProvider: saved.aiProvider || 'ollama',
       geminiApiKey: saved.geminiApiKey || '',
       geminiModel: saved.geminiModel || 'gemini-2.5-flash',
+      lmStudioModel: saved.lmStudioModel || 'local-model',
       selectedModel: saved.selectedModel || 'gemma4:12b',
       gitName: saved.gitName || '',
       gitEmail: saved.gitEmail || '',
@@ -44,12 +64,14 @@ function loadAppSettings() {
       gpgSign: saved.gpgSign || false,
       signedOffBy: saved.signedOffBy || false,
       smtpEnabled: saved.smtpEnabled || false,
+      uiScale: saved.uiScale || '1.0',
     };
   } catch {
     return {
       aiProvider: 'ollama',
       geminiApiKey: '',
       geminiModel: 'gemini-2.5-flash',
+      lmStudioModel: 'local-model',
       selectedModel: 'gemma4:12b',
       gitName: '',
       gitEmail: '',
@@ -57,6 +79,7 @@ function loadAppSettings() {
       gpgSign: false,
       signedOffBy: false,
       smtpEnabled: false,
+      uiScale: '1.0',
     };
   }
 }
@@ -66,6 +89,7 @@ function saveAppSettings(settings) {
 }
 
 let appSettings = loadAppSettings();
+applyUiScale(appSettings.uiScale);
 
 const els = {
   welcomeScreen: $('welcome-screen'),
@@ -167,6 +191,71 @@ const els = {
   diffContainer: $('diff-container'),
   commitDescriptionView: $('commit-description-view'),
   statusText: $('status-text'),
+  githubNav: $('github-nav'),
+  btnGhTabHistory: $('btn-gh-tab-history'),
+  btnGhTabIssues: $('btn-gh-tab-issues'),
+  btnGhTabPrs: $('btn-gh-tab-prs'),
+  btnGhTabActions: $('btn-gh-tab-actions'),
+  ghIssuesCount: $('gh-issues-count'),
+  ghPrsCount: $('gh-prs-count'),
+  ghActionsCount: $('gh-actions-count'),
+  panelIssues: $('panel-issues'),
+  panelPrs: $('panel-prs'),
+  panelActions: $('panel-actions'),
+  issuesList: $('issues-list'),
+  prsList: $('prs-list'),
+  actionsList: $('actions-list'),
+  issuesFilterGroup: $('issues-filter-group'),
+  prsFilterGroup: $('prs-filter-group'),
+  btnRefreshIssues: $('btn-refresh-issues'),
+  btnRefreshPrs: $('btn-refresh-prs'),
+  btnRefreshActions: $('btn-refresh-actions'),
+  actionLogModal: $('action-log-modal'),
+  btnCloseActionLog: $('btn-close-action-log'),
+  actionLogTitle: $('action-log-title'),
+  actionLogMeta: $('action-log-meta'),
+  actionLogBody: $('action-log-body'),
+  actionLogLoading: $('action-log-loading'),
+  actionLogPre: $('action-log-pre'),
+  btnCheckUpdate: $('btn-check-update'),
+  settingsAppVersion: $('settings-app-version'),
+  updateStatusBox: $('update-status-box'),
+  updateStatusInfo: $('update-status-info'),
+  updateNotesBox: $('update-notes-box'),
+  updateNotesContent: $('update-notes-content'),
+  updateAssetsBox: $('update-assets-box'),
+  updateAssetsList: $('update-assets-list'),
+  prDetailModal: $('pr-detail-modal'),
+  prModalNumber: $('pr-modal-number'),
+  prDetailTitle: $('pr-detail-title'),
+  btnOpenPrBrowser: $('btn-open-pr-browser'),
+  btnClosePrDetail: $('btn-close-pr-detail'),
+  btnClosePrModalBottom: $('btn-close-pr-modal-bottom'),
+  prModalStatusDot: $('pr-modal-status-dot'),
+  prModalAuthor: $('pr-modal-author'),
+  prModalBranches: $('pr-modal-branches'),
+  prCommitsCount: $('pr-commits-count'),
+  btnPrTabDiff: $('btn-pr-tab-diff'),
+  btnPrTabCommits: $('btn-pr-tab-commits'),
+  btnPrTabBody: $('btn-pr-tab-body'),
+  prPanelDiff: $('pr-panel-diff'),
+  prPanelCommits: $('pr-panel-commits'),
+  prPanelBody: $('pr-panel-body'),
+  prDiffLoading: $('pr-diff-loading'),
+  prDiffContent: $('pr-diff-content'),
+  prCommitsLoading: $('pr-commits-loading'),
+  prCommitsList: $('pr-commits-list'),
+  prBodyContent: $('pr-body-content'),
+  prMergeMethod: $('pr-merge-method'),
+  btnConfirmPrMerge: $('btn-confirm-pr-merge'),
+  editorActions: $('editor-actions'),
+  remotesBar: $('remotes-bar'),
+  remotesCount: $('remotes-count'),
+  selectActiveRemote: $('select-active-remote'),
+  btnFetchRemote: $('btn-fetch-remote'),
+  btnAddRemoteToggle: $('btn-add-remote-toggle'),
+  unpushedBannerRemote: $('unpushed-banner-remote'),
+  btnUnpushedBannerPush: $('btn-unpushed-banner-push'),
 };
 
 const graphColors = [
@@ -566,7 +655,7 @@ function renderRepoShell() {
 
   const authors = getAuthorStats();
   const selectedAuthor = authors.find((author) => author.key === state.selectedAuthorKey);
-  els.repoName.textContent = state.repoInfo.name;
+  if (els.repoName) els.repoName.textContent = state.repoInfo.name;
   els.sideRepoName.textContent = state.repoInfo.name;
   els.repoPath.textContent = state.repoInfo.path;
   els.activeBranch.textContent = state.selectedBranch || state.repoInfo.current_branch || 'all';
@@ -587,10 +676,10 @@ async function refreshRepositoryData({ selectLatest = false } = {}) {
   const branch = state.selectedBranch;
   const [branches, commits, tree, worktreeFiles, syncStatus] = await Promise.all([
     invoke('get_branches'),
-    invoke('get_commits', { limit: 500, branch }),
+    invoke('get_commits', { limit: 500, branch, targetRemote: state.activeRemote }),
     invoke('get_file_tree', { commitId: null }),
     invoke('get_worktree_status'),
-    invoke('get_sync_status'),
+    invoke('get_sync_status', { targetRemote: state.activeRemote }),
     fetchAndPopulateGitSettings(),
   ]);
 
@@ -619,8 +708,43 @@ function showHomeScreen() {
   els.mainContent.style.display = 'none';
   els.repoInfo.style.display = 'none';
   els.searchBox.style.display = 'none';
+  els.githubNav.style.display = 'none';
+  els.btnOpenRepo.style.display = '';
   renderRecentRepos();
   setStatus('Ready');
+}
+
+function promptGitInit(path) {
+  return new Promise((resolve) => {
+    const modal = document.getElementById('init-repo-modal');
+    const pathDisplay = document.getElementById('init-repo-path-display');
+    const btnConfirm = document.getElementById('btn-confirm-init-repo');
+    const btnDecline = document.getElementById('btn-decline-init-repo');
+    const btnClose = document.getElementById('btn-cancel-init-repo');
+
+    if (!modal || !btnConfirm || !btnDecline) {
+      const ok = confirm(`Bu klasör bir Git deposu değil:\n\n${path}\n\nGit deposu olarak ilklendirilsin mi (git init)?`);
+      return resolve(ok);
+    }
+
+    if (pathDisplay) pathDisplay.textContent = path;
+    modal.removeAttribute('hidden');
+
+    function cleanup(result) {
+      modal.setAttribute('hidden', '');
+      btnConfirm.removeEventListener('click', onConfirm);
+      btnDecline.removeEventListener('click', onDecline);
+      if (btnClose) btnClose.removeEventListener('click', onDecline);
+      resolve(result);
+    }
+
+    function onConfirm() { cleanup(true); }
+    function onDecline() { cleanup(false); }
+
+    btnConfirm.addEventListener('click', onConfirm);
+    btnDecline.addEventListener('click', onDecline);
+    if (btnClose) btnClose.addEventListener('click', onDecline);
+  });
 }
 
 async function openRepo(repoPath = null) {
@@ -648,8 +772,24 @@ async function openRepo(repoPath = null) {
     if (Array.isArray(selected)) [selected] = selected;
     if (!selected) return;
 
-    setStatus('Reading repository...');
-    const repoInfo = await invoke('open_repo', { path: selected });
+    setStatus('Checking repository...');
+    const isGit = await invoke('is_git_repository', { path: selected });
+    let repoInfo = null;
+
+    if (!isGit) {
+      const shouldInit = await promptGitInit(selected);
+      if (!shouldInit) {
+        setStatus('Repository open cancelled (Not a Git repository)');
+        return;
+      }
+      setStatus('Initializing Git repository...');
+      repoInfo = await invoke('init_repository', { path: selected });
+      setStatus('Git repository initialized successfully!');
+    } else {
+      setStatus('Reading repository...');
+      repoInfo = await invoke('open_repo', { path: selected });
+    }
+
     state.repoInfo = repoInfo;
     state.selectedBranch = null;
     state.selectedCommit = null;
@@ -670,11 +810,21 @@ async function openRepo(repoPath = null) {
     els.mainContent.style.display = 'grid';
     els.repoInfo.style.display = 'flex';
     els.searchBox.style.display = 'flex';
+    els.btnOpenRepo.style.display = 'none';
     els.detailEmpty.style.display = 'flex';
     els.detailContent.style.display = 'none';
 
     await refreshRepositoryData({ selectLatest: true });
     rememberRecentRepo(repoInfo.path || selected);
+
+    // Load all git remotes (origin, upstream, fork, etc.)
+    await loadGitRemotes();
+    // Show GitHub nav if repo has GitHub remote
+    showGhNavIfGitHub();
+    // Check gh CLI auth in background
+    checkGhAuth().catch(() => {});
+    // Detect installed editors (VS Code, Code OSS, Zed, Cursor, VSCodium)
+    checkAndRenderInstalledEditors();
 
     setStatus(`${repoInfo.name} loaded: ${state.commits.length} commits`);
   } catch (err) {
@@ -687,7 +837,7 @@ async function openRepo(repoPath = null) {
 async function loadCommits(branch = null) {
   try {
     setStatus(branch ? `Reading ${branch} branch history...` : 'Reading commit history...');
-    const commits = await invoke('get_commits', { limit: 500, branch });
+    const commits = await invoke('get_commits', { limit: 500, branch, targetRemote: state.activeRemote });
     state.commits = commits;
     state.selectedBranch = branch;
     state.selectedCommit = null;
@@ -732,7 +882,7 @@ async function loadWorktreeStatus() {
 }
 
 async function loadSyncStatus() {
-  state.syncStatus = await invoke('get_sync_status');
+  state.syncStatus = await invoke('get_sync_status', { targetRemote: state.activeRemote });
   renderSyncStatus();
 }
 
@@ -774,11 +924,11 @@ function renderSyncStatus() {
   els.syncCardContent.style.display = 'grid';
   els.btnShowAddOrigin.style.display = 'none';
   els.addOriginForm.style.display = 'none';
-
-  const originText = sync.origin_url || 'origin connected';
+  const activeRemote = state.activeRemote || 'origin';
+  const originText = sync.origin_url || `${activeRemote} connected`;
   els.topSyncPill.textContent = sync.unpushed_count > 0
-    ? `origin · ${sync.unpushed_count} unpushed`
-    : 'origin · up to date';
+    ? `${activeRemote} · ${sync.unpushed_count} unpushed`
+    : `${activeRemote} · up to date`;
   els.originLabel.textContent = originText;
 
   if (sync.unpushed_count > 0 && sync.can_push) {
@@ -796,26 +946,55 @@ function renderSyncStatus() {
   }
 
   if (!sync.upstream) {
-    els.pushLabel.textContent = `${sync.current_branch} will be published to origin`;
-    els.btnPushOrigin.textContent = 'Publish';
+    els.pushLabel.textContent = `${sync.current_branch} will be published to ${activeRemote}`;
+    els.btnPushOrigin.textContent = `Publish to ${activeRemote}`;
     els.btnPushOrigin.disabled = false;
     return;
   }
 
   els.pushLabel.textContent = sync.unpushed_count > 0
-    ? `${sync.unpushed_count} commits waiting to be pushed`
-    : `up to date with ${sync.upstream}`;
-  els.btnPushOrigin.textContent = sync.unpushed_count > 0 ? `Push ${sync.unpushed_count}` : 'Push';
+    ? `${sync.unpushed_count} commit(s) ahead of ${activeRemote}`
+    : `up to date with ${activeRemote}`;
+  els.btnPushOrigin.textContent = `Push to ${activeRemote}`;
   els.btnPushOrigin.disabled = sync.unpushed_count === 0;
 }
 
 function updateCommitAction() {
   const count = state.selectedWorktreePaths.size;
   const hasMessage = els.commitMessageInput.value.trim().length > 0;
-  els.btnCommitSelected.disabled = count === 0 || !hasMessage;
-  els.btnCommitSelected.textContent = count > 0
-    ? `Commit ${count} files`
-    : 'Commit selected files';
+  const isEditing = !!state.editingCommitId;
+  const cancelBtn = document.getElementById('btn-cancel-edit-commit');
+
+  if (cancelBtn) {
+    cancelBtn.style.display = isEditing ? 'inline-flex' : 'none';
+  }
+
+  if (isEditing) {
+    els.btnCommitSelected.classList.add('is-editing');
+    if (count > 0 && hasMessage) {
+      els.btnCommitSelected.disabled = false;
+      els.btnCommitSelected.textContent = `Amend ${count} file(s)`;
+    } else if (hasMessage) {
+      els.btnCommitSelected.disabled = false;
+      els.btnCommitSelected.textContent = 'Amend Commit';
+    } else {
+      els.btnCommitSelected.disabled = true;
+      els.btnCommitSelected.textContent = 'Amend Commit';
+    }
+  } else {
+    els.btnCommitSelected.classList.remove('is-editing');
+    els.btnCommitSelected.disabled = count === 0 || !hasMessage;
+    els.btnCommitSelected.textContent = count > 0 ? `Commit ${count} files` : 'Commit selected files';
+  }
+}
+
+function cancelCommitEdit() {
+  state.editingCommitId = null;
+  els.commitMessageInput.value = '';
+  state.selectedCoauthors = [];
+  renderCoauthors();
+  updateCommitAction();
+  setStatus('Commit editing cancelled.');
 }
 
 function renderWorktreeStatus() {
@@ -866,8 +1045,10 @@ function renderWorktreeStatus() {
 async function commitSelectedChanges() {
   const paths = [...state.selectedWorktreePaths];
   const message = els.commitMessageInput.value.trim();
+  const isAmend = (paths.length === 0 && !!state.editingCommitId && state.commits[0] && state.editingCommitId === state.commits[0].id)
+    || (paths.length > 0 && !!state.editingCommitId && state.commits[0] && state.editingCommitId === state.commits[0].id);
 
-  if (paths.length === 0 || !message) {
+  if ((paths.length === 0 && !isAmend) || !message) {
     updateCommitAction();
     return;
   }
@@ -904,7 +1085,7 @@ async function commitSelectedChanges() {
 
   try {
     els.btnCommitSelected.disabled = true;
-    setStatus('Creating commit...');
+    setStatus(isAmend ? 'Amending commit...' : 'Creating commit...');
     await invoke('commit_changes_with_options', {
       paths,
       message: finalMessage,
@@ -913,13 +1094,15 @@ async function commitSelectedChanges() {
       gpgKey: gpg_key,
       signCommit: appSettings.gpgSign,
       signedOffBy: signedOffBy,
+      amend: isAmend,
     });
     state.selectedWorktreePaths.clear();
     state.selectedCoauthors = [];
+    state.editingCommitId = null;
     els.commitMessageInput.value = '';
     renderCoauthors();
     await refreshRepositoryData({ selectLatest: true });
-    setStatus('Commit created');
+    setStatus(isAmend ? 'Commit amended successfully' : 'Commit created');
 
     if (appSettings.smtpEnabled) {
       try {
@@ -944,10 +1127,11 @@ async function pushOrigin() {
   try {
     els.btnPushOrigin.disabled = true;
     els.topPushBtn.disabled = true;
-    setStatus('Pushing...');
-    await invoke('push_origin');
+    const rName = state.activeRemote || 'origin';
+    setStatus(`Pushing to ${rName}...`);
+    await invoke('push_origin', { targetRemote: rName });
     await refreshRepositoryData();
-    setStatus('Push completed');
+    setStatus(`Pushed to ${rName} successfully`);
   } catch (err) {
     console.error(err);
     setStatus('Push failed');
@@ -1074,10 +1258,28 @@ function renderBranches() {
 
   for (const branch of state.branches) {
     const active = state.selectedBranch === branch.name || (!state.selectedBranch && branch.is_head);
-    const badge = branch.is_head ? 'HEAD' : branch.is_remote ? 'remote' : 'local';
-
     const isDetached = branch.name === 'detached';
     const canMerge = !branch.is_remote && !isDetached;
+
+    // Determine badge class and label
+    let badgeClass = '';
+    let badgeLabel = '';
+    if (branch.is_head) {
+      badgeClass = 'head';
+      badgeLabel = 'HEAD';
+    } else if (branch.is_remote) {
+      badgeClass = 'remote';
+      // Show short remote name: strip "origin/" prefix
+      badgeLabel = 'remote';
+    } else {
+      badgeClass = 'local';
+      badgeLabel = 'local';
+    }
+
+    // Remote branch: show remote prefix dimmed
+    const branchDisplayName = branch.is_remote
+      ? branch.name.replace(/^[^/]+\//, '<span style="opacity:0.45;">$&</span>')
+      : escapeHtml(branch.name);
 
     branchRows.push(`
       <div class="branch-row-container ${active ? 'active' : ''}">
@@ -1088,8 +1290,8 @@ function renderBranches() {
             <circle cx="18" cy="6" r="3"></circle>
             <path d="M18 9a9 9 0 0 1-9 9"></path>
           </svg>
-          <span class="branch-name">${escapeHtml(branch.name)}</span>
-          <span class="branch-badge ${branch.is_head ? 'head' : ''}">${badge}</span>
+          <span class="branch-name">${branchDisplayName}</span>
+          <span class="branch-badge ${badgeClass}">${badgeLabel}</span>
         </button>
         ${canMerge ? `
         <button class="branch-merge-btn" type="button" data-branch="${escapeHtml(branch.name)}" title="Merge branch...">
@@ -1248,12 +1450,24 @@ function renderCommits() {
   state.filteredCommitIds = commits.map((commit) => commit.id);
 
   if (commits.length === 0) {
-    els.commitList.innerHTML = `
-      <div class="empty-state compact">
-        <strong>No results</strong>
-        <span>No commits match the current search or branch filter.</span>
-      </div>
-    `;
+    const isRepoEmpty = state.commits.length === 0;
+    els.commitList.innerHTML = isRepoEmpty
+      ? `
+        <div class="empty-state compact" style="padding: 40px 20px; text-align: center;">
+          <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.5" style="margin: 0 auto 12px; color: var(--text-dim); display: block;">
+            <circle cx="12" cy="12" r="9"></circle>
+            <path d="M12 8v4l3 3"></path>
+          </svg>
+          <strong style="font-size: 14px; display: block; margin-bottom: 6px;">No commits in repository</strong>
+          <span style="font-size: 12px; color: var(--text-dim);">This Git repository has no commits yet. Stage files on the left and create your initial commit!</span>
+        </div>
+      `
+      : `
+        <div class="empty-state compact">
+          <strong>No results</strong>
+          <span>No commits match the current search or branch filter.</span>
+        </div>
+      `;
     return;
   }
 
@@ -1262,6 +1476,9 @@ function renderCommits() {
     if (unpushedCommits.length > 0) {
       els.unpushedBanner.style.display = 'flex';
       els.unpushedBannerCount.textContent = unpushedCommits.length;
+      if (els.unpushedBannerRemote) {
+        els.unpushedBannerRemote.textContent = state.activeRemote || 'origin';
+      }
       els.unpushedCommitList.innerHTML = unpushedCommits.map((c) => `
         <div class="unpushed-commit-card" data-commit-id="${c.id}">
           <div class="unpushed-commit-info">
@@ -1312,13 +1529,19 @@ function renderCommits() {
       : renderAuthorAvatar(commit);
 
     return `
-      <button class="commit-row ${selected} ${localOnly}" type="button" data-commit-id="${commit.id}" style="--row-delay:${Math.min(index * 12, 220)}ms">
+      <div class="commit-row ${selected} ${localOnly}" role="button" tabindex="0" data-commit-id="${commit.id}" style="--row-delay:${Math.min(index * 12, 220)}ms">
         <span class="commit-graph-cell" style="--lane:${lane};--lane-count:${laneCount};--graph-color:${color};">
           <span class="graph-track" aria-hidden="true"></span>
           <span class="commit-dot" aria-hidden="true"></span>
-          <span class="commit-hash">${commit.short_id}</span>
+          <span class="commit-hash" title="${escapeHtml(commit.id || '')}">${escapeHtml(commit.short_id || (commit.id || '').substring(0, 7))}</span>
         </span>
         <span class="commit-message-cell">
+          <button class="btn-edit-commit-pencil" type="button" data-commit-id="${commit.id}" title="Load into commit form">
+            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+            </svg>
+          </button>
           <span class="branch-labels">${labels}</span>
           ${syncLabel}
           <span class="commit-message">${escapeHtml(firstLine(commit.message))}</span>
@@ -1328,15 +1551,69 @@ function renderCommits() {
           <span class="author-name" title="${escapeHtml(commit.author_name || 'Unknown')}${escapeHtml(coauthorsTitle)}">${escapeHtml(commit.author_name || 'Unknown')}</span>
         </span>
         <span class="commit-date-cell">${formatDate(commit.timestamp)}</span>
-      </button>
+      </div>
     `;
   }).join('');
 
   els.commitList.querySelectorAll('.commit-row').forEach((row) => {
     row.addEventListener('click', () => selectCommit(row.dataset.commitId));
   });
+  els.commitList.querySelectorAll('.btn-edit-commit-pencil').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      loadCommitIntoForm(btn.dataset.commitId);
+    });
+  });
   hydrateAvatarFallbacks(els.commitList);
   queueGithubAvatarFetches(commits.slice(0, 40));
+}
+
+function loadCommitIntoForm(commitId) {
+  const commit = state.commits.find((c) => c.id === commitId);
+  if (!commit) return;
+
+  const rawMsg = commit.message || '';
+  const lines = rawMsg.split('\n');
+
+  const coauthors = [];
+  let isSignedOff = false;
+  const mainMsgLines = [];
+
+  lines.forEach((line) => {
+    const trimmed = line.trim();
+    if (/^co-authored-by:/i.test(trimmed)) {
+      const match = trimmed.match(/^co-authored-by:\s*(.*?)\s*<(.*?)>/i);
+      if (match) {
+        coauthors.push({ name: match[1].trim(), email: match[2].trim() });
+      } else {
+        const raw = trimmed.replace(/^co-authored-by:\s*/i, '').trim();
+        if (raw) coauthors.push({ name: raw, email: '' });
+      }
+    } else if (/^signed-off-by:/i.test(trimmed)) {
+      isSignedOff = true;
+    } else {
+      mainMsgLines.push(line);
+    }
+  });
+
+  const cleanMsg = mainMsgLines.join('\n').trim();
+  els.commitMessageInput.value = cleanMsg;
+
+  const signedOffCheckbox = document.getElementById('commit-signed-off-by');
+  if (signedOffCheckbox) {
+    signedOffCheckbox.checked = isSignedOff;
+  }
+
+  state.selectedCoauthors = coauthors;
+  renderCoauthors();
+
+  state.editingCommitId = commitId;
+  updateCommitAction();
+
+  els.commitMessageInput.focus();
+  els.commitMessageInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+  setStatus(`Loaded commit ${commit.short_id} into commit form.`);
 }
 
 async function selectCommit(commitId) {
@@ -1481,6 +1758,8 @@ function scrollToDiffFile(index) {
 }
 
 function renderFileTree() {
+  if (!els.fileTree) return;
+
   function iconFor(entry) {
     if (entry.is_dir) {
       return '<svg class="tree-dir-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7.5A2.5 2.5 0 0 1 5.5 5h4l2 2.5h7A2.5 2.5 0 0 1 21 10v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>';
@@ -1504,22 +1783,23 @@ function renderFileTree() {
 }
 
 function activateDetailTab(tabName) {
-  state.detailTab = tabName;
+  const targetTab = tabName || 'changes';
+  state.detailTab = targetTab;
   document.querySelectorAll('.detail-tab').forEach((tab) => {
-    tab.classList.toggle('active', tab.dataset.tab === tabName);
+    tab.classList.toggle('active', tab.dataset.tab === targetTab);
   });
 
-  if (tabName === 'diff') {
+  if (targetTab === 'diff' || targetTab === 'changes') {
     els.changedFiles.style.display = 'block';
     els.changedFiles.classList.remove('files-mode');
     els.diffContainer.style.display = 'block';
     els.commitDescriptionView.style.display = 'none';
-  } else if (tabName === 'files') {
+  } else if (targetTab === 'files') {
     els.changedFiles.style.display = 'block';
     els.changedFiles.classList.add('files-mode');
     els.diffContainer.style.display = 'none';
     els.commitDescriptionView.style.display = 'none';
-  } else if (tabName === 'description') {
+  } else if (targetTab === 'description') {
     els.changedFiles.style.display = 'none';
     els.diffContainer.style.display = 'none';
     els.commitDescriptionView.style.display = 'flex';
@@ -1853,10 +2133,19 @@ async function generateAiCommitMessage() {
     return;
   }
 
-  const currentModel = provider === 'gemini'
-    ? (appSettings.geminiModel || 'gemini-2.5-flash')
-    : (appSettings.selectedModel || 'gemma4:12b');
-  const displayTag = provider === 'gemini' ? `Gemini: ${currentModel}` : `Ollama: ${currentModel}`;
+  let currentModel = 'gemma4:12b';
+  let displayTag = 'AI';
+  if (provider === 'gemini') {
+    currentModel = appSettings.geminiModel || 'gemini-2.5-flash';
+    displayTag = `Gemini: ${currentModel}`;
+  } else if (provider === 'lmstudio') {
+    await checkLmStudioStatus();
+    currentModel = state.lmStudioModels[0] || 'local-model';
+    displayTag = `LM Studio: ${currentModel}`;
+  } else {
+    currentModel = appSettings.selectedModel || 'gemma4:12b';
+    displayTag = `Ollama: ${currentModel}`;
+  }
 
   try {
     els.btnAiGenerateCommit.disabled = true;
@@ -1879,6 +2168,12 @@ async function generateAiCommitMessage() {
         paths: selectedPaths,
         model: appSettings.geminiModel || 'gemini-2.5-flash',
         apiKey: appSettings.geminiApiKey,
+      });
+    } else if (provider === 'lmstudio') {
+      generatedMessage = await invoke('generate_ai_commit_message_lm_studio', {
+        diff: null,
+        paths: selectedPaths,
+        model: currentModel,
       });
     } else {
       generatedMessage = await invoke('generate_ai_commit_message', {
@@ -1931,15 +2226,24 @@ async function openSettingsModal() {
     els.settingGitEmail.value = appSettings.gitEmail || gitSettings?.current_email || '';
     els.settingGpgSign.checked = appSettings.gpgSign || gitSettings?.gpg_sign_enabled || false;
 
+    const uiScaleSelect = document.getElementById('setting-ui-scale');
+    if (uiScaleSelect) {
+      uiScaleSelect.value = appSettings.uiScale || '1.0';
+      uiScaleSelect.onchange = (e) => applyUiScale(e.target.value);
+    }
+
     const signedOffByCheckbox = document.getElementById('commit-signed-off-by');
     if (signedOffByCheckbox) signedOffByCheckbox.checked = appSettings.signedOffBy || false;
 
     const provider = appSettings.aiProvider || 'ollama';
     const radioOllama = document.getElementById('ai-provider-ollama');
     const radioGemini = document.getElementById('ai-provider-gemini');
+    const radioLmStudio = document.getElementById('ai-provider-lmstudio');
     if (radioOllama) radioOllama.checked = provider === 'ollama';
     if (radioGemini) radioGemini.checked = provider === 'gemini';
+    if (radioLmStudio) radioLmStudio.checked = provider === 'lmstudio';
     switchAiProviderPanel(provider);
+    checkLmStudioStatus();
 
     const geminiKeyInput = document.getElementById('setting-gemini-api-key');
     if (geminiKeyInput) geminiKeyInput.value = appSettings.geminiApiKey || '';
@@ -1974,8 +2278,98 @@ async function openSettingsModal() {
 function switchAiProviderPanel(provider) {
   const ollamaPanel = document.getElementById('ollama-panel');
   const geminiPanel = document.getElementById('gemini-panel');
+  const lmstudioPanel = document.getElementById('lmstudio-panel');
   if (ollamaPanel) ollamaPanel.style.display = provider === 'ollama' ? 'block' : 'none';
   if (geminiPanel) geminiPanel.style.display = provider === 'gemini' ? 'block' : 'none';
+  if (lmstudioPanel) lmstudioPanel.style.display = provider === 'lmstudio' ? 'block' : 'none';
+}
+
+async function checkLmStudioStatus() {
+  const specStatus = document.getElementById('spec-lmstudio-status');
+  const selectLmStudio = document.getElementById('setting-lmstudio-model');
+  try {
+    const res = await invoke('check_lm_studio_status');
+    state.lmStudioRunning = res.running;
+    state.lmStudioModels = res.models || [];
+
+    if (specStatus) {
+      if (res.running) {
+        specStatus.textContent = `Server Running (${res.models.length} model(s) loaded)`;
+        specStatus.style.color = '#3fb950';
+      } else {
+        specStatus.textContent = 'Server Not Running (127.0.0.1:1234)';
+        specStatus.style.color = '#ff7b72';
+      }
+    }
+
+    if (selectLmStudio) {
+      selectLmStudio.innerHTML = '';
+      if (res.models && res.models.length > 0) {
+        const savedLm = appSettings.lmStudioModel || res.models[0];
+        res.models.forEach((m) => {
+          const isSel = m === savedLm ? 'selected' : '';
+          selectLmStudio.innerHTML += `<option value="${escapeHtml(m)}" ${isSel}>${escapeHtml(m)}</option>`;
+        });
+      } else {
+        selectLmStudio.innerHTML = `<option value="">${res.running ? 'No model loaded in LM Studio' : 'LM Studio Server Off'}</option>`;
+      }
+    }
+    updateAiModelSelectOptions();
+    return res;
+  } catch (err) {
+    if (specStatus) {
+      specStatus.textContent = 'Error checking LM Studio status';
+      specStatus.style.color = '#ff7b72';
+    }
+    return { running: false, models: [] };
+  }
+}
+
+function updateAiModelSelectOptions() {
+  const selectEl = document.getElementById('commit-ai-model-select');
+  if (!selectEl) return;
+
+  const currentProvider = appSettings.aiProvider || 'ollama';
+  let html = '';
+
+  html += '<optgroup label="Ollama (Local)">';
+  const ollamaModels = currentSystemInfo?.installed_models || ['gemma4:12b', 'gemma2:9b', 'gemma:2b'];
+  const curOllama = appSettings.selectedModel || 'gemma4:12b';
+  ollamaModels.forEach((m) => {
+    const isSel = (currentProvider === 'ollama' && m === curOllama) ? 'selected' : '';
+    html += `<option value="ollama:${escapeHtml(m)}" ${isSel}>Ollama: ${escapeHtml(m)}</option>`;
+  });
+  html += '</optgroup>';
+
+  if (state.geminiModels && state.geminiModels.length > 0) {
+    html += '<optgroup label="Gemini (Cloud)">';
+    const curGem = appSettings.geminiModel || 'gemini-2.5-flash';
+    state.geminiModels.forEach((m) => {
+      const isSel = (currentProvider === 'gemini' && m === curGem) ? 'selected' : '';
+      html += `<option value="gemini:${escapeHtml(m)}" ${isSel}>Gemini: ${escapeHtml(m)}</option>`;
+    });
+    html += '</optgroup>';
+  } else {
+    const curGem = appSettings.geminiModel || 'gemini-2.5-flash';
+    const isSel = (currentProvider === 'gemini') ? 'selected' : '';
+    html += `<optgroup label="Gemini (Cloud)"><option value="gemini:${escapeHtml(curGem)}" ${isSel}>Gemini: ${escapeHtml(curGem)}</option></optgroup>`;
+  }
+
+  if (state.lmStudioModels && state.lmStudioModels.length > 0) {
+    html += '<optgroup label="LM Studio (Local)">';
+    const curLm = appSettings.lmStudioModel || state.lmStudioModels[0];
+    state.lmStudioModels.forEach((m) => {
+      const isSel = (currentProvider === 'lmstudio' && m === curLm) ? 'selected' : '';
+      html += `<option value="lmstudio:${escapeHtml(m)}" ${isSel}>LM Studio: ${escapeHtml(m)}</option>`;
+    });
+    html += '</optgroup>';
+  } else {
+    const curLm = appSettings.lmStudioModel || 'local-model';
+    const isSel = (currentProvider === 'lmstudio') ? 'selected' : '';
+    html += `<optgroup label="LM Studio (Local)"><option value="lmstudio:${escapeHtml(curLm)}" ${isSel}>LM Studio: ${escapeHtml(curLm)}</option></optgroup>`;
+  }
+
+  selectEl.innerHTML = html;
 }
 
 async function fetchGeminiModels() {
@@ -2147,7 +2541,7 @@ function renderSystemInfo(sys) {
 
   els.recommendedModelTitle.textContent = `${sys.recommended_model} (Top Recommended)`;
   const currentSel = appSettings.selectedModel || sys.recommended_model || 'gemma4:12b';
-  els.commitAiModelTag.textContent = currentSel;
+  if (els.commitAiModelTag) els.commitAiModelTag.textContent = currentSel;
 
   if (els.settingAiModel) {
     let html = '';
@@ -2207,7 +2601,11 @@ async function saveSettings() {
     const signedOffBy = document.getElementById('commit-signed-off-by')?.checked || false;
 
     const radioOllama = document.getElementById('ai-provider-ollama');
-    const aiProvider = (radioOllama && radioOllama.checked) ? 'ollama' : 'gemini';
+    const radioGemini = document.getElementById('ai-provider-gemini');
+    const radioLmStudio = document.getElementById('ai-provider-lmstudio');
+    let aiProvider = 'ollama';
+    if (radioGemini && radioGemini.checked) aiProvider = 'gemini';
+    if (radioLmStudio && radioLmStudio.checked) aiProvider = 'lmstudio';
     const geminiKeyInput = document.getElementById('setting-gemini-api-key');
     const geminiModelSelect = document.getElementById('setting-gemini-model');
     const geminiApiKey = geminiKeyInput ? geminiKeyInput.value.trim() : '';
@@ -2254,10 +2652,20 @@ async function saveSettings() {
       console.log('SMTP save error:', e);
     }
 
-    const displayTag = aiProvider === 'gemini'
-      ? `Gemini: ${geminiModel}`
-      : `Ollama: ${selectedModel}`;
-    els.commitAiModelTag.textContent = displayTag;
+    let displayTag = `Ollama: ${selectedModel}`;
+    if (aiProvider === 'gemini') displayTag = `Gemini: ${geminiModel}`;
+    if (aiProvider === 'lmstudio') {
+      const lmModel = state.lmStudioModels[0] || 'local-model';
+      displayTag = `LM Studio: ${lmModel}`;
+    }
+    if (els.commitAiModelTag) els.commitAiModelTag.textContent = displayTag;
+
+    const uiScaleSelect = document.getElementById('setting-ui-scale');
+    if (uiScaleSelect) {
+      appSettings.uiScale = uiScaleSelect.value;
+      applyUiScale(appSettings.uiScale);
+    }
+
     closeSettingsModal();
     setStatus('Settings saved successfully');
   } catch (err) {
@@ -2307,7 +2715,79 @@ async function pullModel() {
   }
 }
 
+function initDetailToggle() {
+  const toggleBtn = document.getElementById('btn-toggle-detail-panel');
+  const mainContent = document.getElementById('main-content');
+  const detailPanel = document.getElementById('commit-detail-panel');
+
+  function updateToggleBtnState(isHidden) {
+    if (toggleBtn) {
+      if (isHidden) {
+        toggleBtn.classList.add('is-closed');
+        toggleBtn.title = 'Commit Detail Panelini Aç';
+      } else {
+        toggleBtn.classList.remove('is-closed');
+        toggleBtn.title = 'Commit Detail Panelini Kapat';
+      }
+    }
+  }
+
+  function toggleDetailPanel(forceState) {
+    if (!mainContent) return;
+    const isHidden = mainContent.classList.contains('hide-detail-panel');
+    const shouldHide = forceState !== undefined ? !forceState : !isHidden;
+
+    if (shouldHide) {
+      mainContent.classList.add('hide-detail-panel');
+      updateToggleBtnState(true);
+    } else {
+      mainContent.classList.remove('hide-detail-panel');
+      updateToggleBtnState(false);
+    }
+  }
+
+  if (toggleBtn) {
+    toggleBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      toggleDetailPanel();
+    });
+  }
+
+  if (detailPanel) {
+    detailPanel.addEventListener('click', (e) => {
+      const tabBtn = e.target.closest('.detail-tab');
+      if (tabBtn) {
+        e.preventDefault();
+        const tabName = tabBtn.dataset.tab;
+        if (tabName) activateDetailTab(tabName);
+        return;
+      }
+
+      const closeBtn = e.target.closest('#btn-close-detail-panel');
+      if (closeBtn) {
+        e.preventDefault();
+        toggleDetailPanel(false);
+        return;
+      }
+
+      const fileBtn = e.target.closest('.changed-file');
+      if (fileBtn) {
+        e.preventDefault();
+        const index = Number.parseInt(fileBtn.dataset.fileIdx, 10);
+        if (!Number.isNaN(index)) {
+          activateDetailTab('changes');
+          scrollToDiffFile(index);
+          document.querySelectorAll('.changed-file').forEach((item) => item.classList.remove('selected'));
+          fileBtn.classList.add('selected');
+        }
+        return;
+      }
+    });
+  }
+}
+
 function initEventHandlers() {
+  initDetailToggle();
   els.btnHome.addEventListener('click', showHomeScreen);
   els.btnOpenRepo.addEventListener('click', () => openRepo());
   els.btnWelcomeOpen.addEventListener('click', () => openRepo());
@@ -2318,11 +2798,95 @@ function initEventHandlers() {
   els.btnInstallOllama.addEventListener('click', installOllama);
   els.btnPullModel.addEventListener('click', pullModel);
   els.btnAiGenerateCommit.addEventListener('click', generateAiCommitMessage);
+
+  const btnLoadDetail = document.getElementById('btn-load-commit-to-form');
+  if (btnLoadDetail) {
+    btnLoadDetail.addEventListener('click', () => {
+      if (state.selectedCommit) {
+        loadCommitIntoForm(state.selectedCommit);
+      }
+    });
+  }
+
+  const btnCancelEdit = document.getElementById('btn-cancel-edit-commit');
+  if (btnCancelEdit) {
+    btnCancelEdit.addEventListener('click', cancelCommitEdit);
+  }
+
+  const commitAiSelect = document.getElementById('commit-ai-model-select');
+  if (commitAiSelect) {
+    commitAiSelect.addEventListener('change', (e) => {
+      const val = e.target.value;
+      const parts = val.split(':');
+      const provider = parts[0];
+      const modelName = parts.slice(1).join(':');
+
+      appSettings.aiProvider = provider;
+      if (provider === 'ollama') appSettings.selectedModel = modelName;
+      if (provider === 'gemini') appSettings.geminiModel = modelName;
+      if (provider === 'lmstudio') appSettings.lmStudioModel = modelName;
+
+      saveAppSettings(appSettings);
+      setStatus(`Default AI model set to ${provider.toUpperCase()}: ${modelName}`);
+    });
+  }
+
+  const btnSaveOllama = document.getElementById('btn-save-ollama-default');
+  if (btnSaveOllama) {
+    btnSaveOllama.addEventListener('click', () => {
+      appSettings.aiProvider = 'ollama';
+      appSettings.selectedModel = els.settingAiModel?.value || 'gemma4:12b';
+      saveAppSettings(appSettings);
+      updateAiModelSelectOptions();
+      setStatus(`Ollama (${appSettings.selectedModel}) set as default AI model`);
+      alert(`Ollama (${appSettings.selectedModel}) varsayılan AI modeli olarak kaydedildi.`);
+    });
+  }
+
+  const btnSaveGemini = document.getElementById('btn-save-gemini-default');
+  if (btnSaveGemini) {
+    btnSaveGemini.addEventListener('click', () => {
+      const m = document.getElementById('setting-gemini-model')?.value || 'gemini-2.5-flash';
+      appSettings.aiProvider = 'gemini';
+      appSettings.geminiModel = m;
+      saveAppSettings(appSettings);
+      updateAiModelSelectOptions();
+      setStatus(`Gemini (${m}) set as default AI model`);
+      alert(`Gemini (${m}) varsayılan AI modeli olarak kaydedildi.`);
+    });
+  }
+
+  const btnSaveLmStudio = document.getElementById('btn-save-lmstudio-default');
+  if (btnSaveLmStudio) {
+    btnSaveLmStudio.addEventListener('click', () => {
+      const m = document.getElementById('setting-lmstudio-model')?.value || 'local-model';
+      appSettings.aiProvider = 'lmstudio';
+      appSettings.lmStudioModel = m;
+      saveAppSettings(appSettings);
+      updateAiModelSelectOptions();
+      setStatus(`LM Studio (${m}) set as default AI model`);
+      alert(`LM Studio (${m}) varsayılan AI modeli olarak kaydedildi.`);
+    });
+  }
+
+  const btnRefreshLmStudio = document.getElementById('btn-refresh-lmstudio');
+  if (btnRefreshLmStudio) {
+    btnRefreshLmStudio.addEventListener('click', () => {
+      checkLmStudioStatus();
+    });
+  }
   const initProvider = appSettings.aiProvider || 'ollama';
-  const initTag = initProvider === 'gemini'
-    ? `Gemini: ${appSettings.geminiModel || 'gemini-2.5-flash'}`
-    : `Ollama: ${appSettings.selectedModel || 'gemma4:12b'}`;
-  els.commitAiModelTag.textContent = initTag;
+  let initTag = `Ollama: ${appSettings.selectedModel || 'gemma4:12b'}`;
+  if (initProvider === 'gemini') {
+    initTag = `Gemini: ${appSettings.geminiModel || 'gemini-2.5-flash'}`;
+  } else if (initProvider === 'lmstudio') {
+    initTag = `LM Studio`;
+    checkLmStudioStatus().then((res) => {
+      const modelName = (res.models && res.models[0]) ? res.models[0] : 'local-model';
+      if (els.commitAiModelTag) els.commitAiModelTag.textContent = `LM Studio: ${modelName}`;
+    });
+  }
+  if (els.commitAiModelTag) els.commitAiModelTag.textContent = initTag;
   els.topPushBtn.addEventListener('click', pushOrigin);
   if (els.btnUnpushedBannerPush) {
     els.btnUnpushedBannerPush.addEventListener('click', pushOrigin);
@@ -2431,6 +2995,58 @@ function initEventHandlers() {
     tab.addEventListener('click', () => activateDetailTab(tab.dataset.tab));
   });
 
+  // GitHub nav tab buttons
+  document.querySelectorAll('.gh-nav-btn').forEach((btn) => {
+    btn.addEventListener('click', () => switchGhPanel(btn.dataset.panel));
+  });
+
+  // Issues filter buttons
+  els.issuesFilterGroup?.addEventListener('click', (e) => {
+    const btn = e.target.closest('.gh-filter-btn');
+    if (btn) loadGhIssues(btn.dataset.filter);
+  });
+
+  // PRs filter buttons
+  els.prsFilterGroup?.addEventListener('click', (e) => {
+    const btn = e.target.closest('.gh-filter-btn');
+    if (btn) loadGhPrs(btn.dataset.filter);
+  });
+
+  // Refresh buttons
+  els.btnRefreshIssues?.addEventListener('click', () => loadGhIssues());
+  els.btnRefreshPrs?.addEventListener('click', () => loadGhPrs());
+  els.btnRefreshActions?.addEventListener('click', () => loadGhActions());
+
+  // Action log modal close
+  els.btnCloseActionLog?.addEventListener('click', closeActionLogModal);
+  els.actionLogModal?.addEventListener('click', (e) => {
+    if (e.target === els.actionLogModal) closeActionLogModal();
+  });
+
+  // Remote switcher & fetch events
+  els.selectActiveRemote?.addEventListener('change', (e) => switchActiveRemote(e.target.value));
+  els.btnFetchRemote?.addEventListener('click', fetchActiveRemote);
+  els.btnAddRemoteToggle?.addEventListener('click', () => {
+    const isHidden = els.addOriginForm.style.display === 'none';
+    els.addOriginForm.style.display = isHidden ? 'block' : 'none';
+  });
+  els.btnUnpushedBannerPush?.addEventListener('click', pushOrigin);
+
+  // Application update check button
+  els.btnCheckUpdate?.addEventListener('click', checkAppUpdate);
+
+  // PR Detail Modal events
+  els.btnClosePrDetail?.addEventListener('click', closePrModal);
+  els.btnClosePrModalBottom?.addEventListener('click', closePrModal);
+  els.prDetailModal?.addEventListener('click', (e) => {
+    if (e.target === els.prDetailModal) closePrModal();
+  });
+  els.btnConfirmPrMerge?.addEventListener('click', confirmPrMerge);
+
+  els.btnPrTabDiff?.addEventListener('click', () => activatePrTab('diff'));
+  els.btnPrTabCommits?.addEventListener('click', () => activatePrTab('commits'));
+  els.btnPrTabBody?.addEventListener('click', () => activatePrTab('body'));
+
   document.addEventListener('keydown', (event) => {
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'o') {
       event.preventDefault();
@@ -2442,6 +3058,14 @@ function initEventHandlers() {
       if (els.searchBox.style.display !== 'none') els.searchInput.focus();
     }
 
+    if (event.key === 'Escape' && !els.actionLogModal.hidden) {
+      closeActionLogModal();
+      return;
+    }
+    if (event.key === 'Escape' && !els.prDetailModal.hidden) {
+      closePrModal();
+      return;
+    }
     if (event.key === 'Escape' && !els.contributorsModal.hidden) {
       closeContributorsModal();
       return;
@@ -2475,6 +3099,780 @@ function initEventHandlers() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+  applyUiScale(appSettings.uiScale);
   initEventHandlers();
   renderRecentRepos();
 });
+
+// ─── GitHub Functions ──────────────────────────────────────────────────────────
+
+function formatRelativeDate(isoStr) {
+  if (!isoStr) return '';
+  const d = new Date(isoStr);
+  const now = new Date();
+  const diff = Math.floor((now - d) / 1000);
+  if (diff < 60) return 'just now';
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+  if (diff < 86400 * 30) return `${Math.floor(diff / 86400)}d ago`;
+  return d.toLocaleDateString();
+}
+
+async function checkGhAuth() {
+  if (!invoke || !state.repoInfo) return false;
+  try {
+    const auth = await invoke('check_gh_auth');
+    state.ghAuthenticated = auth.authenticated;
+    state.ghUser = auth.user || '';
+    return auth.authenticated;
+  } catch {
+    state.ghAuthenticated = false;
+    return false;
+  }
+}
+
+function showGhNavIfGitHub() {
+  if (els.githubNav) els.githubNav.style.display = 'flex';
+}
+
+function switchGhPanel(panel) {
+  state.ghPanel = panel;
+
+  // Update nav button active state
+  document.querySelectorAll('.gh-nav-btn').forEach((btn) => {
+    btn.classList.toggle('active', btn.dataset.panel === panel);
+  });
+
+  // Show/hide main panels
+  const historyPanel = document.querySelector('.history-panel');
+  const detailPanel = document.querySelector('.detail-panel');
+  const mainContent = document.getElementById('main-content');
+
+  [historyPanel, detailPanel, els.panelIssues, els.panelPrs, els.panelActions].forEach((el) => {
+    if (el) el.style.display = 'none';
+  });
+
+  if (panel === 'history') {
+    if (historyPanel) historyPanel.style.display = '';
+    if (detailPanel && mainContent && !mainContent.classList.contains('hide-detail-panel')) {
+      detailPanel.style.display = '';
+    }
+  } else if (panel === 'issues') {
+    if (els.panelIssues) els.panelIssues.style.display = 'flex';
+    loadGhIssues();
+  } else if (panel === 'prs') {
+    if (els.panelPrs) els.panelPrs.style.display = 'flex';
+    loadGhPrs();
+  } else if (panel === 'actions') {
+    if (els.panelActions) els.panelActions.style.display = 'flex';
+    loadGhActions();
+  }
+}
+
+async function loadGhIssues(filter = null) {
+  const f = filter || state.ghIssueFilter;
+  state.ghIssueFilter = f;
+
+  // Update filter buttons
+  els.issuesFilterGroup?.querySelectorAll('.gh-filter-btn').forEach((btn) => {
+    btn.classList.toggle('active', btn.dataset.filter === f);
+  });
+
+  els.issuesList.innerHTML = '<div class="gh-empty-state"><div class="action-log-loading"><div class="spinner"></div><span>Loading issues...</span></div></div>';
+
+  if (!state.ghAuthenticated) {
+    const authed = await checkGhAuth();
+    if (!authed) {
+      renderGhNotAuth(els.issuesList);
+      return;
+    }
+  }
+
+  try {
+    setStatus('Loading GitHub Issues...');
+    const issues = await invoke('get_github_issues', { filter: f, limit: 50 });
+    state.ghIssues = issues;
+    renderIssues(issues);
+    // Update count badge
+    const openCount = issues.filter((i) => i.state === 'open').length;
+    if (openCount > 0) {
+      els.ghIssuesCount.textContent = openCount;
+      els.ghIssuesCount.style.display = 'inline-flex';
+    }
+    setStatus(`${issues.length} issue(s) loaded`);
+  } catch (err) {
+    els.issuesList.innerHTML = `<div class="gh-not-auth"><p>Failed to load issues: ${escapeHtml(String(err))}</p></div>`;
+    setStatus('Issues could not be loaded');
+  }
+}
+
+function renderIssues(issues) {
+  if (issues.length === 0) {
+    els.issuesList.innerHTML = `
+      <div class="gh-empty-state">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="7"></circle><path d="M12 8v4"></path><circle cx="12" cy="16" r="0.5" fill="currentColor"></circle></svg>
+        <strong>No issues found</strong>
+        <span>Try a different filter or check back later.</span>
+      </div>`;
+    return;
+  }
+
+  els.issuesList.innerHTML = issues.map((issue) => {
+    const stateClass = issue.state || 'open';
+    const labels = issue.labels.map((l) => `<span class="gh-label">${escapeHtml(l)}</span>`).join('');
+    return `
+      <div class="gh-item-card">
+        <div class="gh-item-title-row">
+          <span class="gh-status-dot ${stateClass}"></span>
+          <span class="gh-item-number">#${issue.number}</span>
+          <span class="gh-item-title" title="${escapeHtml(issue.title)}">${escapeHtml(issue.title)}</span>
+          ${labels ? `<div class="gh-item-labels">${labels}</div>` : ''}
+        </div>
+        <div class="gh-item-meta">
+          <span>by @${escapeHtml(issue.author)}</span>
+          <span>${formatRelativeDate(issue.updatedAt || issue.updated_at)}</span>
+          ${issue.comments > 0 ? `<span>💬 ${issue.comments}</span>` : ''}
+          ${issue.body ? `<span style="max-width:400px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(issue.body)}</span>` : ''}
+        </div>
+        <div class="gh-item-actions">
+          <button class="gh-view-btn" type="button" data-url="${escapeHtml(issue.url)}">
+            <svg viewBox="0 0 24 24" width="12" height="12"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+            Open
+          </button>
+        </div>
+      </div>`;
+  }).join('');
+
+  // Delegate open buttons
+  els.issuesList.querySelectorAll('.gh-view-btn[data-url]').forEach((btn) => {
+    btn.addEventListener('click', () => openUrl(btn.dataset.url));
+  });
+}
+
+async function loadGhPrs(filter = null) {
+  const f = filter || state.ghPrFilter;
+  state.ghPrFilter = f;
+
+  // Update filter buttons
+  els.prsFilterGroup?.querySelectorAll('.gh-filter-btn').forEach((btn) => {
+    btn.classList.toggle('active', btn.dataset.filter === f);
+  });
+
+  els.prsList.innerHTML = '<div class="gh-empty-state"><div class="action-log-loading"><div class="spinner"></div><span>Loading pull requests...</span></div></div>';
+
+  if (!state.ghAuthenticated) {
+    const authed = await checkGhAuth();
+    if (!authed) {
+      renderGhNotAuth(els.prsList);
+      return;
+    }
+  }
+
+  try {
+    setStatus('Loading GitHub PRs...');
+    const prs = await invoke('get_github_prs', { filter: f, limit: 50 });
+    state.ghPrs = prs;
+    renderPrs(prs);
+    const openCount = prs.filter((p) => p.state === 'open').length;
+    if (openCount > 0) {
+      els.ghPrsCount.textContent = openCount;
+      els.ghPrsCount.style.display = 'inline-flex';
+    }
+    setStatus(`${prs.length} PR(s) loaded`);
+  } catch (err) {
+    els.prsList.innerHTML = `<div class="gh-not-auth"><p>Failed to load PRs: ${escapeHtml(String(err))}</p></div>`;
+    setStatus('PRs could not be loaded');
+  }
+}
+
+function renderPrs(prs) {
+  if (prs.length === 0) {
+    els.prsList.innerHTML = `
+      <div class="gh-empty-state">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="6" r="3"></circle><path d="M6 15V6"></path><path d="M18 9a9 9 0 0 1-9 9"></path></svg>
+        <strong>No pull requests found</strong>
+        <span>Try a different filter.</span>
+      </div>`;
+    return;
+  }
+
+  els.prsList.innerHTML = prs.map((pr) => {
+    let stateClass = pr.state || 'open';
+    if (pr.isDraft || pr.is_draft) stateClass = 'draft';
+    if (pr.state === 'merged') stateClass = 'merged';
+    const labels = pr.labels.map((l) => `<span class="gh-label">${escapeHtml(l)}</span>`).join('');
+    const branchFlow = pr.headRef || pr.head_ref
+      ? `<span style="font-family:var(--mono);font-size:10px;">${escapeHtml(pr.headRef || pr.head_ref)} → ${escapeHtml(pr.baseRef || pr.base_ref)}</span>`
+      : '';
+    const isOpen = pr.state === 'open';
+    return `
+      <div class="gh-item-card">
+        <div class="gh-item-title-row">
+          <span class="gh-status-dot ${stateClass}"></span>
+          <span class="gh-item-number">#${pr.number}</span>
+          <span class="gh-item-title" title="${escapeHtml(pr.title)}">${escapeHtml(pr.title)}</span>
+          ${pr.isDraft || pr.is_draft ? '<span class="gh-label">Draft</span>' : ''}
+          ${labels ? `<div class="gh-item-labels">${labels}</div>` : ''}
+        </div>
+        <div class="gh-item-meta">
+          <span>by @${escapeHtml(pr.author)}</span>
+          ${branchFlow}
+          <span>${formatRelativeDate(pr.updatedAt || pr.updated_at)}</span>
+          ${pr.reviews > 0 ? `<span>🔍 ${pr.reviews} review${pr.reviews !== 1 ? 's' : ''}</span>` : ''}
+        </div>
+        <div class="gh-item-actions">
+          <button class="gh-log-btn gh-pr-detail-btn" type="button" data-pr-number="${pr.number}">
+            <svg viewBox="0 0 24 24" width="12" height="12"><path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7z"></path><polyline points="14 2 14 7 19 7"></polyline></svg>
+            View Diff & Commits
+          </button>
+          ${isOpen ? `
+          <button class="gh-view-btn gh-pr-quick-merge-btn" type="button" data-pr-number="${pr.number}" style="border-color:rgba(46,160,67,0.4);color:#3fb950;background:rgba(46,160,67,0.1);">
+            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="6" r="3"></circle><path d="M6 15V6"></path><path d="M18 9a9 9 0 0 1-9 9"></path></svg>
+            Merge
+          </button>` : ''}
+          <button class="gh-view-btn" type="button" data-url="${escapeHtml(pr.url)}">
+            <svg viewBox="0 0 24 24" width="12" height="12"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+            Open
+          </button>
+        </div>
+      </div>`;
+  }).join('');
+
+  // Delegate open buttons
+  els.prsList.querySelectorAll('.gh-view-btn[data-url]').forEach((btn) => {
+    btn.addEventListener('click', () => openUrl(btn.dataset.url));
+  });
+
+  // Delegate View Diff & Commits buttons
+  els.prsList.querySelectorAll('.gh-pr-detail-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const num = Number(btn.dataset.prNumber);
+      const pr = prs.find((p) => p.number === num);
+      if (pr) openPrModal(pr);
+    });
+  });
+
+  // Delegate Quick Merge buttons
+  els.prsList.querySelectorAll('.gh-pr-quick-merge-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const num = Number(btn.dataset.prNumber);
+      const pr = prs.find((p) => p.number === num);
+      if (pr) openPrModal(pr);
+    });
+  });
+}
+
+async function loadGhActions() {
+  els.actionsList.innerHTML = '<div class="gh-empty-state"><div class="action-log-loading"><div class="spinner"></div><span>Loading Actions...</span></div></div>';
+
+  if (!state.ghAuthenticated) {
+    const authed = await checkGhAuth();
+    if (!authed) {
+      renderGhNotAuth(els.actionsList);
+      return;
+    }
+  }
+
+  try {
+    setStatus('Loading GitHub Actions...');
+    const actions = await invoke('get_github_actions', { limit: 30 });
+    state.ghActions = actions;
+    renderActions(actions);
+    if (actions.length > 0) {
+      els.ghActionsCount.textContent = actions.length;
+      els.ghActionsCount.style.display = 'inline-flex';
+    }
+    setStatus(`${actions.length} action run(s) loaded`);
+  } catch (err) {
+    els.actionsList.innerHTML = `<div class="gh-not-auth"><p>Failed to load Actions: ${escapeHtml(String(err))}</p></div>`;
+    setStatus('Actions could not be loaded');
+  }
+}
+
+function getActionStatusClass(action) {
+  const status = action.status || '';
+  const conclusion = (action.conclusion || '').toLowerCase();
+  if (status === 'in_progress' || status === 'queued') return `${status}`;
+  if (status === 'completed') return `completed ${conclusion}`;
+  return status;
+}
+
+function getActionConclusion(action) {
+  if (action.status === 'in_progress') return 'Running';
+  if (action.status === 'queued') return 'Queued';
+  const c = (action.conclusion || '').toLowerCase();
+  if (c === 'success') return 'Success';
+  if (c === 'failure') return 'Failed';
+  if (c === 'cancelled') return 'Cancelled';
+  if (c === 'skipped') return 'Skipped';
+  return c || action.status || '';
+}
+
+function renderActions(actions) {
+  if (actions.length === 0) {
+    els.actionsList.innerHTML = `
+      <div class="gh-empty-state">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+        <strong>No action runs found</strong>
+        <span>No workflow runs for this repository.</span>
+      </div>`;
+    return;
+  }
+
+  els.actionsList.innerHTML = actions.map((action) => {
+    const statusClass = getActionStatusClass(action);
+    const conclusionLabel = getActionConclusion(action);
+    return `
+      <div class="gh-item-card">
+        <div class="gh-item-title-row">
+          <span class="action-status-dot ${statusClass}"></span>
+          <span class="gh-item-number" style="font-family:var(--sans);">${escapeHtml(action.workflowName || action.workflow_name)}</span>
+          <span class="gh-item-title" title="${escapeHtml(action.name)}">${escapeHtml(action.name)}</span>
+          <span class="gh-label" style="${statusClass.includes('success') ? 'background:rgba(63,185,80,0.12);color:#3fb950;' : statusClass.includes('fail') ? 'background:rgba(248,81,73,0.12);color:#f85149;' : ''}">${conclusionLabel}</span>
+        </div>
+        <div class="gh-item-meta">
+          <span style="font-family:var(--mono);font-size:10px;">${escapeHtml(action.headSha || action.head_sha || '')}</span>
+          <span>${escapeHtml(action.branch)}</span>
+          <span>${escapeHtml(action.event)}</span>
+          <span>${formatRelativeDate(action.updatedAt || action.updated_at)}</span>
+          ${action.headCommitMessage || action.head_commit_message ? `<span style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml((action.headCommitMessage || action.head_commit_message).split('\n')[0])}</span>` : ''}
+        </div>
+        <div class="gh-item-actions">
+          <button class="gh-log-btn" type="button" data-run-id="${action.id}" data-run-name="${escapeHtml(action.name)}" data-run-status="${escapeHtml(conclusionLabel)}">
+            <svg viewBox="0 0 24 24" width="12" height="12"><polyline points="4 17 10 11 4 5"></polyline><line x1="12" y1="19" x2="20" y2="19"></line></svg>
+            View Log
+          </button>
+          <button class="gh-view-btn" type="button" data-url="${escapeHtml(action.url)}">
+            <svg viewBox="0 0 24 24" width="12" height="12"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+            GitHub
+          </button>
+        </div>
+      </div>`;
+  }).join('');
+
+  // Bind View Log buttons
+  els.actionsList.querySelectorAll('.gh-log-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const runId = Number(btn.dataset.runId);
+      const runName = btn.dataset.runName;
+      const runStatus = btn.dataset.runStatus;
+      openActionLog(runId, runName, runStatus);
+    });
+  });
+
+  // Delegate open buttons
+  els.actionsList.querySelectorAll('.gh-view-btn[data-url]').forEach((btn) => {
+    btn.addEventListener('click', () => openUrl(btn.dataset.url));
+  });
+}
+
+async function openActionLog(runId, runName, runStatus) {
+  els.actionLogTitle.textContent = runName || `Run #${runId}`;
+  els.actionLogMeta.textContent = runStatus || '';
+  els.actionLogLoading.style.display = 'flex';
+  els.actionLogPre.style.display = 'none';
+  els.actionLogPre.textContent = '';
+  els.actionLogModal.hidden = false;
+
+  try {
+    const log = await invoke('get_action_log', { runId });
+    // Strip ANSI escape codes
+    const stripped = log.replace(/\x1b\[[0-9;]*[mGKHF]/g, '');
+    els.actionLogPre.textContent = stripped;
+    els.actionLogLoading.style.display = 'none';
+    els.actionLogPre.style.display = 'block';
+  } catch (err) {
+    els.actionLogPre.textContent = `Error loading log:\n${err}`;
+    els.actionLogLoading.style.display = 'none';
+    els.actionLogPre.style.display = 'block';
+  }
+}
+
+function closeActionLogModal() {
+  els.actionLogModal.hidden = true;
+  els.actionLogPre.textContent = '';
+}
+
+function renderGhNotAuth(container) {
+  container.innerHTML = `
+    <div class="gh-not-auth">
+      <svg viewBox="0 0 24 24" width="40" height="40" opacity="0.4"><path d="M12 1C6.477 1 2 5.477 2 11c0 4.418 2.865 8.166 6.839 9.489.5.092.682-.217.682-.482 0-.237-.009-.868-.014-1.703-2.782.605-3.369-1.342-3.369-1.342-.454-1.155-1.11-1.462-1.11-1.462-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0 1 12 6.844a9.59 9.59 0 0 1 2.504.337c1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0 0 22 11C22 5.477 17.523 1 12 1z"></path></svg>
+      <strong>GitHub CLI not authenticated</strong>
+      <p>Run <code>gh auth login</code> in your terminal to connect to GitHub.</p>
+      <p style="font-size:11px;">Issues, Pull Requests and Actions require the <strong>gh</strong> CLI.</p>
+    </div>`;
+}
+
+async function openUrl(url) {
+  try {
+    if (tauri?.opener?.openUrl) {
+      await tauri.opener.openUrl(url);
+    } else {
+      window.open(url, '_blank');
+    }
+  } catch {
+    window.open(url, '_blank');
+  }
+}
+
+const EDITOR_CONFIGS = {
+  code: {
+    className: 'editor-btn-vscode',
+    icon: `<svg fill="none" viewBox="0 0 100 100" width="16" height="16"><mask id="a" width="100" height="100" x="0" y="0" mask-type="alpha" maskUnits="userSpaceOnUse"><path fill="#fff" fill-rule="evenodd" d="M70.912 99.317a6.22 6.22 0 0 0 4.96-.19l20.589-9.907A6.25 6.25 0 0 0 100 83.587V16.413a6.25 6.25 0 0 0-3.54-5.632L75.874.874a6.23 6.23 0 0 0-7.104 1.21L29.355 38.04 12.187 25.01a4.16 4.16 0 0 0-5.318.236l-5.506 5.009a4.17 4.17 0 0 0-.004 6.162L16.247 50 1.36 63.583a4.17 4.17 0 0 0 .004 6.162l5.506 5.01a4.16 4.16 0 0 0 5.318.236l17.168-13.032L68.77 97.917a6.2 6.2 0 0 0 2.143 1.4M75.015 27.3 45.11 50l29.906 22.701z" clip-rule="evenodd"/></mask><g mask="url(#a)"><path fill="#0065A9" d="M96.461 10.796 75.857.876a6.23 6.23 0 0 0-7.107 1.207l-67.451 61.5a4.167 4.167 0 0 0 .004 6.162l5.51 5.009a4.17 4.17 0 0 0 5.32.236l81.228-61.62c2.725-2.067 6.639-.124 6.639 3.297v-.24a6.25 6.25 0 0 0-3.539-5.63"/><g filter="url(#b)"><path fill="#007ACC" d="m96.461 89.204-20.604 9.92a6.23 6.23 0 0 1-7.107-1.207l-67.451-61.5a4.167 4.167 0 0 1 .004-6.162l5.51-5.009a4.17 4.17 0 0 1 5.32-.236l81.228 61.62c2.725 2.067 6.639.124 6.639-3.297v.24a6.25 6.25 0 0 1-3.539 5.63"/></g><g filter="url(#c)"><path fill="#1F9CF0" d="M75.858 99.126a6.23 6.23 0 0 1-7.108-1.21c2.306 2.307 6.25.674 6.25-2.588V4.672c0-3.262-3.944-4.895-6.25-2.589a6.23 6.23 0 0 1 7.108-1.21l20.6 9.908A6.25 6.25 0 0 1 100 16.413v67.174a6.25 6.25 0 0 1-3.541 5.633z"/></g><path fill="url(#d)" fill-rule="evenodd" d="M70.851 99.317a6.22 6.22 0 0 0 4.96-.19L96.4 89.22a6.25 6.25 0 0 0 3.54-5.633V16.413a6.25 6.25 0 0 0-3.54-5.632L75.812.874a6.23 6.23 0 0 0-7.104 1.21L29.294 38.04 12.126 25.01a4.16 4.16 0 0 0-5.317.236l-5.507 5.009a4.17 4.17 0 0 0-.004 6.162L16.186 50 1.298 63.583a4.17 4.17 0 0 0 .004 6.162l5.507 5.009a4.16 4.16 0 0 0 5.317.236l17.168-13.03 39.414 35.958a6.2 6.2 0 0 0 2.143 1.4M74.954 27.3 45.048 50l29.906 22.701z" clip-rule="evenodd" opacity=".25" style="mix-blend-mode:overlay"/></g><defs><filter id="b" width="116.727" height="92.246" x="-8.394" y="15.829" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feColorMatrix in="SourceAlpha" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0"/><feOffset/><feGaussianBlur stdDeviation="4.167"/><feColorMatrix values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.25 0"/><feBlend in2="BackgroundImageFix" mode="overlay" result="effect1_dropShadow"/><feBlend in="SourceGraphic" in2="effect1_dropShadow" result="shape"/></filter><filter id="c" width="47.917" height="116.151" x="60.417" y="-8.076" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feColorMatrix in="SourceAlpha" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0"/><feOffset/><feGaussianBlur stdDeviation="4.167"/><feColorMatrix values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.25 0"/><feBlend in2="BackgroundImageFix" mode="overlay" result="effect1_dropShadow"/><feBlend in="SourceGraphic" in2="effect1_dropShadow" result="shape"/></filter><linearGradient id="d" x1="49.939" x2="49.939" y1=".258" y2="99.742" gradientUnits="userSpaceOnUse"><stop stop-color="#fff"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient></defs></svg>`,
+  },
+  'code-oss': {
+    className: 'editor-btn-codeoss',
+    icon: `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="3.5" y="2.5" width="17" height="19" rx="3.5"/>
+      <line x1="8.5" y1="2.5" x2="8.5" y2="21.5"/>
+      <line x1="12" y1="6.5" x2="17" y2="6.5"/>
+      <line x1="14" y1="10" x2="18.5" y2="10"/>
+      <line x1="14" y1="13.5" x2="18.5" y2="13.5"/>
+      <line x1="14" y1="17" x2="18.5" y2="17"/>
+      <line x1="12" y1="20.5" x2="17" y2="20.5"/>
+    </svg>`,
+  },
+  zed: {
+    className: 'editor-btn-zed',
+    icon: `<svg viewBox="0 0 512 512" width="16" height="16"><path d="M48 32c-8.8 0-16 7.2-16 16v352H0V48C0 21.5 21.5 0 48 0h428.7c21.4 0 32.1 25.9 17 41l-264 264H304v-33h32v41c0 13.3-10.7 24-24 24H197.6l-55 55H392V192h32v200c0 17.7-14.3 32-32 32H110.6l-56 56H464c8.8 0 16-7.2 16-16V112h32v352c0 26.5-21.5 48-48 48H35.3c-21.4 0-32.1-25.9-17-41l263-263H208v32h-32v-40c0-13.3 10.7-24 24-24h113.4l56-56H120v200H88V120c0-17.7 14.3-32 32-32h281.4l56-56z" style="fill-rule:evenodd;clip-rule:evenodd;fill:#ffffff"/></svg>`,
+  },
+  cursor: {
+    className: 'editor-btn-cursor',
+    icon: `<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+      <path d="M11.503.131 1.891 5.678a.84.84 0 0 0-.42.726v11.188c0 .3.162.575.42.724l9.609 5.55a1 1 0 0 0 .998 0l9.61-5.55a.84.84 0 0 0 .42-.726V6.404a.84.84 0 0 0-.42-.726L12.497.131a1.01 1.01 0 0 0-.996 0M2.657 6.338h18.55c.263 0 .43.287.297.515L12.23 22.918c-.062.107-.229.064-.229-.06V12.335a.59.59 0 0 0-.295-.51l-9.11-5.257c-.109-.063-.064-.23.061-.23"/>
+    </svg>`,
+  },
+  codium: {
+    className: 'editor-btn-codium',
+    icon: `<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+      <path d="M11.583.54a1.467 1.467 0 0 0-.441 2.032c2.426 3.758 2.999 6.592 2.75 9.075-1.004 4.756-3.187 5.721-5.094 5.721-1.863 0-1.364-3.065.036-3.962.836-.522 1.906-.861 2.728-.861.814 0 1.474-.658 1.474-1.47 0-.812-.66-1.47-1.474-1.47-.96 0-1.901.202-2.78.545.18-.847.246-1.762.014-2.735-.352-1.477-1.367-2.889-3.128-4.257a1.476 1.476 0 0 0-2.069.256c-.5.64-.384 1.564.259 2.063 1.435 1.114 1.908 1.939 2.07 2.618.162.679.032 1.407-.293 2.408-.416 1.349-.9 2.553-1.11 3.708-.105.568-.114 1.187-.14 1.68-1.034-1.006-1.438-2.336-1.438-4.279 0-.811-.66-1.47-1.474-1.47-.814.001-1.473.659-1.473 1.47 0 2.654.776 5.179 2.855 6.863 1.883 1.793 6.67 1.13 6.67 4.01 0 .812 1.19 1.208 2.004 1.208.834 0 1.885-.558 1.885-1.208 0-3.267 3.443-5.253 9.11-5.244A1.472 1.472 0 0 0 24 15.773 1.472 1.472 0 0 0 22.53 14.3c-.388 0-.765.013-1.138.035.634-1.49.915-3.13.857-4.903a1.473 1.473 0 0 0-1.522-1.42 1.472 1.472 0 0 0-1.425 1.517c.076 2.32-.01 4.393-1.74 5.485-.49.31-1.062.58-1.604.58.42-1.145.738-2.353.869-3.655.083-.83.091-1.818-.003-2.585-.148-1.188-.325-2.535.126-3.55.405-.874 1.313-1.24 2.645-1.24.814 0 1.473-.659 1.473-1.47 0-.811-.659-1.47-1.473-1.47-1.98 0-3.481 1.042-4.332 2.3-.445-.95-.987-1.929-1.642-2.943a1.474 1.474 0 0 0-2.037-.44z"/>
+    </svg>`,
+  },
+};
+
+async function checkAndRenderInstalledEditors() {
+  if (!invoke || !els.editorActions) return;
+  els.editorActions.style.display = 'none';
+  els.editorActions.innerHTML = '';
+  try {
+    const editors = await invoke('detect_installed_editors');
+    if (!editors || editors.length === 0) return;
+
+    els.editorActions.innerHTML = editors.map((editor) => {
+      const cfg = EDITOR_CONFIGS[editor.id] || {
+        className: '',
+        icon: `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>`,
+      };
+
+      return `
+        <button class="editor-btn ${cfg.className}" type="button" data-editor-id="${escapeHtml(editor.id)}">
+          ${cfg.icon}
+          <span>Open in ${escapeHtml(editor.name)}</span>
+        </button>
+      `;
+    }).join('');
+
+    els.editorActions.querySelectorAll('.editor-btn').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const id = btn.dataset.editorId;
+        try {
+          setStatus(`Opening in ${id}...`);
+          await invoke('open_in_editor', { editorId: id });
+          setStatus(`Opened repository in ${id}`);
+        } catch (err) {
+          setStatus(`Failed to open editor: ${err}`);
+          alert(`Error launching ${id}: ${err}`);
+        }
+      });
+    });
+
+    els.editorActions.style.display = 'flex';
+  } catch (err) {
+    console.error('Failed to detect editors:', err);
+  }
+}
+
+// ─── Git Remote Management ───────────────────────────────────────────────────
+
+async function loadGitRemotes() {
+  if (!invoke || !els.selectActiveRemote) return;
+  try {
+    const remotes = await invoke('get_git_remotes');
+    state.remotes = remotes;
+    if (els.remotesCount) els.remotesCount.textContent = remotes.length;
+
+    if (remotes.length === 0) {
+      els.selectActiveRemote.innerHTML = '<option value="">No remotes configured</option>';
+      return;
+    }
+
+    if (!state.activeRemote || !remotes.some((r) => r.name === state.activeRemote)) {
+      state.activeRemote = remotes.some((r) => r.name === 'origin') ? 'origin' : remotes[0].name;
+    }
+
+    els.selectActiveRemote.innerHTML = remotes.map((r) => `
+      <option value="${escapeHtml(r.name)}" ${r.name === state.activeRemote ? 'selected' : ''}>
+        ${escapeHtml(r.name)} (${escapeHtml(r.url.slice(0, 26))}${r.url.length > 26 ? '...' : ''})
+      </option>
+    `).join('');
+
+    updateActiveRemoteContext();
+  } catch (err) {
+    console.error('Failed to load remotes:', err);
+  }
+}
+
+function updateActiveRemoteContext() {
+  const active = state.remotes.find((r) => r.name === state.activeRemote);
+  if (active && active.isGithub && active.githubOwner && active.githubRepo && state.repoInfo) {
+    state.repoInfo.github_owner = active.githubOwner;
+    state.repoInfo.github_repo = active.githubRepo;
+  }
+  showGhNavIfGitHub();
+}
+
+async function switchActiveRemote(remoteName) {
+  state.activeRemote = remoteName;
+  updateActiveRemoteContext();
+  setStatus(`Switched remote to ${remoteName}`);
+  await refreshRepositoryData();
+  if (state.ghPanel === 'issues') loadGhIssues();
+  if (state.ghPanel === 'prs') loadGhPrs();
+  if (state.ghPanel === 'actions') loadGhActions();
+}
+
+async function fetchActiveRemote() {
+  const remoteName = state.activeRemote || 'origin';
+  try {
+    setStatus(`Fetching from remote ${remoteName}...`);
+    const res = await invoke('fetch_remote', { remoteName });
+    setStatus(`Fetched from ${remoteName} successfully!`);
+    await refreshRepositoryData();
+    await loadGitRemotes();
+  } catch (err) {
+    setStatus(`Fetch from ${remoteName} failed`);
+    alert(`Fetch error: ${err}`);
+  }
+}
+
+
+
+
+function formatBytes(bytes) {
+  if (!bytes || bytes === 0) return '0 B';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+}
+
+async function checkAppUpdate() {
+  if (!els.btnCheckUpdate) return;
+  els.btnCheckUpdate.disabled = true;
+  els.btnCheckUpdate.innerHTML = `
+    <div class="spinner" style="width:12px;height:12px;border:2px solid var(--line);border-top-color:#fff;border-radius:50%;animation:spin 0.8s linear infinite;display:inline-block;margin-right:6px;"></div>
+    <span>Checking...</span>`;
+
+  els.updateStatusBox.style.display = 'block';
+  els.updateStatusInfo.innerHTML = '<span style="color:var(--text-dim);"><div class="action-log-loading" style="padding:10px;"><div class="spinner"></div> Checking github.com/noirlang/differ releases...</div></span>';
+  els.updateNotesBox.style.display = 'none';
+  els.updateAssetsBox.style.display = 'none';
+
+  try {
+    const update = await invoke('check_app_update');
+    els.btnCheckUpdate.disabled = false;
+    els.btnCheckUpdate.innerHTML = `
+      <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px; vertical-align: middle;">
+        <path d="M21 12a9 9 0 0 1-15.5 6.3L3 16"></path>
+        <path d="M3 21v-5h5"></path>
+        <path d="M3 12A9 9 0 0 1 18.5 5.7L21 8"></path>
+        <path d="M21 3v5h-5"></path>
+      </svg>
+      <span>Check for Updates</span>`;
+
+    if (els.settingsAppVersion) {
+      els.settingsAppVersion.textContent = `v${update.currentVersion}`;
+    }
+
+    if (update.hasUpdate) {
+      els.updateStatusInfo.innerHTML = `
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+          <div>
+            <span class="update-badge available">🎉 New Update Available!</span>
+            <div style="margin-top:6px;font-size:13px;font-weight:600;color:var(--text);">
+              ${escapeHtml(update.releaseName || update.tagName)} (<span style="color:#3fb950;">v${escapeHtml(update.latestVersion)}</span>)
+            </div>
+            <small style="color:var(--text-dim);">Published: ${formatRelativeDate(update.publishedAt)}</small>
+          </div>
+          <button class="mini-btn primary" type="button" data-url="${escapeHtml(update.htmlUrl)}">
+            Open Release on GitHub
+          </button>
+        </div>`;
+
+      els.updateStatusInfo.querySelector('button[data-url]')?.addEventListener('click', (e) => {
+        openUrl(e.target.closest('button').dataset.url);
+      });
+
+      if (update.releaseNotes) {
+        els.updateNotesContent.textContent = update.releaseNotes;
+        els.updateNotesBox.style.display = 'block';
+      }
+
+      if (update.assets && update.assets.length > 0) {
+        els.updateAssetsList.innerHTML = update.assets.map((asset) => `
+          <div class="update-asset-item">
+            <span class="update-asset-name">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+              ${escapeHtml(asset.name)}
+            </span>
+            <div style="display:flex;align-items:center;gap:10px;">
+              <span class="update-asset-size">${formatBytes(asset.size)}</span>
+              <button class="mini-btn primary" type="button" data-url="${escapeHtml(asset.downloadUrl)}">
+                Download Package
+              </button>
+            </div>
+          </div>
+        `).join('');
+
+        els.updateAssetsList.querySelectorAll('button[data-url]').forEach((btn) => {
+          btn.addEventListener('click', () => openUrl(btn.dataset.url));
+        });
+
+        els.updateAssetsBox.style.display = 'block';
+      }
+    } else {
+      els.updateStatusInfo.innerHTML = `
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span class="update-badge latest">✓ Up to Date</span>
+          <span style="font-size:12px;color:var(--text-muted);">
+            You are running the latest version (<strong>v${escapeHtml(update.currentVersion)}</strong>).
+          </span>
+        </div>`;
+    }
+  } catch (err) {
+    els.btnCheckUpdate.disabled = false;
+    els.btnCheckUpdate.innerHTML = `<span>Check for Updates</span>`;
+    els.updateStatusInfo.innerHTML = `
+      <div style="color:#f85149;font-size:12px;">
+        Failed to check updates: ${escapeHtml(String(err))}
+      </div>`;
+  }
+}
+
+// ─── PR Detail Modal Functions ───────────────────────────────────────────────
+
+let currentModalPr = null;
+
+function activatePrTab(tabName) {
+  if (els.btnPrTabDiff) els.btnPrTabDiff.classList.toggle('active', tabName === 'diff');
+  if (els.btnPrTabCommits) els.btnPrTabCommits.classList.toggle('active', tabName === 'commits');
+  if (els.btnPrTabBody) els.btnPrTabBody.classList.toggle('active', tabName === 'body');
+
+  if (els.prPanelDiff) els.prPanelDiff.style.display = tabName === 'diff' ? 'block' : 'none';
+  if (els.prPanelCommits) els.prPanelCommits.style.display = tabName === 'commits' ? 'block' : 'none';
+  if (els.prPanelBody) els.prPanelBody.style.display = tabName === 'body' ? 'block' : 'none';
+}
+
+async function openPrModal(pr) {
+  currentModalPr = pr;
+  if (els.prModalNumber) els.prModalNumber.textContent = pr.number;
+  if (els.prDetailTitle) els.prDetailTitle.textContent = pr.title;
+  if (els.prModalAuthor) els.prModalAuthor.textContent = `@${pr.author}`;
+  if (els.prModalBranches) {
+    els.prModalBranches.textContent = pr.headRef || pr.head_ref
+      ? `${pr.headRef || pr.head_ref} → ${pr.baseRef || pr.base_ref}`
+      : '';
+  }
+
+  let stateClass = pr.state || 'open';
+  if (pr.isDraft || pr.is_draft) stateClass = 'draft';
+  if (pr.state === 'merged') stateClass = 'merged';
+  if (els.prModalStatusDot) els.prModalStatusDot.className = `gh-status-dot ${stateClass}`;
+
+  if (els.prBodyContent) els.prBodyContent.textContent = pr.body || 'No description provided.';
+  if (els.btnOpenPrBrowser) els.btnOpenPrBrowser.onclick = () => openUrl(pr.url);
+
+  // Show/hide merge button
+  const isOpen = pr.state === 'open';
+  if (els.btnConfirmPrMerge) els.btnConfirmPrMerge.style.display = isOpen ? 'inline-flex' : 'none';
+  if (els.prMergeMethod) els.prMergeMethod.style.display = isOpen ? 'inline-block' : 'none';
+
+  activatePrTab('diff');
+  if (els.prDetailModal) els.prDetailModal.hidden = false;
+
+  // Fetch PR Diff
+  if (els.prDiffLoading) els.prDiffLoading.style.display = 'flex';
+  if (els.prDiffContent) els.prDiffContent.textContent = '';
+  try {
+    const diff = await invoke('get_pr_diff', { prNumber: pr.number });
+    if (els.prDiffContent) els.prDiffContent.textContent = diff || 'No diff available.';
+  } catch (err) {
+    if (els.prDiffContent) els.prDiffContent.textContent = `Error loading PR diff: ${err}`;
+  } finally {
+    if (els.prDiffLoading) els.prDiffLoading.style.display = 'none';
+  }
+
+  // Fetch PR Commits
+  if (els.prCommitsLoading) els.prCommitsLoading.style.display = 'flex';
+  if (els.prCommitsList) els.prCommitsList.innerHTML = '';
+  try {
+    const commits = await invoke('get_pr_commits', { prNumber: pr.number });
+    if (els.prCommitsCount) els.prCommitsCount.textContent = commits.length;
+    if (els.prCommitsList) {
+      if (commits.length === 0) {
+        els.prCommitsList.innerHTML = '<div class="gh-empty-state">No commits found in PR.</div>';
+      } else {
+        els.prCommitsList.innerHTML = commits.map((c) => `
+          <div class="pr-commit-item">
+            <div>
+              <div class="pr-commit-msg">${escapeHtml(c.messageHeadline)}</div>
+              <small style="color:var(--text-dim);">by ${escapeHtml(c.authorName || c.authors?.join(', ') || 'Unknown')}</small>
+            </div>
+            <span class="pr-commit-hash">${escapeHtml((c.oid || '').slice(0, 7))}</span>
+          </div>
+        `).join('');
+      }
+    }
+  } catch (err) {
+    if (els.prCommitsList) els.prCommitsList.innerHTML = `<div class="gh-not-auth">Failed to load PR commits: ${escapeHtml(String(err))}</div>`;
+  } finally {
+    if (els.prCommitsLoading) els.prCommitsLoading.style.display = 'none';
+  }
+}
+
+function closePrModal() {
+  if (els.prDetailModal) els.prDetailModal.hidden = true;
+  currentModalPr = null;
+}
+
+async function confirmPrMerge() {
+  if (!currentModalPr) return;
+  const prNumber = currentModalPr.number;
+  const method = els.prMergeMethod?.value || 'merge';
+
+  if (!confirm(`Are you sure you want to merge PR #${prNumber} using ${method} method?`)) return;
+
+  if (els.btnConfirmPrMerge) {
+    els.btnConfirmPrMerge.disabled = true;
+    els.btnConfirmPrMerge.textContent = 'Merging...';
+  }
+
+  try {
+    setStatus(`Merging PR #${prNumber}...`);
+    const res = await invoke('merge_github_pr', { prNumber, mergeMethod: method });
+    setStatus(`PR #${prNumber} merged successfully!`);
+    alert(`PR #${prNumber} merged successfully!\n${res}`);
+    closePrModal();
+    loadGhPrs();
+  } catch (err) {
+    setStatus(`Failed to merge PR #${prNumber}`);
+    alert(`Merge failed: ${err}`);
+  } finally {
+    if (els.btnConfirmPrMerge) {
+      els.btnConfirmPrMerge.disabled = false;
+      els.btnConfirmPrMerge.textContent = 'Merge Pull Request';
+    }
+  }
+}
+
+
