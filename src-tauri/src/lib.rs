@@ -106,6 +106,16 @@ struct SyncStatus {
 }
 
 #[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+struct GitRemoteInfo {
+    name: String,
+    url: String,
+    is_github: bool,
+    github_owner: Option<String>,
+    github_repo: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
 struct SystemInfo {
     os: String,
     distro: String,
@@ -116,6 +126,13 @@ struct SystemInfo {
     ollama_installed: bool,
     ollama_running: bool,
     installed_models: Vec<String>,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+struct LmStudioInfo {
+    running: bool,
+    models: Vec<String>,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -153,6 +170,105 @@ struct SmtpSettings {
     from_email: String,
     to_email: String,
     use_tls: bool,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+struct GithubIssue {
+    number: u64,
+    title: String,
+    state: String,
+    author: String,
+    created_at: String,
+    updated_at: String,
+    url: String,
+    labels: Vec<String>,
+    comments: u64,
+    body: String,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+struct GithubPr {
+    number: u64,
+    title: String,
+    state: String,
+    author: String,
+    created_at: String,
+    updated_at: String,
+    url: String,
+    head_ref: String,
+    base_ref: String,
+    labels: Vec<String>,
+    reviews: u64,
+    is_draft: bool,
+    mergeable: String,
+    body: String,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+struct GithubPrCommit {
+    oid: String,
+    message_headline: String,
+    author_name: String,
+    author_email: String,
+    authors: Vec<String>,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+struct GithubAction {
+    id: u64,
+    name: String,
+    status: String,
+    conclusion: String,
+    workflow_name: String,
+    branch: String,
+    event: String,
+    created_at: String,
+    updated_at: String,
+    url: String,
+    head_commit_message: String,
+    head_sha: String,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+struct GhAuthStatus {
+    authenticated: bool,
+    user: String,
+    token_scopes: Vec<String>,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+struct ReleaseAsset {
+    name: String,
+    download_url: String,
+    size: u64,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+struct AppUpdateInfo {
+    current_version: String,
+    latest_version: String,
+    tag_name: String,
+    release_name: String,
+    release_notes: String,
+    html_url: String,
+    has_update: bool,
+    published_at: String,
+    assets: Vec<ReleaseAsset>,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+struct InstalledEditor {
+    id: String,
+    name: String,
+    cmd: String,
 }
 
 impl Default for SmtpSettings {
@@ -273,7 +389,7 @@ fn origin_url(repo: &Repository) -> Option<String> {
     None
 }
 
-fn unpushed_oids(repo: &Repository) -> HashSet<Oid> {
+fn unpushed_oids(repo: &Repository, target_remote: Option<&str>) -> HashSet<Oid> {
     let Some(branch_name) = current_branch_name(repo) else {
         return HashSet::new();
     };
@@ -283,20 +399,31 @@ fn unpushed_oids(repo: &Repository) -> HashSet<Oid> {
     let Some(head_oid) = branch.get().target() else {
         return HashSet::new();
     };
-    let Some(upstream_oid) = branch
-        .upstream()
-        .ok()
-        .and_then(|upstream| upstream.get().target())
-    else {
-        return HashSet::new();
+
+    let r_name = target_remote.filter(|s| !s.trim().is_empty()).unwrap_or("origin");
+    let remote_ref_name = format!("refs/remotes/{}/{}", r_name, branch_name);
+
+    let remote_oid = if let Ok(remote_ref) = repo.find_reference(&remote_ref_name) {
+        remote_ref.target()
+    } else if let Ok(upstream_branch) = branch.upstream() {
+        upstream_branch.get().target()
+    } else {
+        None
     };
+
     let Ok(mut revwalk) = repo.revwalk() else {
         return HashSet::new();
     };
 
     let _ = revwalk.set_sorting(Sort::TIME | Sort::TOPOLOGICAL);
-    if revwalk.push(head_oid).is_err() || revwalk.hide(upstream_oid).is_err() {
+    if revwalk.push(head_oid).is_err() {
         return HashSet::new();
+    }
+
+    if let Some(r_oid) = remote_oid {
+        if revwalk.hide(r_oid).is_err() {
+            return HashSet::new();
+        }
     }
 
     revwalk.filter_map(Result::ok).collect()
@@ -408,39 +535,42 @@ fn delta_path(delta: DiffDelta<'_>) -> Option<String> {
         .map(normalize_git_path)
 }
 
-#[tauri::command]
-fn open_repo(path: String, state: State<'_, Mutex<AppState>>) -> Result<RepoInfo, String> {
-    let repo = Repository::discover(&path)
-        .map_err(|e| format!("Repository could not be opened: {}", e))?;
+fn get_repo_info_from_repository(repo: &Repository, path: &str) -> Result<RepoInfo, String> {
+    let branch_count = repo.branches(None).map(|b| b.count()).unwrap_or(0);
 
-    let branch_count = repo.branches(None).map_err(|e| e.to_string())?.count();
-
-    let mut revwalk = repo.revwalk().map_err(|e| e.to_string())?;
-    revwalk.push_head().ok();
-    let commit_count = revwalk.count();
+    let commit_count = repo.revwalk().map(|mut r| {
+        r.push_head().ok();
+        r.count()
+    }).unwrap_or(0);
 
     let current_branch = repo
         .head()
         .ok()
         .and_then(|head| head.shorthand().map(str::to_string))
-        .unwrap_or_else(|| "detached".to_string());
+        .or_else(|| {
+            repo.config()
+                .ok()
+                .and_then(|cfg| cfg.get_string("init.defaultBranch").ok())
+                .or(Some("main".to_string()))
+        })
+        .unwrap_or_else(|| "main".to_string());
 
     let workdir = repo
         .workdir()
         .map(|p| p.to_path_buf())
-        .unwrap_or_else(|| std::path::PathBuf::from(&path));
+        .unwrap_or_else(|| std::path::PathBuf::from(path));
 
     let name = workdir
         .file_name()
         .map(|n| n.to_string_lossy().to_string())
-        .unwrap_or_else(|| path.clone());
+        .unwrap_or_else(|| path.to_string());
 
-    let (github_owner, github_repo) = origin_url(&repo)
+    let (github_owner, github_repo) = origin_url(repo)
         .and_then(|u| parse_github_remote(&u))
         .map(|(owner, repo)| (Some(owner), Some(repo)))
         .unwrap_or((None, None));
 
-    let info = RepoInfo {
+    Ok(RepoInfo {
         path: workdir.to_string_lossy().to_string(),
         name,
         current_branch,
@@ -448,7 +578,32 @@ fn open_repo(path: String, state: State<'_, Mutex<AppState>>) -> Result<RepoInfo
         github_repo,
         branch_count,
         commit_count,
-    };
+    })
+}
+
+#[tauri::command]
+fn is_git_repository(path: String) -> Result<bool, String> {
+    Ok(Repository::discover(&path).is_ok())
+}
+
+#[tauri::command]
+fn init_repository(path: String, state: State<'_, Mutex<AppState>>) -> Result<RepoInfo, String> {
+    let repo = Repository::init(&path).map_err(|e| format!("Failed to initialize Git repository: {}", e))?;
+    let info = get_repo_info_from_repository(&repo, &path)?;
+
+    let mut app_state = state.lock().map_err(|e| e.to_string())?;
+    app_state.repo = Some(repo);
+    app_state.repo_path = Some(path);
+
+    Ok(info)
+}
+
+#[tauri::command]
+fn open_repo(path: String, state: State<'_, Mutex<AppState>>) -> Result<RepoInfo, String> {
+    let repo = Repository::discover(&path)
+        .map_err(|e| format!("Repository could not be opened: {}", e))?;
+
+    let info = get_repo_info_from_repository(&repo, &path)?;
 
     let mut app_state = state.lock().map_err(|e| e.to_string())?;
     app_state.repo = Some(repo);
@@ -461,6 +616,7 @@ fn open_repo(path: String, state: State<'_, Mutex<AppState>>) -> Result<RepoInfo
 fn get_commits(
     limit: Option<usize>,
     branch: Option<String>,
+    target_remote: Option<String>,
     state: State<'_, Mutex<AppState>>,
 ) -> Result<Vec<CommitInfo>, String> {
     let app_state = state.lock().map_err(|e| e.to_string())?;
@@ -472,19 +628,17 @@ fn get_commits(
         .map_err(|e| e.to_string())?;
 
     if let Some(branch_name) = &branch {
-        // Try local branch first, then remote
         let reference = repo
             .find_branch(branch_name, BranchType::Local)
-            .or_else(|_| repo.find_branch(branch_name, BranchType::Remote))
-            .map_err(|e| format!("Branch not found: {}", e))?;
-        let oid = reference
-            .get()
-            .target()
-            .ok_or("Branch target was not found")?;
-        revwalk.push(oid).map_err(|e| e.to_string())?;
+            .or_else(|_| repo.find_branch(branch_name, BranchType::Remote));
+
+        if let Ok(b) = reference {
+            if let Some(oid) = b.get().target() {
+                let _ = revwalk.push(oid);
+            }
+        }
     } else {
-        // Push all refs to show everything
-        revwalk.push_head().ok();
+        let _ = revwalk.push_head();
         let _ = repo.references().map(|refs| {
             for reference in refs.flatten() {
                 if let Some(oid) = reference.target() {
@@ -495,7 +649,7 @@ fn get_commits(
     }
 
     let max = limit.unwrap_or(500);
-    let unpushed = unpushed_oids(repo);
+    let unpushed = unpushed_oids(repo, target_remote.as_deref());
     let mut commits = Vec::new();
 
     for (i, oid) in revwalk.enumerate() {
@@ -581,6 +735,21 @@ fn get_branches(state: State<'_, Mutex<AppState>>) -> Result<Vec<BranchInfo>, St
                 });
             }
         }
+    }
+
+    if branches.is_empty() {
+        let default_branch_name = repo
+            .config()
+            .ok()
+            .and_then(|cfg| cfg.get_string("init.defaultBranch").ok())
+            .unwrap_or_else(|| "main".to_string());
+
+        branches.push(BranchInfo {
+            name: default_branch_name,
+            is_head: true,
+            commit_id: String::new(),
+            is_remote: false,
+        });
     }
 
     branches.sort_by(|a, b| {
@@ -695,14 +864,20 @@ fn get_file_tree(
     let app_state = state.lock().map_err(|e| e.to_string())?;
     let repo = app_state.repo.as_ref().ok_or("Repository is not open")?;
 
-    let tree = if let Some(cid) = commit_id {
+    let tree_result = if let Some(cid) = commit_id {
         let oid = Oid::from_str(&cid).map_err(|e| e.to_string())?;
         let commit = repo.find_commit(oid).map_err(|e| e.to_string())?;
-        commit.tree().map_err(|e| e.to_string())?
+        commit.tree().map_err(|e| e.to_string())
     } else {
-        let head = repo.head().map_err(|e| e.to_string())?;
-        let commit = head.peel_to_commit().map_err(|e| e.to_string())?;
-        commit.tree().map_err(|e| e.to_string())?
+        match repo.head().and_then(|h| h.peel_to_commit()) {
+            Ok(commit) => commit.tree().map_err(|e| e.to_string()),
+            Err(_) => return Ok(Vec::new()),
+        }
+    };
+
+    let tree = match tree_result {
+        Ok(t) => t,
+        Err(_) => return Ok(Vec::new()),
     };
 
     fn build_tree(repo: &Repository, tree: &git2::Tree, prefix: &str) -> Vec<FileTreeEntry> {
@@ -821,7 +996,7 @@ fn commit_changes(
     message: String,
     state: State<'_, Mutex<AppState>>,
 ) -> Result<String, String> {
-    commit_changes_with_options(paths, message, None, None, None, None, None, state)
+    commit_changes_with_options(paths, message, None, None, None, None, None, None, state)
 }
 
 #[tauri::command]
@@ -833,20 +1008,23 @@ fn commit_changes_with_options(
     gpg_key: Option<String>,
     sign_commit: Option<bool>,
     signed_off_by: Option<bool>,
+    amend: Option<bool>,
     state: State<'_, Mutex<AppState>>,
 ) -> Result<String, String> {
     let app_state = state.lock().map_err(|e| e.to_string())?;
     let repo = app_state.repo.as_ref().ok_or("Repository is not open")?;
     let mut message = message.trim().to_string();
 
-    if paths.is_empty() {
+    let is_amend = amend == Some(true);
+
+    if paths.is_empty() && !is_amend {
         return Err("Select at least one file to commit".to_string());
     }
     if message.is_empty() {
         return Err("Commit message cannot be empty".to_string());
     }
 
-    if signed_off_by == Some(true) {
+    if signed_off_by == Some(true) && !message.contains("Signed-off-by:") {
         let sign_name;
         let sign_email;
         if let (Some(name), Some(email)) = (&author_name, &author_email) {
@@ -867,11 +1045,24 @@ fn commit_changes_with_options(
         }
     }
 
-    let mut add_args = vec!["add", "--"];
-    add_args.extend(paths.iter().map(String::as_str));
-    run_git(repo, &add_args)?;
+    if !paths.is_empty() {
+        let mut add_args = vec!["add", "--"];
+        add_args.extend(paths.iter().map(String::as_str));
+        run_git(repo, &add_args)?;
+    }
 
-    let mut commit_args = vec!["commit", "--only", "-m", &message];
+    let mut commit_args = vec!["commit"];
+
+    if is_amend {
+        commit_args.push("--amend");
+    }
+
+    if !paths.is_empty() {
+        commit_args.push("--only");
+    }
+
+    commit_args.push("-m");
+    commit_args.push(&message);
 
     let author_str;
     if let (Some(name), Some(email)) = (author_name, author_email) {
@@ -899,74 +1090,95 @@ fn commit_changes_with_options(
         commit_args.push("-S");
     }
 
-    commit_args.push("--");
-    commit_args.extend(paths.iter().map(String::as_str));
+    if !paths.is_empty() {
+        commit_args.push("--");
+        commit_args.extend(paths.iter().map(String::as_str));
+    }
+
     run_git(repo, &commit_args)
 }
 
 #[tauri::command]
-fn get_sync_status(state: State<'_, Mutex<AppState>>) -> Result<SyncStatus, String> {
+fn get_sync_status(
+    state: State<'_, Mutex<AppState>>,
+    target_remote: Option<String>,
+) -> Result<SyncStatus, String> {
     let app_state = state.lock().map_err(|e| e.to_string())?;
     let repo = app_state.repo.as_ref().ok_or("Repository is not open")?;
 
     let current_branch = current_branch_name(repo).unwrap_or_else(|| "detached".to_string());
-    let origin_url = origin_url(repo);
-    let has_origin = origin_url.is_some();
+    
+    let r_name = target_remote
+        .filter(|s| !s.trim().is_empty())
+        .unwrap_or_else(|| "origin".to_string());
 
-    let (upstream, unpushed_count) =
-        if let Ok(branch) = repo.find_branch(&current_branch, BranchType::Local) {
-            if let Ok(upstream_branch) = branch.upstream() {
-                let upstream_name = upstream_branch.name().ok().flatten().map(str::to_string);
-                let count = match (branch.get().target(), upstream_branch.get().target()) {
-                    (Some(head), Some(upstream_oid)) => repo
-                        .graph_ahead_behind(head, upstream_oid)
-                        .map(|(ahead, _)| ahead)
-                        .unwrap_or(0),
-                    _ => 0,
-                };
-                (upstream_name, count)
+    let remote_url_val = repo
+        .find_remote(&r_name)
+        .ok()
+        .and_then(|r| r.url().map(str::to_string))
+        .or_else(|| origin_url(repo));
+
+    let has_remote = remote_url_val.is_some();
+    let remote_branch_ref = format!("refs/remotes/{}/{}", r_name, current_branch);
+    let mut unpushed_count = 0;
+    let mut upstream_name = None;
+
+    if let Ok(local_branch) = repo.find_branch(&current_branch, BranchType::Local) {
+        if let Ok(head_oid) = local_branch.get().target().ok_or("No head target") {
+            if let Ok(remote_ref) = repo.find_reference(&remote_branch_ref) {
+                if let Some(remote_oid) = remote_ref.target() {
+                    if let Ok((ahead, _)) = repo.graph_ahead_behind(head_oid, remote_oid) {
+                        unpushed_count = ahead;
+                        upstream_name = Some(format!("{}/{}", r_name, current_branch));
+                    }
+                }
+            } else if let Ok(upstream_branch) = local_branch.upstream() {
+                if let Some(up_name) = upstream_branch.name().ok().flatten() {
+                    upstream_name = Some(up_name.to_string());
+                }
+                if let Some(up_oid) = upstream_branch.get().target() {
+                    if let Ok((ahead, _)) = repo.graph_ahead_behind(head_oid, up_oid) {
+                        unpushed_count = ahead;
+                    }
+                }
             } else {
-                (None, 0)
+                if let Ok(mut revwalk) = repo.revwalk() {
+                    if revwalk.push_head().is_ok() {
+                        unpushed_count = revwalk.count();
+                    }
+                }
             }
-        } else {
-            (None, 0)
-        };
+        }
+    }
 
     Ok(SyncStatus {
-        has_origin,
-        origin_url,
+        has_origin: has_remote,
+        origin_url: remote_url_val,
         current_branch: current_branch.clone(),
-        upstream,
+        upstream: upstream_name,
         unpushed_count,
-        can_push: has_origin && current_branch != "detached",
+        can_push: has_remote && current_branch != "detached",
     })
 }
 
 #[tauri::command]
-fn push_origin(state: State<'_, Mutex<AppState>>) -> Result<String, String> {
+fn push_origin(
+    state: State<'_, Mutex<AppState>>,
+    target_remote: Option<String>,
+) -> Result<String, String> {
     let app_state = state.lock().map_err(|e| e.to_string())?;
     let repo = app_state.repo.as_ref().ok_or("Repository is not open")?;
 
-    if origin_url(repo).is_none() {
-        return Err("No origin remote is configured".to_string());
-    }
+    let r_name = target_remote
+        .filter(|s| !s.trim().is_empty())
+        .unwrap_or_else(|| "origin".to_string());
 
     let branch_name = current_branch_name(repo).ok_or("Active branch was not found")?;
     if branch_name == "detached" {
         return Err("Detached HEAD cannot be pushed".to_string());
     }
 
-    let has_upstream = repo
-        .find_branch(&branch_name, BranchType::Local)
-        .ok()
-        .and_then(|branch| branch.upstream().ok())
-        .is_some();
-
-    if has_upstream {
-        run_git(repo, &["push"])
-    } else {
-        run_git(repo, &["push", "-u", "origin", &branch_name])
-    }
+    run_git(repo, &["push", "-u", &r_name, &branch_name])
 }
 
 #[tauri::command]
@@ -1513,6 +1725,179 @@ fn pull_ollama_model(model_name: String) -> Result<String, String> {
         let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
         Err(if !stderr.is_empty() { stderr } else { stdout })
     }
+}
+
+#[tauri::command]
+fn check_lm_studio_status() -> Result<LmStudioInfo, String> {
+    let mut running = false;
+    let mut models = Vec::new();
+
+    if let Ok(response) = send_plain_http_request(
+        "127.0.0.1:1234",
+        "127.0.0.1:1234",
+        "GET",
+        "/v1/models",
+        &[],
+        None,
+        Duration::from_secs(2),
+    ) {
+        if is_success_status(response.status_code) {
+            if let Ok(json) = serde_json::from_str::<serde_json::Value>(&response.body) {
+                running = true;
+                if let Some(data_list) = json.get("data").and_then(|d| d.as_array()) {
+                    for m in data_list {
+                        if let Some(id) = m.get("id").and_then(|i| i.as_str()) {
+                            models.push(id.to_string());
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(LmStudioInfo { running, models })
+}
+
+#[tauri::command]
+async fn generate_ai_commit_message_lm_studio(
+    diff: Option<String>,
+    paths: Option<Vec<String>>,
+    model: Option<String>,
+    state: State<'_, Mutex<AppState>>,
+) -> Result<String, String> {
+    let mut actual_diff = diff.unwrap_or_default();
+
+    if actual_diff.trim().is_empty() {
+        let diff_result = {
+            let app_state = state.lock().map_err(|e| e.to_string())?;
+            if let Some(repo) = app_state.repo.as_ref() {
+                let mut diff_builder = String::new();
+                if let Some(p_vec) = &paths {
+                    if !p_vec.is_empty() {
+                        for path in p_vec {
+                            let d_head =
+                                run_git(repo, &["diff", "HEAD", "--", path]).unwrap_or_default();
+                            if !d_head.trim().is_empty() {
+                                diff_builder.push_str(&d_head);
+                                diff_builder.push('\n');
+                            } else {
+                                let d_staged = run_git(repo, &["diff", "--cached", "--", path])
+                                    .unwrap_or_default();
+                                if !d_staged.trim().is_empty() {
+                                    diff_builder.push_str(&d_staged);
+                                    diff_builder.push('\n');
+                                } else {
+                                    if let Some(workdir) = repo.workdir() {
+                                        let full_path = workdir.join(path);
+                                        if full_path.exists() && full_path.is_file() {
+                                            if let Ok(content) = std::fs::read_to_string(&full_path)
+                                            {
+                                                let snippet: String = content
+                                                    .lines()
+                                                    .take(40)
+                                                    .collect::<Vec<_>>()
+                                                    .join("\n");
+                                                diff_builder.push_str(&format!(
+                                                    "+++ Added untracked file {}\n{}\n",
+                                                    path, snippet
+                                                ));
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        diff_builder = run_git(repo, &["diff", "HEAD"]).unwrap_or_default();
+                    }
+                } else {
+                    diff_builder = run_git(repo, &["diff", "HEAD"]).unwrap_or_default();
+                }
+                Some(diff_builder)
+            } else {
+                None
+            }
+        };
+        if let Some(d) = diff_result {
+            actual_diff = d;
+        }
+    }
+
+    if actual_diff.trim().is_empty() {
+        return Err("No diff or changed files found for selected items.".to_string());
+    }
+
+    if actual_diff.len() > 6000 {
+        actual_diff.truncate(6000);
+        actual_diff.push_str("\n...[diff truncated for length]");
+    }
+
+    let raw_model = model.unwrap_or_else(|| "local-model".to_string());
+    let model_name = raw_model.trim().to_string();
+
+    let prompt = format!(
+        "You are a commit message generator. Output ONLY the commit message line. Nothing else.
+
+Rules:
+- Output exactly ONE line in format: type(scope): description
+- Valid types: feat, fix, docs, style, refactor, perf, test, build, ci, chore
+- Scope is optional, use only if the change clearly belongs to a specific module
+- Description must be imperative mood, lowercase first letter, no period at end
+- Max 72 characters total
+- Do NOT include any explanation, reasoning, markdown, backticks, quotes, or multiple options
+- Do NOT start with Here is, This commit, Based on, The diff, Option, Let me, I will
+
+Diff:
+{}",
+        actual_diff
+    );
+
+    let payload = serde_json::json!({
+        "model": model_name,
+        "messages": [
+            {
+                "role": "system",
+                "content": "You are a commit message generator. Output ONLY the commit message line. No explanations, no reasoning, no markdown, no backticks."
+            },
+            {
+                "role": "user",
+                "content": prompt
+            }
+        ],
+        "temperature": 0.2,
+        "stream": false
+    });
+
+    let payload_str = payload.to_string();
+
+    let response = tauri::async_runtime::spawn_blocking(move || {
+        send_plain_http_request(
+            "127.0.0.1:1234",
+            "127.0.0.1:1234",
+            "POST",
+            "/v1/chat/completions",
+            &[("Content-Type".to_string(), "application/json".to_string())],
+            Some(&payload_str),
+            Duration::from_secs(90),
+        )
+        .map_err(|e| format!("LM Studio HTTP request error: {}", e))
+    })
+    .await
+    .map_err(|e| format!("Task join error: {}", e))??;
+
+    if is_success_status(response.status_code) {
+        if let Ok(json) = serde_json::from_str::<serde_json::Value>(&response.body) {
+            if let Some(content) = json["choices"][0]["message"]["content"].as_str() {
+                let trimmed = content.trim().trim_matches('`').trim_matches('"').trim();
+                let first_line = trimmed.lines().next().unwrap_or(trimmed).trim();
+                if !first_line.is_empty() {
+                    return Ok(first_line.to_string());
+                }
+            }
+        }
+    }
+
+    Err("Failed to generate commit message via LM Studio. Make sure LM Studio local server is running on http://127.0.0.1:1234 and a model is loaded.".to_string())
 }
 
 #[tauri::command]
@@ -3105,6 +3490,674 @@ async fn send_patch_email(state: State<'_, Mutex<AppState>>) -> Result<String, S
     Ok(format!("Patch email sent to {}", smtp.to_email))
 }
 
+fn run_gh(args: &[&str], cwd: Option<&Path>) -> Result<String, String> {
+    let mut cmd = Command::new("gh");
+    if let Some(dir) = cwd {
+        cmd.current_dir(dir);
+    }
+    cmd.args(args);
+    let output = cmd
+        .output()
+        .map_err(|e| format!("gh CLI not found or failed: {}", e))?;
+    if output.status.success() {
+        Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
+    } else {
+        let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+        let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        Err(if stderr.is_empty() { stdout } else { stderr })
+    }
+}
+
+#[tauri::command]
+fn check_gh_auth(state: State<'_, Mutex<AppState>>) -> Result<GhAuthStatus, String> {
+    let app_state = state.lock().map_err(|e| e.to_string())?;
+    let cwd = app_state.repo_path.as_deref().map(Path::new);
+
+    let status_out = run_gh(&["auth", "status", "--hostname", "github.com"], cwd);
+    match status_out {
+        Err(e) => {
+            if e.contains("not logged into") || e.contains("not authenticated") || e.contains("You are not logged") {
+                Ok(GhAuthStatus { authenticated: false, user: String::new(), token_scopes: vec![] })
+            } else {
+                Ok(GhAuthStatus { authenticated: false, user: String::new(), token_scopes: vec![] })
+            }
+        }
+        Ok(out) => {
+            let authenticated = out.contains("Logged in") || out.contains("✓ Logged in") || out.contains("github.com");
+            let user = out.lines()
+                .find(|l| l.contains("Logged in to") || l.contains("account") || l.contains("as "))
+                .and_then(|l| l.split_whitespace().last())
+                .unwrap_or("")
+                .trim_matches(|c: char| !c.is_alphanumeric() && c != '-' && c != '_')
+                .to_string();
+            Ok(GhAuthStatus { authenticated, user, token_scopes: vec![] })
+        }
+    }
+}
+
+#[tauri::command]
+fn get_github_issues(
+    state: State<'_, Mutex<AppState>>,
+    filter: Option<String>,
+    limit: Option<u32>,
+) -> Result<Vec<GithubIssue>, String> {
+    let app_state = state.lock().map_err(|e| e.to_string())?;
+    let cwd = app_state.repo_path.as_deref().map(Path::new);
+    let limit_str = limit.unwrap_or(30).to_string();
+    let filter_str = filter.as_deref().unwrap_or("all");
+
+    let out = run_gh(
+        &[
+            "issue", "list",
+            "--state", filter_str,
+            "--limit", &limit_str,
+            "--json", "number,title,state,author,createdAt,updatedAt,url,labels,comments,body",
+        ],
+        cwd,
+    )?;
+
+    let raw: Vec<serde_json::Value> = serde_json::from_str(&out).map_err(|e| e.to_string())?;
+    let issues = raw.iter().map(|v| GithubIssue {
+        number: v["number"].as_u64().unwrap_or(0),
+        title: v["title"].as_str().unwrap_or("").to_string(),
+        state: v["state"].as_str().unwrap_or("").to_lowercase(),
+        author: v["author"]["login"].as_str().unwrap_or("").to_string(),
+        created_at: v["createdAt"].as_str().unwrap_or("").to_string(),
+        updated_at: v["updatedAt"].as_str().unwrap_or("").to_string(),
+        url: v["url"].as_str().unwrap_or("").to_string(),
+        labels: v["labels"].as_array().map(|arr| arr.iter().filter_map(|l| l["name"].as_str().map(str::to_string)).collect()).unwrap_or_default(),
+        comments: v["comments"].as_u64().unwrap_or(0),
+        body: v["body"].as_str().unwrap_or("").chars().take(300).collect(),
+    }).collect();
+    Ok(issues)
+}
+
+#[tauri::command]
+fn get_github_prs(
+    state: State<'_, Mutex<AppState>>,
+    filter: Option<String>,
+    limit: Option<u32>,
+) -> Result<Vec<GithubPr>, String> {
+    let app_state = state.lock().map_err(|e| e.to_string())?;
+    let cwd = app_state.repo_path.as_deref().map(Path::new);
+    let limit_str = limit.unwrap_or(30).to_string();
+    let filter_str = filter.as_deref().unwrap_or("open");
+
+    let out = run_gh(
+        &[
+            "pr", "list",
+            "--state", filter_str,
+            "--limit", &limit_str,
+            "--json", "number,title,state,author,createdAt,updatedAt,url,headRefName,baseRefName,labels,reviews,isDraft,mergeable,body",
+        ],
+        cwd,
+    )?;
+
+    let raw: Vec<serde_json::Value> = serde_json::from_str(&out).map_err(|e| e.to_string())?;
+    let prs = raw.iter().map(|v| GithubPr {
+        number: v["number"].as_u64().unwrap_or(0),
+        title: v["title"].as_str().unwrap_or("").to_string(),
+        state: v["state"].as_str().unwrap_or("").to_lowercase(),
+        author: v["author"]["login"].as_str().unwrap_or("").to_string(),
+        created_at: v["createdAt"].as_str().unwrap_or("").to_string(),
+        updated_at: v["updatedAt"].as_str().unwrap_or("").to_string(),
+        url: v["url"].as_str().unwrap_or("").to_string(),
+        head_ref: v["headRefName"].as_str().unwrap_or("").to_string(),
+        base_ref: v["baseRefName"].as_str().unwrap_or("").to_string(),
+        labels: v["labels"].as_array().map(|arr| arr.iter().filter_map(|l| l["name"].as_str().map(str::to_string)).collect()).unwrap_or_default(),
+        reviews: v["reviews"].as_array().map(|r| r.len() as u64).unwrap_or(0),
+        is_draft: v["isDraft"].as_bool().unwrap_or(false),
+        mergeable: v["mergeable"].as_str().unwrap_or("").to_string(),
+        body: v["body"].as_str().unwrap_or("").chars().take(300).collect(),
+    }).collect();
+    Ok(prs)
+}
+
+#[tauri::command]
+fn get_github_actions(
+    state: State<'_, Mutex<AppState>>,
+    limit: Option<u32>,
+    branch: Option<String>,
+) -> Result<Vec<GithubAction>, String> {
+    let app_state = state.lock().map_err(|e| e.to_string())?;
+    let cwd = app_state.repo_path.as_deref().map(Path::new);
+    let limit_str = limit.unwrap_or(20).to_string();
+
+    let mut gh_args = vec![
+        "run", "list",
+        "--limit", &limit_str,
+        "--json", "databaseId,displayTitle,status,conclusion,workflowName,headBranch,event,createdAt,updatedAt,url,headSha,number",
+    ];
+
+    let branch_owned = branch.unwrap_or_default();
+    if !branch_owned.is_empty() {
+        gh_args.push("--branch");
+        gh_args.push(&branch_owned);
+    }
+
+    let out = run_gh(&gh_args, cwd)?;
+
+    let raw: Vec<serde_json::Value> = serde_json::from_str(&out).map_err(|e| e.to_string())?;
+    let actions = raw.iter().map(|v| GithubAction {
+        id: v["databaseId"].as_u64().unwrap_or(0),
+        name: v["displayTitle"].as_str().unwrap_or("").to_string(),
+        status: v["status"].as_str().unwrap_or("").to_lowercase(),
+        conclusion: v["conclusion"].as_str().unwrap_or("").to_string(),
+        workflow_name: v["workflowName"].as_str().unwrap_or("").to_string(),
+        branch: v["headBranch"].as_str().unwrap_or("").to_string(),
+        event: v["event"].as_str().unwrap_or("").to_string(),
+        created_at: v["createdAt"].as_str().unwrap_or("").to_string(),
+        updated_at: v["updatedAt"].as_str().unwrap_or("").to_string(),
+        url: v["url"].as_str().unwrap_or("").to_string(),
+        head_commit_message: v["displayTitle"].as_str().unwrap_or("").to_string(),
+        head_sha: v["headSha"].as_str().unwrap_or("").chars().take(7).collect(),
+    }).collect();
+    Ok(actions)
+}
+
+#[tauri::command]
+fn get_pr_diff(
+    state: State<'_, Mutex<AppState>>,
+    pr_number: u64,
+) -> Result<String, String> {
+    let app_state = state.lock().map_err(|e| e.to_string())?;
+    let cwd = app_state.repo_path.as_deref().map(Path::new);
+    let num_str = pr_number.to_string();
+    run_gh(&["pr", "diff", &num_str], cwd)
+}
+
+#[tauri::command]
+fn get_pr_commits(
+    state: State<'_, Mutex<AppState>>,
+    pr_number: u64,
+) -> Result<Vec<GithubPrCommit>, String> {
+    let app_state = state.lock().map_err(|e| e.to_string())?;
+    let cwd = app_state.repo_path.as_deref().map(Path::new);
+    let num_str = pr_number.to_string();
+    let out = run_gh(
+        &["pr", "view", &num_str, "--json", "commits"],
+        cwd,
+    )?;
+
+    let v: serde_json::Value = serde_json::from_str(&out).map_err(|e| e.to_string())?;
+    let mut list = Vec::new();
+    if let Some(arr) = v["commits"].as_array() {
+        for item in arr {
+            let oid = item["oid"].as_str().unwrap_or("").to_string();
+            let message_headline = item["messageHeadline"].as_str().unwrap_or("").to_string();
+            let authors_arr = item["authors"].as_array();
+            let mut author_name = String::new();
+            let mut author_email = String::new();
+            let mut authors_list = Vec::new();
+            if let Some(auths) = authors_arr {
+                for a in auths {
+                    let name = a["name"].as_str().or_else(|| a["login"].as_str()).unwrap_or("").to_string();
+                    let email = a["email"].as_str().unwrap_or("").to_string();
+                    if author_name.is_empty() {
+                        author_name = name.clone();
+                        author_email = email.clone();
+                    }
+                    authors_list.push(name);
+                }
+            }
+            list.push(GithubPrCommit {
+                oid,
+                message_headline,
+                author_name,
+                author_email,
+                authors: authors_list,
+            });
+        }
+    }
+    Ok(list)
+}
+
+#[tauri::command]
+fn merge_github_pr(
+    state: State<'_, Mutex<AppState>>,
+    pr_number: u64,
+    merge_method: Option<String>,
+) -> Result<String, String> {
+    let app_state = state.lock().map_err(|e| e.to_string())?;
+    let cwd = app_state.repo_path.as_deref().map(Path::new);
+    let num_str = pr_number.to_string();
+    let method = merge_method.unwrap_or_else(|| "merge".to_string());
+    
+    let method_flag = match method.as_str() {
+        "squash" => "--squash",
+        "rebase" => "--rebase",
+        _ => "--merge",
+    };
+
+    run_gh(&["pr", "merge", &num_str, method_flag, "--delete-branch=false"], cwd)
+}
+
+#[tauri::command]
+fn get_action_log(
+    state: State<'_, Mutex<AppState>>,
+    run_id: u64,
+) -> Result<String, String> {
+    let app_state = state.lock().map_err(|e| e.to_string())?;
+    let cwd = app_state.repo_path.as_deref().map(Path::new);
+    let id_str = run_id.to_string();
+    run_gh(&["run", "view", &id_str, "--log"], cwd)
+}
+
+const CURRENT_APP_VERSION: &str = "0.0.4";
+
+#[tauri::command]
+fn get_app_version() -> String {
+    CURRENT_APP_VERSION.to_string()
+}
+
+fn parse_semver(v: &str) -> (u32, u32, u32) {
+    let clean = v.trim().trim_start_matches('v').trim_start_matches("commit-");
+    let parts: Vec<&str> = clean.split('.').collect();
+    let major = parts.get(0).and_then(|s| s.parse().ok()).unwrap_or(0);
+    let minor = parts.get(1).and_then(|s| s.parse().ok()).unwrap_or(0);
+    let patch = parts.get(2).and_then(|s| s.split('-').next().unwrap_or("0").parse().ok()).unwrap_or(0);
+    (major, minor, patch)
+}
+
+fn is_version_newer(latest: &str, current: &str) -> bool {
+    let (l_maj, l_min, l_pat) = parse_semver(latest);
+    let (c_maj, c_min, c_pat) = parse_semver(current);
+    if l_maj != c_maj {
+        return l_maj > c_maj;
+    }
+    if l_min != c_min {
+        return l_min > c_min;
+    }
+    if l_pat != c_pat {
+        return l_pat > c_pat;
+    }
+    false
+}
+
+#[tauri::command]
+fn check_app_update(
+    state: State<'_, Mutex<AppState>>,
+) -> Result<AppUpdateInfo, String> {
+    let app_state = state.lock().map_err(|e| e.to_string())?;
+    let cwd = app_state.repo_path.as_deref().map(Path::new);
+
+    // 1. Try gh release view --repo noirlang/differ
+    let gh_res = run_gh(
+        &[
+            "release", "view",
+            "--repo", "noirlang/differ",
+            "--json", "tagName,name,body,url,publishedAt,assets",
+        ],
+        cwd,
+    );
+
+    let json_str = match gh_res {
+        Ok(out) => out,
+        Err(_) => {
+            // Fallback: try curl GitHub API
+            let curl_out = Command::new("curl")
+                .args(&[
+                    "-s",
+                    "-L",
+                    "-H", "User-Agent: differ-app",
+                    "https://api.github.com/repos/noirlang/differ/releases/latest",
+                ])
+                .output()
+                .map_err(|e| format!("Could not check updates: {}", e))?;
+            if !curl_out.status.success() {
+                return Err("Failed to fetch release information from GitHub".to_string());
+            }
+            String::from_utf8_lossy(&curl_out.stdout).to_string()
+        }
+    };
+
+    let v: serde_json::Value = serde_json::from_str(&json_str)
+        .map_err(|e| format!("Could not parse release JSON: {}", e))?;
+
+    if v.is_null() || v.get("message").and_then(|m| m.as_str()) == Some("Not Found") {
+        return Ok(AppUpdateInfo {
+            current_version: CURRENT_APP_VERSION.to_string(),
+            latest_version: CURRENT_APP_VERSION.to_string(),
+            tag_name: "v0.0.4".to_string(),
+            release_name: "No releases found on github.com/noirlang/differ".to_string(),
+            release_notes: "App is running the latest version.".to_string(),
+            html_url: "https://github.com/noirlang/differ".to_string(),
+            has_update: false,
+            published_at: String::new(),
+            assets: vec![],
+        });
+    }
+
+    let tag_name = v["tagName"].as_str().or_else(|| v["tag_name"].as_str()).unwrap_or("").to_string();
+    let release_name = v["name"].as_str().unwrap_or(&tag_name).to_string();
+    let release_notes = v["body"].as_str().unwrap_or("").to_string();
+    let html_url = v["url"].as_str().or_else(|| v["html_url"].as_str()).unwrap_or("https://github.com/noirlang/differ").to_string();
+    let published_at = v["publishedAt"].as_str().or_else(|| v["published_at"].as_str()).unwrap_or("").to_string();
+
+    let mut assets = Vec::new();
+    if let Some(arr) = v["assets"].as_array() {
+        for a in arr {
+            let name = a["name"].as_str().unwrap_or("").to_string();
+            let download_url = a["url"]
+                .as_str()
+                .or_else(|| a["browser_download_url"].as_str())
+                .unwrap_or("")
+                .to_string();
+            let size = a["size"].as_u64().unwrap_or(0);
+            if !name.is_empty() && !download_url.is_empty() {
+                assets.push(ReleaseAsset {
+                    name,
+                    download_url,
+                    size,
+                });
+            }
+        }
+    }
+
+    let clean_tag = tag_name.trim_start_matches('v').to_string();
+    let latest_version = if clean_tag.is_empty() { release_name.clone() } else { clean_tag.clone() };
+    let has_update = is_version_newer(&latest_version, CURRENT_APP_VERSION);
+
+    Ok(AppUpdateInfo {
+        current_version: CURRENT_APP_VERSION.to_string(),
+        latest_version,
+        tag_name,
+        release_name,
+        release_notes,
+        html_url,
+        has_update,
+        published_at,
+        assets,
+    })
+}
+
+struct EditorLauncher {
+    cmd: String,
+    args: Vec<String>,
+}
+
+fn is_binary_in_path(binary: &str) -> bool {
+    #[cfg(target_os = "windows")]
+    {
+        let mut cmd = Command::new("where");
+        cmd.creation_flags(CREATE_NO_WINDOW);
+        if let Ok(output) = cmd.arg(binary).output() {
+            output.status.success()
+        } else {
+            false
+        }
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        if let Ok(output) = Command::new("which").arg(binary).output() {
+            output.status.success()
+        } else {
+            false
+        }
+    }
+}
+
+fn find_editor_launcher(editor_id: &str) -> Option<EditorLauncher> {
+    match editor_id {
+        "code" => {
+            for b in &["code", "code.cmd", "code.exe"] {
+                if is_binary_in_path(b) {
+                    return Some(EditorLauncher { cmd: (*b).into(), args: vec![] });
+                }
+            }
+            #[cfg(target_os = "windows")]
+            {
+                if let Ok(appdata) = std::env::var("LOCALAPPDATA") {
+                    let p1 = Path::new(&appdata).join(r"Programs\Microsoft VS Code\Code.exe");
+                    if p1.exists() { return Some(EditorLauncher { cmd: p1.to_string_lossy().into(), args: vec![] }); }
+                }
+                if let Ok(pf) = std::env::var("ProgramFiles") {
+                    let p2 = Path::new(&pf).join(r"Microsoft VS Code\Code.exe");
+                    if p2.exists() { return Some(EditorLauncher { cmd: p2.to_string_lossy().into(), args: vec![] }); }
+                }
+            }
+            #[cfg(target_os = "linux")]
+            {
+                if Path::new("/snap/bin/code").exists() {
+                    return Some(EditorLauncher { cmd: "/snap/bin/code".into(), args: vec![] });
+                }
+                if is_binary_in_path("flatpak") {
+                    if let Ok(out) = Command::new("flatpak").args(&["info", "com.visualstudio.code"]).output() {
+                        if out.status.success() {
+                            return Some(EditorLauncher { cmd: "flatpak".into(), args: vec!["run".into(), "com.visualstudio.code".into()] });
+                        }
+                    }
+                }
+            }
+        }
+        "code-oss" => {
+            for b in &["code-oss", "code-oss.cmd", "code-oss.exe"] {
+                if is_binary_in_path(b) {
+                    return Some(EditorLauncher { cmd: (*b).into(), args: vec![] });
+                }
+            }
+        }
+        "zed" => {
+            for b in &["zed", "zeditor", "zed-editor", "zed.exe"] {
+                if is_binary_in_path(b) {
+                    return Some(EditorLauncher { cmd: (*b).into(), args: vec![] });
+                }
+            }
+            #[cfg(target_os = "windows")]
+            {
+                if let Ok(appdata) = std::env::var("LOCALAPPDATA") {
+                    let p1 = Path::new(&appdata).join(r"Programs\Zed\zed.exe");
+                    if p1.exists() { return Some(EditorLauncher { cmd: p1.to_string_lossy().into(), args: vec![] }); }
+                }
+                if let Ok(pf) = std::env::var("ProgramFiles") {
+                    let p2 = Path::new(&pf).join(r"Zed\zed.exe");
+                    if p2.exists() { return Some(EditorLauncher { cmd: p2.to_string_lossy().into(), args: vec![] }); }
+                }
+            }
+            #[cfg(target_os = "linux")]
+            {
+                if is_binary_in_path("flatpak") {
+                    if let Ok(out) = Command::new("flatpak").args(&["info", "dev.zed.Zed"]).output() {
+                        if out.status.success() {
+                            return Some(EditorLauncher { cmd: "flatpak".into(), args: vec!["run".into(), "dev.zed.Zed".into()] });
+                        }
+                    }
+                }
+            }
+        }
+        "cursor" => {
+            for b in &["cursor", "cursor.cmd", "cursor.exe"] {
+                if is_binary_in_path(b) {
+                    return Some(EditorLauncher { cmd: (*b).into(), args: vec![] });
+                }
+            }
+            #[cfg(target_os = "windows")]
+            {
+                if let Ok(appdata) = std::env::var("LOCALAPPDATA") {
+                    let p1 = Path::new(&appdata).join(r"Programs\cursor\Cursor.exe");
+                    if p1.exists() { return Some(EditorLauncher { cmd: p1.to_string_lossy().into(), args: vec![] }); }
+                    let p2 = Path::new(&appdata).join(r"cursor\Cursor.exe");
+                    if p2.exists() { return Some(EditorLauncher { cmd: p2.to_string_lossy().into(), args: vec![] }); }
+                }
+            }
+            #[cfg(target_os = "linux")]
+            {
+                if Path::new("/snap/bin/cursor").exists() {
+                    return Some(EditorLauncher { cmd: "/snap/bin/cursor".into(), args: vec![] });
+                }
+                if is_binary_in_path("flatpak") {
+                    if let Ok(out) = Command::new("flatpak").args(&["info", "com.cursor.Cursor"]).output() {
+                        if out.status.success() {
+                            return Some(EditorLauncher { cmd: "flatpak".into(), args: vec!["run".into(), "com.cursor.Cursor".into()] });
+                        }
+                    }
+                }
+            }
+        }
+        "codium" => {
+            for b in &["codium", "vscodium", "codium.cmd", "codium.exe"] {
+                if is_binary_in_path(b) {
+                    return Some(EditorLauncher { cmd: (*b).into(), args: vec![] });
+                }
+            }
+            #[cfg(target_os = "windows")]
+            {
+                if let Ok(appdata) = std::env::var("LOCALAPPDATA") {
+                    let p1 = Path::new(&appdata).join(r"Programs\VSCodium\VSCodium.exe");
+                    if p1.exists() { return Some(EditorLauncher { cmd: p1.to_string_lossy().into(), args: vec![] }); }
+                }
+            }
+        }
+        _ => {}
+    }
+    None
+}
+
+#[tauri::command]
+fn detect_installed_editors() -> Vec<InstalledEditor> {
+    let editors_to_check = vec![
+        ("code", "VS Code"),
+        ("code-oss", "Code OSS"),
+        ("zed", "Zed"),
+        ("cursor", "Cursor"),
+        ("codium", "VSCodium"),
+    ];
+
+    let mut installed = Vec::new();
+    for (id, name) in editors_to_check {
+        if let Some(launcher) = find_editor_launcher(id) {
+            installed.push(InstalledEditor {
+                id: id.to_string(),
+                name: name.to_string(),
+                cmd: launcher.cmd,
+            });
+        }
+    }
+    installed
+}
+
+#[tauri::command]
+fn open_in_editor(
+    editor_id: String,
+    state: State<'_, Mutex<AppState>>,
+) -> Result<String, String> {
+    let app_state = state.lock().map_err(|e| e.to_string())?;
+    let repo_path = app_state.repo_path.as_ref().ok_or("Repository is not open")?;
+
+    let launcher = find_editor_launcher(&editor_id)
+        .ok_or_else(|| format!("Editor '{}' was not found on this system", editor_id))?;
+
+    let mut cmd = Command::new(&launcher.cmd);
+    for arg in &launcher.args {
+        cmd.arg(arg);
+    }
+    cmd.arg(repo_path);
+
+    #[cfg(target_os = "windows")]
+    {
+        cmd.creation_flags(CREATE_NO_WINDOW);
+    }
+
+    cmd.spawn()
+        .map_err(|e| format!("Failed to launch {}: {}", editor_id, e))?;
+
+    Ok(format!("Opened repository in {}", editor_id))
+}
+
+#[tauri::command]
+fn get_git_remotes(
+    state: State<'_, Mutex<AppState>>,
+) -> Result<Vec<GitRemoteInfo>, String> {
+    let app_state = state.lock().map_err(|e| e.to_string())?;
+    let repo = app_state.repo.as_ref().ok_or("Repository is not open")?;
+
+    let mut result = Vec::new();
+    let mut seen_names = HashSet::new();
+
+    if let Ok(remotes) = repo.remotes() {
+        for name in remotes.iter().flatten() {
+            if seen_names.insert(name.to_string()) {
+                let url = repo.find_remote(name)
+                    .ok()
+                    .and_then(|r| r.url().map(str::to_string))
+                    .or_else(|| {
+                        run_git(repo, &["remote", "get-url", name]).ok().map(|s| s.trim().to_string())
+                    })
+                    .unwrap_or_default();
+
+                let (is_github, github_owner, github_repo) = if let Some((owner, repo_name)) = parse_github_remote(&url) {
+                    (true, Some(owner), Some(repo_name))
+                } else {
+                    (false, None, None)
+                };
+
+                result.push(GitRemoteInfo {
+                    name: name.to_string(),
+                    url,
+                    is_github,
+                    github_owner,
+                    github_repo,
+                });
+            }
+        }
+    }
+
+    if result.is_empty() {
+        if let Ok(out) = run_git(repo, &["remote", "-v"]) {
+            for line in out.lines() {
+                let parts: Vec<&str> = line.split_whitespace().collect();
+                if parts.len() >= 2 {
+                    let name = parts[0];
+                    let url = parts[1];
+                    if seen_names.insert(name.to_string()) {
+                        let (is_github, github_owner, github_repo) = if let Some((owner, repo_name)) = parse_github_remote(url) {
+                            (true, Some(owner), Some(repo_name))
+                        } else {
+                            (false, None, None)
+                        };
+                        result.push(GitRemoteInfo {
+                            name: name.to_string(),
+                            url: url.to_string(),
+                            is_github,
+                            github_owner,
+                            github_repo,
+                        });
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(result)
+}
+
+#[tauri::command]
+fn fetch_remote(
+    state: State<'_, Mutex<AppState>>,
+    remote_name: String,
+) -> Result<String, String> {
+    let app_state = state.lock().map_err(|e| e.to_string())?;
+    let repo = app_state.repo.as_ref().ok_or("Repository is not open")?;
+    let r_name = if remote_name.is_empty() { "origin" } else { &remote_name };
+    run_git(repo, &["fetch", r_name])
+}
+
+#[tauri::command]
+fn add_git_remote(
+    state: State<'_, Mutex<AppState>>,
+    name: String,
+    url: String,
+) -> Result<String, String> {
+    let app_state = state.lock().map_err(|e| e.to_string())?;
+    let repo = app_state.repo.as_ref().ok_or("Repository is not open")?;
+    let name_trimmed = name.trim();
+    let url_trimmed = url.trim();
+    if name_trimmed.is_empty() || url_trimmed.is_empty() {
+        return Err("Remote name and URL are required".to_string());
+    }
+    run_git(repo, &["remote", "add", name_trimmed, url_trimmed])
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -3116,6 +4169,8 @@ pub fn run() {
         }))
         .invoke_handler(tauri::generate_handler![
             open_repo,
+            is_git_repository,
+            init_repository,
             get_commits,
             get_branches,
             get_commit_diff,
@@ -3140,6 +4195,23 @@ pub fn run() {
             get_smtp_settings,
             save_smtp_settings,
             send_patch_email,
+            check_gh_auth,
+            get_github_issues,
+            get_github_prs,
+            get_github_actions,
+            get_action_log,
+            get_app_version,
+            check_app_update,
+            get_pr_diff,
+            get_pr_commits,
+            merge_github_pr,
+            detect_installed_editors,
+            open_in_editor,
+            get_git_remotes,
+            fetch_remote,
+            add_git_remote,
+            check_lm_studio_status,
+            generate_ai_commit_message_lm_studio,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
