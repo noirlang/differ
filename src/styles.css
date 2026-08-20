@@ -1068,7 +1068,7 @@ svg {
 .commit-list-header,
 .commit-row {
   display: grid !important;
-  grid-template-columns: 75px minmax(340px, 1fr) 150px 110px;
+  grid-template-columns: 85px minmax(320px, 1fr) 150px 110px;
   align-items: center;
   box-sizing: border-box;
 }
