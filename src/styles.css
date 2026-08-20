@@ -1068,7 +1068,7 @@ svg {
 .commit-list-header,
 .commit-row {
   display: grid !important;
-  grid-template-columns: 160px minmax(280px, 1fr) 150px 110px;
+  grid-template-columns: 75px minmax(340px, 1fr) 150px 110px;
   align-items: center;
   box-sizing: border-box;
 }
@@ -1118,12 +1118,10 @@ svg {
   position: relative;
   display: flex;
   align-items: center;
-  gap: 6px;
   min-width: 0;
   min-height: 46px;
-  padding-left: calc((var(--lane-count) * 12px) + 16px);
-  padding-right: 4px;
-  overflow: visible;
+  height: 100%;
+  overflow: hidden;
 }
 
 .graph-track {
@@ -1155,6 +1153,38 @@ svg {
   box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.08);
 }
 
+.commit-message-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  overflow: hidden;
+  padding-right: 10px;
+}
+
+.commit-author-cell {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 8px;
+}
+
+.commit-hash {
+  color: #ffffff !important;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+}
+
 .btn-edit-commit-pencil {
   display: inline-flex;
   align-items: center;
@@ -1167,6 +1197,7 @@ svg {
   border-radius: 4px;
   color: var(--text-muted);
   cursor: pointer;
+  flex-shrink: 0;
   transition: all 0.15s ease;
 }
 
@@ -1177,22 +1208,11 @@ svg {
   transform: scale(1.1);
 }
 
-.commit-hash {
-  color: #ffffff !important;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  padding: 1px 5px;
-  border-radius: 4px;
-  font-family: var(--mono);
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.5px;
-  white-space: nowrap;
+.branch-labels {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   flex-shrink: 0;
-  display: inline-block;
-  opacity: 1 !important;
-  z-index: 3;
-  position: relative;
 }
 
 .commit-message-cell,

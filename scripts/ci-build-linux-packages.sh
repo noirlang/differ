@@ -94,10 +94,12 @@ Categories=Development;RevisionControl;
 StartupNotify=true
 DESKTOP
 
+app_version="$(node -p "require('./package.json').version" 2>/dev/null || echo "0.0.4")"
+
 cat > "$pkg_root/.PKGINFO" <<PKGINFO
 pkgname = differ
 pkgbase = differ
-pkgver = 0.0.3-1
+pkgver = ${app_version}-1
 pkgdesc = Git change explorer for commit history, diffs, and repository sync
 arch = x86_64
 url = https://github.com/noirlang/differ

@@ -1533,18 +1533,18 @@ function renderCommits() {
         <span class="commit-graph-cell" style="--lane:${lane};--lane-count:${laneCount};--graph-color:${color};">
           <span class="graph-track" aria-hidden="true"></span>
           <span class="commit-dot" aria-hidden="true"></span>
-          <span class="commit-hash" title="${escapeHtml(commit.id || '')}">${escapeHtml(commit.short_id || (commit.id || '').substring(0, 7))}</span>
         </span>
         <span class="commit-message-cell">
+          <span class="commit-hash" title="${escapeHtml(commit.id || '')}">${escapeHtml(commit.short_id || (commit.id || '').substring(0, 7))}</span>
           <button class="btn-edit-commit-pencil" type="button" data-commit-id="${commit.id}" title="Load into commit form">
             <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
               <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
             </svg>
           </button>
-          <span class="branch-labels">${labels}</span>
+          ${labels ? `<span class="branch-labels">${labels}</span>` : ''}
           ${syncLabel}
-          <span class="commit-message">${escapeHtml(firstLine(commit.message))}</span>
+          <span class="commit-message" title="${escapeHtml(firstLine(commit.message))}">${escapeHtml(firstLine(commit.message))}</span>
         </span>
         <span class="commit-author-cell">
           ${avatarHtml}
