@@ -723,7 +723,7 @@ function promptGitInit(path) {
     const btnClose = document.getElementById('btn-cancel-init-repo');
 
     if (!modal || !btnConfirm || !btnDecline) {
-      const ok = confirm(`Bu klasör bir Git deposu değil:\n\n${path}\n\nGit deposu olarak ilklendirilsin mi (git init)?`);
+      const ok = confirm(`Selected directory is not a Git repository:\n\n${path}\n\nInitialize as a Git repository (git init)?`);
       return resolve(ok);
     }
 
@@ -2332,44 +2332,57 @@ function updateAiModelSelectOptions() {
   const currentProvider = appSettings.aiProvider || 'ollama';
   let html = '';
 
+  // 1. Ollama (Local)
   html += '<optgroup label="Ollama (Local)">';
   const ollamaModels = currentSystemInfo?.installed_models || ['gemma4:12b', 'gemma2:9b', 'gemma:2b'];
   const curOllama = appSettings.selectedModel || 'gemma4:12b';
   ollamaModels.forEach((m) => {
-    const isSel = (currentProvider === 'ollama' && m === curOllama) ? 'selected' : '';
-    html += `<option value="ollama:${escapeHtml(m)}" ${isSel}>Ollama: ${escapeHtml(m)}</option>`;
+    html += `<option value="ollama:${escapeHtml(m)}">Ollama: ${escapeHtml(m)}</option>`;
   });
   html += '</optgroup>';
 
-  if (state.geminiModels && state.geminiModels.length > 0) {
-    html += '<optgroup label="Gemini (Cloud)">';
-    const curGem = appSettings.geminiModel || 'gemini-2.5-flash';
-    state.geminiModels.forEach((m) => {
-      const isSel = (currentProvider === 'gemini' && m === curGem) ? 'selected' : '';
-      html += `<option value="gemini:${escapeHtml(m)}" ${isSel}>Gemini: ${escapeHtml(m)}</option>`;
-    });
-    html += '</optgroup>';
-  } else {
-    const curGem = appSettings.geminiModel || 'gemini-2.5-flash';
-    const isSel = (currentProvider === 'gemini') ? 'selected' : '';
-    html += `<optgroup label="Gemini (Cloud)"><option value="gemini:${escapeHtml(curGem)}" ${isSel}>Gemini: ${escapeHtml(curGem)}</option></optgroup>`;
+  // 2. Gemini (Cloud)
+  html += '<optgroup label="Gemini (Cloud)">';
+  const geminiList = (state.geminiModels && state.geminiModels.length > 0)
+    ? state.geminiModels
+    : ['gemini-2.5-flash', 'gemini-2.5-pro', 'gemini-1.5-flash', 'gemini-1.5-pro'];
+  if (appSettings.geminiModel && !geminiList.includes(appSettings.geminiModel)) {
+    geminiList.unshift(appSettings.geminiModel);
   }
+  geminiList.forEach((m) => {
+    html += `<option value="gemini:${escapeHtml(m)}">Gemini: ${escapeHtml(m)}</option>`;
+  });
+  html += '</optgroup>';
 
-  if (state.lmStudioModels && state.lmStudioModels.length > 0) {
-    html += '<optgroup label="LM Studio (Local)">';
-    const curLm = appSettings.lmStudioModel || state.lmStudioModels[0];
-    state.lmStudioModels.forEach((m) => {
-      const isSel = (currentProvider === 'lmstudio' && m === curLm) ? 'selected' : '';
-      html += `<option value="lmstudio:${escapeHtml(m)}" ${isSel}>LM Studio: ${escapeHtml(m)}</option>`;
-    });
-    html += '</optgroup>';
-  } else {
-    const curLm = appSettings.lmStudioModel || 'local-model';
-    const isSel = (currentProvider === 'lmstudio') ? 'selected' : '';
-    html += `<optgroup label="LM Studio (Local)"><option value="lmstudio:${escapeHtml(curLm)}" ${isSel}>LM Studio: ${escapeHtml(curLm)}</option></optgroup>`;
+  // 3. LM Studio (Local)
+  html += '<optgroup label="LM Studio (Local)">';
+  const lmList = (state.lmStudioModels && state.lmStudioModels.length > 0)
+    ? state.lmStudioModels
+    : ['local-model'];
+  if (appSettings.lmStudioModel && !lmList.includes(appSettings.lmStudioModel)) {
+    lmList.unshift(appSettings.lmStudioModel);
   }
+  lmList.forEach((m) => {
+    html += `<option value="lmstudio:${escapeHtml(m)}">LM Studio: ${escapeHtml(m)}</option>`;
+  });
+  html += '</optgroup>';
 
   selectEl.innerHTML = html;
+
+  // Set the selected value explicitly
+  let activeVal = `ollama:${appSettings.selectedModel || 'gemma4:12b'}`;
+  if (currentProvider === 'gemini') {
+    activeVal = `gemini:${appSettings.geminiModel || 'gemini-2.5-flash'}`;
+  } else if (currentProvider === 'lmstudio') {
+    activeVal = `lmstudio:${appSettings.lmStudioModel || 'local-model'}`;
+  }
+
+  selectEl.value = activeVal;
+
+  if (els.commitAiModelTag) {
+    const selectedOpt = selectEl.options[selectEl.selectedIndex];
+    els.commitAiModelTag.textContent = selectedOpt ? selectedOpt.text : activeVal;
+  }
 }
 
 async function fetchGeminiModels() {
@@ -2378,48 +2391,68 @@ async function fetchGeminiModels() {
   const statusEl = els.geminiModelStatus;
 
   if (!apiKey) {
-    statusEl.textContent = 'Enter an API key first.';
-    statusEl.className = 'gemini-model-status error';
+    if (statusEl) {
+      statusEl.textContent = 'Enter an API key first.';
+      statusEl.className = 'gemini-model-status error';
+    }
     return;
   }
 
   const savedModel = appSettings.geminiModel || '';
-  statusEl.textContent = 'Fetching models...';
-  statusEl.className = 'gemini-model-status';
+  if (statusEl) {
+    statusEl.textContent = 'Fetching models...';
+    statusEl.className = 'gemini-model-status';
+  }
 
   try {
-    els.btnFetchGeminiModels.disabled = true;
-    els.btnFetchGeminiModels.textContent = 'Loading...';
+    if (els.btnFetchGeminiModels) {
+      els.btnFetchGeminiModels.disabled = true;
+      els.btnFetchGeminiModels.textContent = 'Loading...';
+    }
 
     const models = await invoke('list_gemini_models', { apiKey });
 
     if (!models || models.length === 0) {
-      statusEl.textContent = 'No generateContent models found for this key.';
-      statusEl.className = 'gemini-model-status error';
+      if (statusEl) {
+        statusEl.textContent = 'No generateContent models found for this key.';
+        statusEl.className = 'gemini-model-status error';
+      }
       return;
     }
 
-    select.innerHTML = '';
-    models.forEach((m) => {
-      const opt = document.createElement('option');
-      opt.value = m;
-      opt.textContent = m;
-      select.appendChild(opt);
-    });
+    state.geminiModels = models;
 
-    if (savedModel && models.includes(savedModel)) {
-      select.value = savedModel;
+    if (select) {
+      select.innerHTML = '';
+      models.forEach((m) => {
+        const opt = document.createElement('option');
+        opt.value = m;
+        opt.textContent = m;
+        select.appendChild(opt);
+      });
+
+      if (savedModel && models.includes(savedModel)) {
+        select.value = savedModel;
+      }
     }
 
-    statusEl.textContent = `${models.length} model(s) loaded.`;
-    statusEl.className = 'gemini-model-status ok';
+    if (statusEl) {
+      statusEl.textContent = `${models.length} model(s) loaded.`;
+      statusEl.className = 'gemini-model-status ok';
+    }
+
+    updateAiModelSelectOptions();
   } catch (err) {
     console.error('fetchGeminiModels error:', err);
-    statusEl.textContent = `Error: ${err}`;
-    statusEl.className = 'gemini-model-status error';
+    if (statusEl) {
+      statusEl.textContent = `Error: ${err}`;
+      statusEl.className = 'gemini-model-status error';
+    }
   } finally {
-    els.btnFetchGeminiModels.disabled = false;
-    els.btnFetchGeminiModels.textContent = 'Refresh';
+    if (els.btnFetchGeminiModels) {
+      els.btnFetchGeminiModels.disabled = false;
+      els.btnFetchGeminiModels.textContent = 'Refresh';
+    }
   }
 }
 
@@ -2839,7 +2872,7 @@ function initEventHandlers() {
       saveAppSettings(appSettings);
       updateAiModelSelectOptions();
       setStatus(`Ollama (${appSettings.selectedModel}) set as default AI model`);
-      alert(`Ollama (${appSettings.selectedModel}) varsayılan AI modeli olarak kaydedildi.`);
+      alert(`Ollama (${appSettings.selectedModel}) saved as default AI model.`);
     });
   }
 
@@ -2852,7 +2885,7 @@ function initEventHandlers() {
       saveAppSettings(appSettings);
       updateAiModelSelectOptions();
       setStatus(`Gemini (${m}) set as default AI model`);
-      alert(`Gemini (${m}) varsayılan AI modeli olarak kaydedildi.`);
+      alert(`Gemini (${m}) saved as default AI model.`);
     });
   }
 
@@ -2865,7 +2898,7 @@ function initEventHandlers() {
       saveAppSettings(appSettings);
       updateAiModelSelectOptions();
       setStatus(`LM Studio (${m}) set as default AI model`);
-      alert(`LM Studio (${m}) varsayılan AI modeli olarak kaydedildi.`);
+      alert(`LM Studio (${m}) saved as default AI model.`);
     });
   }
 
@@ -2875,18 +2908,8 @@ function initEventHandlers() {
       checkLmStudioStatus();
     });
   }
-  const initProvider = appSettings.aiProvider || 'ollama';
-  let initTag = `Ollama: ${appSettings.selectedModel || 'gemma4:12b'}`;
-  if (initProvider === 'gemini') {
-    initTag = `Gemini: ${appSettings.geminiModel || 'gemini-2.5-flash'}`;
-  } else if (initProvider === 'lmstudio') {
-    initTag = `LM Studio`;
-    checkLmStudioStatus().then((res) => {
-      const modelName = (res.models && res.models[0]) ? res.models[0] : 'local-model';
-      if (els.commitAiModelTag) els.commitAiModelTag.textContent = `LM Studio: ${modelName}`;
-    });
-  }
-  if (els.commitAiModelTag) els.commitAiModelTag.textContent = initTag;
+
+  updateAiModelSelectOptions();
   els.topPushBtn.addEventListener('click', pushOrigin);
   if (els.btnUnpushedBannerPush) {
     els.btnUnpushedBannerPush.addEventListener('click', pushOrigin);
@@ -3098,10 +3121,18 @@ function initEventHandlers() {
   });
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   applyUiScale(appSettings.uiScale);
   initEventHandlers();
+  updateAiModelSelectOptions();
   renderRecentRepos();
+
+  // Auto-fetch Gemini models if Gemini API key exists
+  if (appSettings.geminiApiKey) {
+    fetchGeminiModels();
+  }
+  // Auto-fetch LM Studio models
+  checkLmStudioStatus();
 });
 
 // ─── GitHub Functions ──────────────────────────────────────────────────────────
