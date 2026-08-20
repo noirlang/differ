@@ -17,7 +17,7 @@
 
 ## Video
 
-https://github.com/user-attachments/assets/3553d66b-7a10-4a68-9e22-307517186350
+https://github.com/user-attachments/assets/0b8d5afc-c62e-420d-b321-f82076453d70
 
 ## Features
 
