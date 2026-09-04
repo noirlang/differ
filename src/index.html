@@ -16,7 +16,6 @@
         </span>
         <span>
           <strong>differ</strong>
-          <small>Git change explorer</small>
         </span>
       </button>
 
@@ -58,13 +57,49 @@
       </nav>
 
       <div class="repo-info" id="repo-info" style="display:none;">
-        <span class="repo-pill">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3v12"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="6" r="3"></circle><path d="M18 9a9 9 0 0 1-9 9"></path></svg>
-          <span id="active-branch">-</span>
-        </span>
-        <span class="repo-pill"><span id="branch-count">0</span> branch</span>
+        <div class="repo-pill-dropdown-wrapper" id="top-branch-pill-wrapper">
+          <div class="repo-pill branch-pill" id="top-branch-pill" title="Click to switch branch" role="button" tabindex="0">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3v12"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="6" r="3"></circle><path d="M18 9a9 9 0 0 1-9 9"></path></svg>
+            <span id="active-branch">-</span>
+            <svg class="pill-chevron" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"></polyline></svg>
+          </div>
+          <div class="pill-dropdown-menu branch-dropdown" id="branch-dropdown-menu" style="display: none;">
+            <div class="dropdown-menu-header">
+              <span>Branches (<span id="branch-count">0</span>)</span>
+            </div>
+            <div class="dropdown-menu-list" id="top-branch-list"></div>
+          </div>
+        </div>
+
         <span class="repo-pill"><span id="commit-count">0</span> commit</span>
-        <span class="repo-pill sync-pill" id="top-sync-pill">no origin</span>
+
+        <div class="repo-pill-dropdown-wrapper" id="top-remote-pill-wrapper">
+          <div class="repo-pill sync-pill" id="top-sync-pill" title="Click to manage remotes" role="button" tabindex="0">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="2" y1="12" x2="22" y2="12"></line>
+              <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+            </svg>
+            <span id="top-sync-pill-text">no origin</span>
+            <svg class="pill-chevron" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"></polyline></svg>
+          </div>
+          <div class="pill-dropdown-menu remote-dropdown" id="remote-dropdown-menu" style="display: none;">
+            <div class="dropdown-menu-header">
+              <span>Git Remotes</span>
+              <button class="section-text-btn" id="btn-top-add-remote-toggle" type="button" title="Add remote">+</button>
+            </div>
+            <div class="remote-add-form" id="top-add-remote-form" style="display: none;">
+              <input type="text" id="top-remote-name-input" placeholder="Remote name (default: origin)" autocomplete="off" />
+              <input type="url" id="top-remote-url-input" placeholder="Remote URL (https://... or git@...)" autocomplete="off" />
+              <div class="form-actions">
+                <button class="mini-btn cancel" id="btn-cancel-top-remote" type="button">Cancel</button>
+                <button class="mini-btn primary" id="btn-save-top-remote" type="button">Save</button>
+              </div>
+            </div>
+            <div class="dropdown-menu-list" id="top-remote-list"></div>
+          </div>
+        </div>
+
         <button class="top-push-btn" id="top-push-btn" type="button" style="display:none;" title="Push commits to remote origin">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
             <line x1="12" y1="19" x2="12" y2="5"></line>
@@ -104,42 +139,16 @@
             <span><strong id="side-commit-count">0</strong> commit</span>
             <span><strong id="side-author-count">0</strong> people</span>
           </div>
-          <div class="sync-card" id="sync-card">
-            <div class="sync-card-content" id="sync-card-content">
-              <div>
-                <strong id="origin-label">no origin</strong>
-                <small id="push-label">waiting for remote connection</small>
-              </div>
-              <button class="mini-btn" id="btn-push-origin" type="button" disabled>Push</button>
-            </div>
-
-            <button class="mini-btn primary" id="btn-show-add-origin" type="button" style="display: none; width: 100%;">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width: 12px; height: 12px; margin-right: 4px; display: inline-block; vertical-align: middle;">
-                <line x1="12" y1="5" x2="12" y2="19"></line>
-                <line x1="5" y1="12" x2="19" y2="12"></line>
+          <div class="repo-quick-actions">
+            <button class="mini-btn primary" id="btn-push-origin" type="button" disabled>Push</button>
+            <button class="mini-btn icon-only" id="btn-fetch-origin" type="button" title="Fetch from active remote" aria-label="Fetch">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 12a9 9 0 0 1-15.5 6.3L3 16"></path>
+                <path d="M3 21v-5h5"></path>
+                <path d="M3 12A9 9 0 0 1 18.5 5.7L21 8"></path>
+                <path d="M21 3v5h-5"></path>
               </svg>
-              <span>Add Remote Origin</span>
             </button>
-
-            <div class="add-origin-form" id="add-origin-form" style="display: none;">
-              <input type="url" id="remote-url-input" placeholder="Remote URL (https://... or git@...)" autocomplete="off" />
-              <div class="form-actions">
-                <button class="mini-btn cancel" id="btn-cancel-origin" type="button">Cancel</button>
-                <button class="mini-btn primary" id="btn-save-origin" type="button">Save Remote</button>
-              </div>
-            </div>
-
-            <!-- Remotes Selector -->
-            <div class="remotes-bar" id="remotes-bar" style="display: flex; flex-direction: column; gap: 4px; margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--line-soft);">
-              <div style="display: flex; align-items: center; justify-content: space-between; font-size: 10px; color: var(--text-dim); text-transform: uppercase; font-weight: 700;">
-                <span>Remotes (<span id="remotes-count">0</span>)</span>
-                <div style="display: flex; gap: 4px;">
-                  <button class="section-text-btn" id="btn-fetch-remote" type="button" title="Fetch from active remote">Fetch</button>
-                  <button class="section-text-btn" id="btn-add-remote-toggle" type="button" title="Add remote">+</button>
-                </div>
-              </div>
-              <select id="select-active-remote" class="mini-select" style="width: 100%; font-size: 11px; padding: 3px 6px; font-family: var(--mono);"></select>
-            </div>
           </div>
           <div class="editor-actions" id="editor-actions" style="display: none;"></div>
         </section>
@@ -216,14 +225,6 @@
               </button>
             </div>
           </div>
-        </section>
-
-        <section class="sidebar-section branches-section">
-          <div class="section-head">
-            <span>Branches</span>
-            <span class="section-count" id="side-branch-count">0</span>
-          </div>
-          <div class="sidebar-list" id="branch-list"></div>
         </section>
 
         <section class="sidebar-section team-section">

@@ -103,10 +103,22 @@ const els = {
   repoName: $('repo-name'),
   repoPath: $('repo-path'),
   sideRepoName: $('side-repo-name'),
+  topBranchPill: $('top-branch-pill'),
+  branchDropdownMenu: $('branch-dropdown-menu'),
+  topBranchList: $('top-branch-list'),
   activeBranch: $('active-branch'),
   branchCount: $('branch-count'),
   commitCount: $('commit-count'),
   topSyncPill: $('top-sync-pill'),
+  topSyncPillText: $('top-sync-pill-text'),
+  remoteDropdownMenu: $('remote-dropdown-menu'),
+  topRemoteList: $('top-remote-list'),
+  topAddRemoteForm: $('top-add-remote-form'),
+  btnTopAddRemoteToggle: $('btn-top-add-remote-toggle'),
+  topRemoteNameInput: $('top-remote-name-input'),
+  topRemoteUrlInput: $('top-remote-url-input'),
+  btnCancelTopRemote: $('btn-cancel-top-remote'),
+  btnSaveTopRemote: $('btn-save-top-remote'),
   topPushBtn: $('top-push-btn'),
   topPushBtnText: $('top-push-btn-text'),
   btnOpenSettings: $('btn-open-settings'),
@@ -120,6 +132,7 @@ const els = {
   originLabel: $('origin-label'),
   pushLabel: $('push-label'),
   btnPushOrigin: $('btn-push-origin'),
+  btnFetchOrigin: $('btn-fetch-origin'),
   syncCardContent: $('sync-card-content'),
   btnShowAddOrigin: $('btn-show-add-origin'),
   addOriginForm: $('add-origin-form'),
@@ -661,7 +674,7 @@ function renderRepoShell() {
   els.activeBranch.textContent = state.selectedBranch || state.repoInfo.current_branch || 'all';
   els.branchCount.textContent = state.repoInfo.branch_count;
   els.commitCount.textContent = state.repoInfo.commit_count;
-  els.sideBranchCount.textContent = state.branches.length;
+  if (els.sideBranchCount) els.sideBranchCount.textContent = state.branches.length;
   els.sideCommitCount.textContent = state.commits.length;
   els.sideAuthorCount.textContent = authors.length;
   const scope = state.selectedBranch
@@ -888,75 +901,67 @@ async function loadSyncStatus() {
 
 function renderSyncStatus() {
   const sync = state.syncStatus;
+  const activeRemote = state.activeRemote || 'origin';
 
   if (!sync) {
-    els.topSyncPill.textContent = 'no origin';
-    els.originLabel.textContent = 'no origin';
-    els.pushLabel.textContent = 'waiting for remote connection';
-    els.btnPushOrigin.disabled = true;
-    els.topPushBtn.style.display = 'none';
-
-    els.syncCardContent.style.display = 'grid';
-    els.btnShowAddOrigin.style.display = 'none';
-    els.addOriginForm.style.display = 'none';
+    if (els.topSyncPillText) els.topSyncPillText.textContent = 'no origin';
+    if (els.originLabel) els.originLabel.textContent = 'no origin';
+    if (els.pushLabel) els.pushLabel.textContent = 'waiting for remote connection';
+    if (els.btnPushOrigin) els.btnPushOrigin.disabled = true;
+    if (els.topPushBtn) els.topPushBtn.style.display = 'none';
     return;
   }
 
   if (!sync.has_origin) {
-    els.topSyncPill.textContent = 'no origin';
-    els.originLabel.textContent = 'no origin';
-    els.pushLabel.textContent = 'no remote connection';
-    els.btnPushOrigin.textContent = 'Push';
-    els.btnPushOrigin.disabled = true;
-    els.topPushBtn.style.display = 'none';
-
-    els.syncCardContent.style.display = 'none';
-    if (els.addOriginForm.style.display !== 'flex') {
-      els.btnShowAddOrigin.style.display = 'block';
-      els.addOriginForm.style.display = 'none';
-    } else {
-      els.btnShowAddOrigin.style.display = 'none';
-      els.addOriginForm.style.display = 'flex';
+    if (els.topSyncPillText) els.topSyncPillText.textContent = 'no origin';
+    if (els.originLabel) els.originLabel.textContent = 'no origin';
+    if (els.pushLabel) els.pushLabel.textContent = 'no remote connection';
+    if (els.btnPushOrigin) {
+      els.btnPushOrigin.textContent = 'Push';
+      els.btnPushOrigin.disabled = true;
     }
+    if (els.topPushBtn) els.topPushBtn.style.display = 'none';
     return;
   }
 
-  els.syncCardContent.style.display = 'grid';
-  els.btnShowAddOrigin.style.display = 'none';
-  els.addOriginForm.style.display = 'none';
-  const activeRemote = state.activeRemote || 'origin';
-  const originText = sync.origin_url || `${activeRemote} connected`;
-  els.topSyncPill.textContent = sync.unpushed_count > 0
+  const syncText = sync.unpushed_count > 0
     ? `${activeRemote} · ${sync.unpushed_count} unpushed`
     : `${activeRemote} · up to date`;
-  els.originLabel.textContent = originText;
+
+  if (els.topSyncPillText) els.topSyncPillText.textContent = syncText;
+  if (els.originLabel) els.originLabel.textContent = sync.origin_url || `${activeRemote} connected`;
 
   if (sync.unpushed_count > 0 && sync.can_push) {
-    els.topPushBtn.style.display = 'inline-flex';
-    els.topPushBtnText.textContent = `Push (${sync.unpushed_count})`;
+    if (els.topPushBtn) els.topPushBtn.style.display = 'inline-flex';
+    if (els.topPushBtnText) els.topPushBtnText.textContent = `Push (${sync.unpushed_count})`;
   } else {
-    els.topPushBtn.style.display = 'none';
+    if (els.topPushBtn) els.topPushBtn.style.display = 'none';
   }
 
-  if (!sync.can_push) {
-    els.pushLabel.textContent = 'active branch cannot be pushed';
-    els.btnPushOrigin.textContent = 'Push';
-    els.btnPushOrigin.disabled = true;
-    return;
+  if (els.btnPushOrigin) {
+    if (!sync.can_push) {
+      els.btnPushOrigin.textContent = 'Push';
+      els.btnPushOrigin.disabled = true;
+    } else if (!sync.upstream) {
+      els.btnPushOrigin.textContent = `Publish (${activeRemote})`;
+      els.btnPushOrigin.disabled = false;
+    } else {
+      els.btnPushOrigin.textContent = sync.unpushed_count > 0 ? `Push (${sync.unpushed_count})` : 'Push';
+      els.btnPushOrigin.disabled = sync.unpushed_count === 0;
+    }
   }
 
-  if (!sync.upstream) {
-    els.pushLabel.textContent = `${sync.current_branch} will be published to ${activeRemote}`;
-    els.btnPushOrigin.textContent = `Publish to ${activeRemote}`;
-    els.btnPushOrigin.disabled = false;
-    return;
+  if (els.pushLabel) {
+    if (!sync.can_push) {
+      els.pushLabel.textContent = 'active branch cannot be pushed';
+    } else if (!sync.upstream) {
+      els.pushLabel.textContent = `${sync.current_branch} will be published to ${activeRemote}`;
+    } else {
+      els.pushLabel.textContent = sync.unpushed_count > 0
+        ? `${sync.unpushed_count} commit(s) ahead of ${activeRemote}`
+        : `up to date with ${activeRemote}`;
+    }
   }
-
-  els.pushLabel.textContent = sync.unpushed_count > 0
-    ? `${sync.unpushed_count} commit(s) ahead of ${activeRemote}`
-    : `up to date with ${activeRemote}`;
-  els.btnPushOrigin.textContent = `Push to ${activeRemote}`;
-  els.btnPushOrigin.disabled = sync.unpushed_count === 0;
 }
 
 function updateCommitAction() {
@@ -1246,81 +1251,55 @@ async function confirmMerge() {
   }
 }
 function renderBranches() {
+  const currentBranchName = state.selectedBranch || state.repoInfo?.current_branch || 'All History';
+  if (els.activeBranch) els.activeBranch.textContent = currentBranchName;
+  if (els.branchCount) els.branchCount.textContent = state.branches.length;
+
+  if (!els.topBranchList) return;
+
   const branchRows = [
-    `<div class="branch-row-container ${!state.selectedBranch ? 'active' : ''}">
-      <button class="branch-item" type="button" data-branch="">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h16"></path><path d="M4 6h16"></path><path d="M4 18h16"></path></svg>
-        <span class="branch-name">All History</span>
-        <span class="branch-badge">all</span>
-      </button>
-    </div>`,
+    `<button class="dropdown-menu-item ${!state.selectedBranch ? 'active' : ''}" type="button" data-branch="">
+      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12h16"></path><path d="M4 6h16"></path><path d="M4 18h16"></path></svg>
+      <span class="item-title">All History</span>
+      <span class="item-badge local">all</span>
+    </button>`,
   ];
 
   for (const branch of state.branches) {
     const active = state.selectedBranch === branch.name || (!state.selectedBranch && branch.is_head);
-    const isDetached = branch.name === 'detached';
-    const canMerge = !branch.is_remote && !isDetached;
-
-    // Determine badge class and label
-    let badgeClass = '';
-    let badgeLabel = '';
+    let badgeClass = 'local';
+    let badgeLabel = 'local';
     if (branch.is_head) {
       badgeClass = 'head';
       badgeLabel = 'HEAD';
     } else if (branch.is_remote) {
       badgeClass = 'remote';
-      // Show short remote name: strip "origin/" prefix
       badgeLabel = 'remote';
-    } else {
-      badgeClass = 'local';
-      badgeLabel = 'local';
     }
 
-    // Remote branch: show remote prefix dimmed
-    const branchDisplayName = branch.is_remote
-      ? branch.name.replace(/^[^/]+\//, '<span style="opacity:0.45;">$&</span>')
-      : escapeHtml(branch.name);
+    const branchDisplayName = escapeHtml(branch.name);
 
     branchRows.push(`
-      <div class="branch-row-container ${active ? 'active' : ''}">
-        <button class="branch-item" type="button" data-branch="${escapeHtml(branch.name)}">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M6 3v12"></path>
-            <circle cx="6" cy="18" r="3"></circle>
-            <circle cx="18" cy="6" r="3"></circle>
-            <path d="M18 9a9 9 0 0 1-9 9"></path>
-          </svg>
-          <span class="branch-name">${branchDisplayName}</span>
-          <span class="branch-badge ${badgeClass}">${badgeLabel}</span>
-        </button>
-        ${canMerge ? `
-        <button class="branch-merge-btn" type="button" data-branch="${escapeHtml(branch.name)}" title="Merge branch...">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="6" y1="3" x2="6" y2="15"></line>
-            <circle cx="18" cy="6" r="3"></circle>
-            <circle cx="6" cy="18" r="3"></circle>
-            <path d="M18 9a9 9 0 0 1-9 9"></path>
-          </svg>
-        </button>
-        ` : ''}
-      </div>
+      <button class="dropdown-menu-item ${active ? 'active' : ''}" type="button" data-branch="${escapeHtml(branch.name)}">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M6 3v12"></path>
+          <circle cx="6" cy="18" r="3"></circle>
+          <circle cx="18" cy="6" r="3"></circle>
+          <path d="M18 9a9 9 0 0 1-9 9"></path>
+        </svg>
+        <span class="item-title">${branchDisplayName}</span>
+        <span class="item-badge ${badgeClass}">${badgeLabel}</span>
+      </button>
     `);
   }
 
-  els.branchList.innerHTML = branchRows.join('');
+  els.topBranchList.innerHTML = branchRows.join('');
 
-  els.branchList.querySelectorAll('.branch-item').forEach((item) => {
+  els.topBranchList.querySelectorAll('.dropdown-menu-item').forEach((item) => {
     item.addEventListener('click', () => {
       const branch = item.dataset.branch || null;
+      closeAllDropdowns();
       loadCommits(branch);
-    });
-  });
-
-  els.branchList.querySelectorAll('.branch-merge-btn').forEach((btn) => {
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const branchName = btn.dataset.branch;
-      openMergeModal(branchName);
     });
   });
 }
@@ -2977,17 +2956,46 @@ function initEventHandlers() {
       setStatus('Status could not be refreshed');
     }
   });
-  els.btnCommitSelected.addEventListener('click', commitSelectedChanges);
-  els.btnPushOrigin.addEventListener('click', pushOrigin);
-  els.btnShowAddOrigin.addEventListener('click', showAddOriginForm);
-  els.btnCancelOrigin.addEventListener('click', hideAddOriginForm);
-  els.btnSaveOrigin.addEventListener('click', saveRemoteOrigin);
-  els.remoteUrlInput.addEventListener('keydown', (e) => {
+  els.btnCommitSelected?.addEventListener('click', commitSelectedChanges);
+  els.btnPushOrigin?.addEventListener('click', pushOrigin);
+  els.btnFetchOrigin?.addEventListener('click', fetchActiveRemote);
+  els.btnShowAddOrigin?.addEventListener('click', showAddOriginForm);
+  els.btnCancelOrigin?.addEventListener('click', hideAddOriginForm);
+  els.btnSaveOrigin?.addEventListener('click', saveRemoteOrigin);
+  els.remoteUrlInput?.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') {
       e.preventDefault();
       saveRemoteOrigin();
     }
   });
+
+  // Topbar Branch & Remote dropdown listeners
+  els.topBranchPill?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    toggleBranchDropdown();
+  });
+  els.branchDropdownMenu?.addEventListener('click', (e) => e.stopPropagation());
+
+  els.topSyncPill?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    toggleRemoteDropdown();
+  });
+  els.remoteDropdownMenu?.addEventListener('click', (e) => e.stopPropagation());
+
+  els.btnTopAddRemoteToggle?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    toggleTopAddRemoteForm();
+  });
+  els.btnCancelTopRemote?.addEventListener('click', hideTopAddRemoteForm);
+  els.btnSaveTopRemote?.addEventListener('click', saveTopRemote);
+  els.topRemoteUrlInput?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      saveTopRemote();
+    }
+  });
+
+  document.addEventListener('click', closeAllDropdowns);
   els.commitMessageInput.addEventListener('input', updateCommitAction);
   els.btnShowContributors.addEventListener('click', openContributorsModal);
   els.btnCloseContributors.addEventListener('click', closeContributorsModal);
@@ -3084,6 +3092,10 @@ function initEventHandlers() {
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'f') {
       event.preventDefault();
       if (els.searchBox.style.display !== 'none') els.searchInput.focus();
+    }
+
+    if (event.key === 'Escape') {
+      closeAllDropdowns();
     }
 
     if (event.key === 'Escape' && !els.actionLogModal.hidden) {
@@ -3628,38 +3640,145 @@ async function checkAndRenderInstalledEditors() {
   }
 }
 
-// ─── Git Remote Management ───────────────────────────────────────────────────
+// ─── Git Remote Management & Dropdown Controls ──────────────────────────────
+
+function closeAllDropdowns() {
+  if (els.branchDropdownMenu) els.branchDropdownMenu.style.display = 'none';
+  if (els.remoteDropdownMenu) els.remoteDropdownMenu.style.display = 'none';
+  els.topBranchPill?.classList.remove('is-open');
+  els.topSyncPill?.classList.remove('is-open');
+  hideTopAddRemoteForm();
+}
+
+function toggleBranchDropdown() {
+  const isHidden = !els.branchDropdownMenu || els.branchDropdownMenu.style.display === 'none';
+  closeAllDropdowns();
+  if (isHidden && els.branchDropdownMenu) {
+    els.branchDropdownMenu.style.display = 'flex';
+    els.topBranchPill?.classList.add('is-open');
+  }
+}
+
+function toggleRemoteDropdown() {
+  const isHidden = !els.remoteDropdownMenu || els.remoteDropdownMenu.style.display === 'none';
+  closeAllDropdowns();
+  if (isHidden && els.remoteDropdownMenu) {
+    els.remoteDropdownMenu.style.display = 'flex';
+    els.topSyncPill?.classList.add('is-open');
+  }
+}
+
+function toggleTopAddRemoteForm() {
+  if (!els.topAddRemoteForm) return;
+  const isHidden = els.topAddRemoteForm.style.display === 'none';
+  if (isHidden) {
+    els.topAddRemoteForm.style.display = 'flex';
+    if (els.topRemoteNameInput) {
+      els.topRemoteNameInput.value = '';
+      els.topRemoteNameInput.focus();
+    }
+    if (els.topRemoteUrlInput) {
+      els.topRemoteUrlInput.value = '';
+    }
+  } else {
+    hideTopAddRemoteForm();
+  }
+}
+
+function hideTopAddRemoteForm() {
+  if (els.topAddRemoteForm) els.topAddRemoteForm.style.display = 'none';
+  if (els.topRemoteNameInput) els.topRemoteNameInput.value = '';
+  if (els.topRemoteUrlInput) els.topRemoteUrlInput.value = '';
+}
+
+async function saveTopRemote() {
+  const name = (els.topRemoteNameInput?.value || 'origin').trim();
+  const url = (els.topRemoteUrlInput?.value || '').trim();
+
+  if (!url) {
+    alert('Please enter a valid remote URL.');
+    els.topRemoteUrlInput?.focus();
+    return;
+  }
+
+  try {
+    if (els.btnSaveTopRemote) {
+      els.btnSaveTopRemote.disabled = true;
+      els.btnSaveTopRemote.textContent = 'Saving...';
+    }
+    setStatus(`Adding remote ${name}...`);
+
+    await invoke('add_git_remote', { name, url });
+
+    hideTopAddRemoteForm();
+    setStatus(`Remote '${name}' added successfully!`);
+    await loadGitRemotes();
+    await switchActiveRemote(name);
+  } catch (err) {
+    console.error(err);
+    setStatus('Failed to add remote');
+    alert(`Failed to add remote: ${err}`);
+  } finally {
+    if (els.btnSaveTopRemote) {
+      els.btnSaveTopRemote.disabled = false;
+      els.btnSaveTopRemote.textContent = 'Save';
+    }
+  }
+}
 
 async function loadGitRemotes() {
-  if (!invoke || !els.selectActiveRemote) return;
+  if (!invoke) return;
   try {
     const remotes = await invoke('get_git_remotes');
-    state.remotes = remotes;
-    if (els.remotesCount) els.remotesCount.textContent = remotes.length;
+    state.remotes = remotes || [];
+    if (els.remotesCount) els.remotesCount.textContent = state.remotes.length;
 
-    if (remotes.length === 0) {
-      els.selectActiveRemote.innerHTML = '<option value="">No remotes configured</option>';
-      return;
+    if (state.remotes.length === 0) {
+      state.activeRemote = null;
+    } else if (!state.activeRemote || !state.remotes.some((r) => r.name === state.activeRemote)) {
+      state.activeRemote = state.remotes.some((r) => r.name === 'origin') ? 'origin' : state.remotes[0].name;
     }
 
-    if (!state.activeRemote || !remotes.some((r) => r.name === state.activeRemote)) {
-      state.activeRemote = remotes.some((r) => r.name === 'origin') ? 'origin' : remotes[0].name;
-    }
-
-    els.selectActiveRemote.innerHTML = remotes.map((r) => `
-      <option value="${escapeHtml(r.name)}" ${r.name === state.activeRemote ? 'selected' : ''}>
-        ${escapeHtml(r.name)} (${escapeHtml(r.url.slice(0, 26))}${r.url.length > 26 ? '...' : ''})
-      </option>
-    `).join('');
-
+    renderTopRemoteDropdown();
     updateActiveRemoteContext();
   } catch (err) {
     console.error('Failed to load remotes:', err);
   }
 }
 
+function renderTopRemoteDropdown() {
+  if (!els.topRemoteList) return;
+
+  if (!state.remotes || state.remotes.length === 0) {
+    els.topRemoteList.innerHTML = '<div class="muted-row" style="padding: 8px 10px; font-size: 11px; color: var(--text-dim);">No remotes configured</div>';
+    return;
+  }
+
+  els.topRemoteList.innerHTML = state.remotes.map((r) => `
+    <button class="dropdown-menu-item ${r.name === state.activeRemote ? 'active' : ''}" type="button" data-remote="${escapeHtml(r.name)}">
+      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"></circle>
+        <line x1="2" y1="12" x2="22" y2="12"></line>
+        <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+      </svg>
+      <span class="item-title">${escapeHtml(r.name)}</span>
+      <span class="item-badge remote" style="max-width: 120px; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(r.url)}</span>
+    </button>
+  `).join('');
+
+  els.topRemoteList.querySelectorAll('.dropdown-menu-item').forEach((item) => {
+    item.addEventListener('click', async () => {
+      const remoteName = item.dataset.remote;
+      closeAllDropdowns();
+      if (remoteName && remoteName !== state.activeRemote) {
+        await switchActiveRemote(remoteName);
+      }
+    });
+  });
+}
+
 function updateActiveRemoteContext() {
-  const active = state.remotes.find((r) => r.name === state.activeRemote);
+  const active = (state.remotes || []).find((r) => r.name === state.activeRemote);
   if (active && active.isGithub && active.githubOwner && active.githubRepo && state.repoInfo) {
     state.repoInfo.github_owner = active.githubOwner;
     state.repoInfo.github_repo = active.githubRepo;

@@ -265,6 +265,161 @@ svg {
   white-space: nowrap;
 }
 
+.repo-pill-dropdown-wrapper {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.repo-pill.branch-pill,
+.repo-pill.sync-pill {
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.15s ease;
+}
+
+.repo-pill.branch-pill:hover,
+.repo-pill.sync-pill:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.25);
+  color: #ffffff;
+}
+
+.pill-chevron {
+  opacity: 0.6;
+  margin-left: 2px;
+  transition: transform 0.15s ease;
+}
+
+.repo-pill.is-open .pill-chevron {
+  transform: rotate(180deg);
+}
+
+.pill-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 50;
+  min-width: 240px;
+  max-width: 320px;
+  max-height: 380px;
+  background: #0d0d0d;
+  border: 1px solid #333333;
+  border-radius: 8px;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.7);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: modalIn 150ms ease;
+}
+
+.dropdown-menu-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: #141414;
+  border-bottom: 1px solid var(--line-soft);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-dim);
+}
+
+.dropdown-menu-list {
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  padding: 4px;
+  gap: 2px;
+  max-height: 280px;
+}
+
+.dropdown-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 12px;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+  transition: all 0.12s ease;
+  box-sizing: border-box;
+}
+
+.dropdown-menu-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text);
+}
+
+.dropdown-menu-item.active {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.dropdown-menu-item .item-title {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dropdown-menu-item .item-badge {
+  font-size: 9px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  font-family: var(--mono);
+}
+
+.dropdown-menu-item .item-badge.head {
+  background: rgba(56, 139, 253, 0.2);
+  color: #58a6ff;
+}
+
+.dropdown-menu-item .item-badge.remote {
+  background: rgba(163, 113, 247, 0.2);
+  color: #a371f7;
+}
+
+.dropdown-menu-item .item-badge.local {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-dim);
+}
+
+.remote-add-form {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--line-soft);
+  background: #111111;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.remote-add-form input {
+  width: 100%;
+  padding: 4px 8px;
+  font-size: 11px;
+  background: #080808;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  color: var(--text);
+  box-sizing: border-box;
+}
+
+.remote-add-form .form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
 .repo-pill span {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -433,6 +588,31 @@ svg {
 
 .repo-metrics strong {
   color: var(--text);
+}
+
+.repo-quick-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  width: 100%;
+}
+
+.repo-quick-actions #btn-push-origin {
+  flex: 1;
+  min-height: 28px;
+  font-weight: 600;
+  font-size: 11px;
+}
+
+.repo-quick-actions #btn-fetch-origin {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  flex: 0 0 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .sidebar-section {
