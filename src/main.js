@@ -3613,9 +3613,8 @@ async function checkAndRenderInstalledEditors() {
       };
 
       return `
-        <button class="editor-btn ${cfg.className}" type="button" data-editor-id="${escapeHtml(editor.id)}" title="Open in ${escapeHtml(editor.name)}">
+        <button class="editor-btn icon-only ${cfg.className}" type="button" data-editor-id="${escapeHtml(editor.id)}" title="Open in ${escapeHtml(editor.name)}" aria-label="Open in ${escapeHtml(editor.name)}">
           ${cfg.icon}
-          <span>Open in ${escapeHtml(editor.name)}</span>
         </button>
       `;
     }).join('');

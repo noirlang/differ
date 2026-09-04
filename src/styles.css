@@ -109,8 +109,9 @@ svg {
   border-bottom: 1px solid var(--line);
   background: #080808;
   flex-shrink: 0;
-  overflow-x: auto;
-  overflow-y: hidden;
+  position: relative;
+  z-index: 100;
+  overflow: visible;
   min-width: 0;
 }
 
@@ -299,14 +300,14 @@ svg {
   position: absolute;
   top: calc(100% + 6px);
   right: 0;
-  z-index: 50;
+  z-index: 200;
   min-width: 240px;
   max-width: 320px;
   max-height: 380px;
   background: #0d0d0d;
   border: 1px solid #333333;
   border-radius: 8px;
-  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.7);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.85);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -729,30 +730,28 @@ svg {
 
 .editor-actions {
   display: flex;
-  flex-direction: column;
-  gap: 5px;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
   margin-top: 8px;
   width: 100%;
 }
 
 .editor-btn {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  justify-content: flex-start;
-  gap: 8px;
-  width: 100%;
-  min-height: 30px;
-  padding: 0 10px;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  flex: 0 0 28px;
   border: 1px solid var(--line-soft);
   border-radius: 6px;
   background: var(--panel-2);
   color: var(--text-muted);
-  font-size: 11px;
-  font-weight: 600;
   cursor: pointer;
   transition: all 0.15s ease;
-  line-height: 1;
-  text-align: left;
   box-sizing: border-box;
 }
 
@@ -760,13 +759,7 @@ svg {
   border-color: #555555;
   background: var(--hover);
   color: var(--text);
-}
-
-.editor-btn span {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  flex: 1;
+  transform: translateY(-1px);
 }
 
 .editor-btn svg {
