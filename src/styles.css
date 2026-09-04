@@ -212,15 +212,18 @@ svg {
   display: flex;
   align-items: center;
   gap: 8px;
-  width: min(280px, 24vw);
-  min-width: 100px;
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(340px, 28vw);
+  min-width: 140px;
   min-height: 32px;
   padding: 0 10px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--bg-soft);
   color: var(--text-dim);
-  flex-shrink: 1;
+  z-index: 10;
 }
 
 .search-box:focus-within {
@@ -733,6 +736,7 @@ svg {
   flex-direction: row;
   flex-wrap: wrap;
   align-items: center;
+  justify-content: center;
   gap: 6px;
   margin-top: 8px;
   width: 100%;
@@ -1899,22 +1903,25 @@ svg {
 
 .welcome-screen {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
-  justify-content: flex-start;
+  justify-content: center;
   flex: 1;
   min-height: 0;
   width: 100%;
-  padding: clamp(16px, 3.5vw, 40px);
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: clamp(20px, 3.5vw, 48px);
+  gap: clamp(24px, 4vw, 56px);
   overflow-y: auto;
   overflow-x: hidden;
   box-sizing: border-box;
 }
 
 .welcome-copy {
-  width: 100%;
-  max-width: 600px;
-  margin: 0 auto;
+  flex: 1 1 480px;
+  max-width: 540px;
+  margin: 0;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -2063,15 +2070,18 @@ svg {
 }
 
 .welcome-preview {
+  flex: 1 1 440px;
+  max-width: 500px;
+  width: 100%;
   display: grid;
-  grid-template-columns: 160px 1fr 190px;
-  height: min(58vh, 470px);
-  min-height: 330px;
+  grid-template-columns: 130px 1fr 150px;
+  height: min(56vh, 420px);
+  min-height: 300px;
   overflow: hidden;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 10px;
   background: var(--panel);
-  box-shadow: var(--shadow);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.65);
 }
 
 .preview-sidebar,
@@ -2433,6 +2443,31 @@ svg {
 
   .panel-head p {
     max-width: 30%;
+  }
+}
+
+@media (max-width: 960px) {
+  .welcome-screen {
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 32px;
+  }
+
+  .welcome-copy {
+    max-width: 600px;
+    margin: 0 auto;
+  }
+
+  .welcome-preview {
+    max-width: 560px;
+  }
+
+  .search-box {
+    position: static;
+    transform: none;
+    width: min(220px, 25vw);
+    min-width: 100px;
   }
 }
 

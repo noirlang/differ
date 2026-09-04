@@ -722,7 +722,7 @@ function showHomeScreen() {
   els.repoInfo.style.display = 'none';
   els.searchBox.style.display = 'none';
   els.githubNav.style.display = 'none';
-  els.btnOpenRepo.style.display = '';
+  if (els.btnOpenRepo) els.btnOpenRepo.style.display = '';
   renderRecentRepos();
   setStatus('Ready');
 }
@@ -823,7 +823,7 @@ async function openRepo(repoPath = null) {
     els.mainContent.style.display = 'grid';
     els.repoInfo.style.display = 'flex';
     els.searchBox.style.display = 'flex';
-    els.btnOpenRepo.style.display = 'none';
+    if (els.btnOpenRepo) els.btnOpenRepo.style.display = 'none';
     els.detailEmpty.style.display = 'flex';
     els.detailContent.style.display = 'none';
 
@@ -2806,7 +2806,7 @@ function initDetailToggle() {
 function initEventHandlers() {
   initDetailToggle();
   els.btnHome.addEventListener('click', showHomeScreen);
-  els.btnOpenRepo.addEventListener('click', () => openRepo());
+  els.btnOpenRepo?.addEventListener('click', () => openRepo());
   els.btnWelcomeOpen.addEventListener('click', () => openRepo());
   els.btnOpenSettings.addEventListener('click', openSettingsModal);
   els.btnCloseSettings.addEventListener('click', closeSettingsModal);

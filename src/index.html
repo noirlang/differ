@@ -16,21 +16,6 @@
         </span>
       </button>
 
-      <button class="icon-btn primary" id="btn-open-repo" type="button" title="Open Git repository" aria-label="Open Git repository">
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M3 7.5A2.5 2.5 0 0 1 5.5 5h4l2 2.5h7A2.5 2.5 0 0 1 21 10v7.5a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5z"></path>
-        </svg>
-        <span class="btn-text">Open Repo</span>
-      </button>
-
-      <label class="search-box" id="search-box" style="display:none;">
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <circle cx="11" cy="11" r="7"></circle>
-          <path d="m20 20-3.5-3.5"></path>
-        </svg>
-        <input id="search-input" type="search" placeholder="search commits, hashes, authors" autocomplete="off" />
-      </label>
-
       <nav class="github-nav" id="github-nav" style="display:none;" aria-label="GitHub panels">
         <button class="gh-nav-btn active" id="btn-gh-tab-history" type="button" data-panel="history" title="Commit History">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 10h16M4 14h16M4 18h16"></path></svg>
@@ -52,6 +37,14 @@
           <span class="gh-nav-count" id="gh-actions-count" style="display:none;">0</span>
         </button>
       </nav>
+
+      <label class="search-box" id="search-box" style="display:none;">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="11" cy="11" r="7"></circle>
+          <path d="m20 20-3.5-3.5"></path>
+        </svg>
+        <input id="search-input" type="search" placeholder="search commits, hashes, authors" autocomplete="off" />
+      </label>
 
       <div class="repo-info" id="repo-info" style="display:none;">
         <div class="repo-pill-dropdown-wrapper" id="top-branch-pill-wrapper">
