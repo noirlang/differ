@@ -522,44 +522,34 @@ svg {
 }
 
 .editor-actions {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 5px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
   margin-top: 8px;
+  flex-wrap: wrap;
 }
 
 .editor-btn {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 5px;
-  width: 100%;
-  min-height: 28px;
-  padding: 0 6px;
+  width: 28px;
+  height: 28px;
+  padding: 0;
   border: 1px solid var(--line-soft);
   border-radius: 6px;
   background: var(--panel-2);
   color: var(--text-muted);
-  font-size: 11px;
-  font-weight: 600;
   cursor: pointer;
   transition: all 0.15s ease;
-  line-height: 1;
-  min-width: 0;
-  overflow: hidden;
-}
-
-.editor-btn span {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  min-width: 0;
+  flex: 0 0 28px;
 }
 
 .editor-btn:hover {
   border-color: #555555;
   background: var(--hover);
   color: var(--text);
+  transform: translateY(-1px);
 }
 
 .editor-btn svg {

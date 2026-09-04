@@ -2786,6 +2786,11 @@ function initDetailToggle() {
     });
   }
 
+  if (mainContent && !mainContent.classList.contains('hide-detail-panel')) {
+    mainContent.classList.add('hide-detail-panel');
+  }
+  updateToggleBtnState(true);
+
   if (detailPanel) {
     detailPanel.addEventListener('click', (e) => {
       const tabBtn = e.target.closest('.detail-tab');
@@ -3592,13 +3597,12 @@ async function checkAndRenderInstalledEditors() {
     els.editorActions.innerHTML = editors.map((editor) => {
       const cfg = EDITOR_CONFIGS[editor.id] || {
         className: '',
-        icon: `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>`,
+        icon: `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>`,
       };
 
       return `
-        <button class="editor-btn ${cfg.className}" type="button" data-editor-id="${escapeHtml(editor.id)}" title="Open in ${escapeHtml(editor.name)}">
+        <button class="editor-btn ${cfg.className}" type="button" data-editor-id="${escapeHtml(editor.id)}" title="Open in ${escapeHtml(editor.name)}" aria-label="Open in ${escapeHtml(editor.name)}">
           ${cfg.icon}
-          <span>${escapeHtml(editor.name)}</span>
         </button>
       `;
     }).join('');
@@ -3617,7 +3621,7 @@ async function checkAndRenderInstalledEditors() {
       });
     });
 
-    els.editorActions.style.display = 'grid';
+    els.editorActions.style.display = 'flex';
   } catch (err) {
     console.error('Failed to detect editors:', err);
   }
