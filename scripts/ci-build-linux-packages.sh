@@ -94,7 +94,7 @@ Categories=Development;RevisionControl;
 StartupNotify=true
 DESKTOP
 
-app_version="$(node -p "require('./package.json').version" 2>/dev/null || echo "0.0.4")"
+app_version="$(node -p "require('./package.json').version" 2>/dev/null || echo "0.0.5")"
 
 cat > "$pkg_root/.PKGINFO" <<PKGINFO
 pkgname = differ

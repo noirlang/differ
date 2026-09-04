@@ -3803,7 +3803,7 @@ fn get_action_log(state: State<'_, Mutex<AppState>>, run_id: u64) -> Result<Stri
     run_gh(&["run", "view", &id_str, "--log"], cwd)
 }
 
-const CURRENT_APP_VERSION: &str = "0.0.4";
+const CURRENT_APP_VERSION: &str = "0.0.5";
 
 #[tauri::command]
 fn get_app_version() -> String {
@@ -3886,7 +3886,7 @@ fn check_app_update(state: State<'_, Mutex<AppState>>) -> Result<AppUpdateInfo, 
         return Ok(AppUpdateInfo {
             current_version: CURRENT_APP_VERSION.to_string(),
             latest_version: CURRENT_APP_VERSION.to_string(),
-            tag_name: "v0.0.4".to_string(),
+            tag_name: "v0.0.5".to_string(),
             release_name: "No releases found on github.com/noirlang/differ".to_string(),
             release_notes: "App is running the latest version.".to_string(),
             html_url: "https://github.com/noirlang/differ".to_string(),

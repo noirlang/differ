@@ -94,25 +94,32 @@ svg {
   flex-direction: column;
   width: 100vw;
   height: 100vh;
-  min-width: 900px;
+  min-width: 0;
+  max-width: 100vw;
+  overflow: hidden;
   background: var(--bg);
 }
 
 .topbar {
   display: flex;
   align-items: center;
-  gap: 12px;
-  min-height: 56px;
-  padding: 0 16px;
+  gap: 8px;
+  min-height: 52px;
+  padding: 0 12px;
   border-bottom: 1px solid var(--line);
   background: #080808;
+  flex-shrink: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  min-width: 0;
 }
 
 .brand {
   display: flex;
   align-items: center;
-  gap: 10px;
-  min-width: 190px;
+  gap: 8px;
+  min-width: auto;
+  flex-shrink: 0;
   padding: 0;
   border: 0;
   background: transparent;
@@ -204,13 +211,15 @@ svg {
   display: flex;
   align-items: center;
   gap: 8px;
-  width: min(360px, 28vw);
-  min-height: 34px;
+  width: min(280px, 24vw);
+  min-width: 100px;
+  min-height: 32px;
   padding: 0 10px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--bg-soft);
   color: var(--text-dim);
+  flex-shrink: 1;
 }
 
 .search-box:focus-within {
@@ -225,6 +234,7 @@ svg {
   outline: 0;
   background: transparent;
   color: var(--text);
+  font-size: 12px;
 }
 
 .search-box input::placeholder {
@@ -234,10 +244,11 @@ svg {
 .repo-info {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   margin-left: auto;
   min-width: 0;
-  padding-right: 12px;
+  padding-right: 4px;
+  flex-shrink: 0;
 }
 
 .repo-pill {
@@ -302,14 +313,17 @@ svg {
 
 .main-content {
   display: grid;
-  grid-template-columns: 280px minmax(420px, 1fr) minmax(360px, 480px);
+  grid-template-columns: 260px minmax(320px, 1fr) minmax(320px, 450px);
   flex: 1;
   min-height: 0;
+  min-width: 0;
+  width: 100%;
+  overflow: hidden;
   transition: grid-template-columns 0.2s ease;
 }
 
 .main-content.hide-detail-panel {
-  grid-template-columns: 280px minmax(420px, 1fr) 0px;
+  grid-template-columns: 260px minmax(320px, 1fr) 0px !important;
 }
 
 .main-content.hide-detail-panel .detail-panel {
@@ -321,17 +335,19 @@ svg {
 .github-panel,
 .detail-panel {
   min-height: 0;
+  min-width: 0;
   border-right: 1px solid var(--line);
 }
 
 .sidebar {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 12px;
+  padding: 10px;
   background: #080808;
+  min-width: 0;
 }
 
 .repo-card {
@@ -506,29 +522,32 @@ svg {
 }
 
 .editor-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin-top: 10px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  gap: 5px;
+  margin-top: 8px;
 }
 
 .editor-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 6px;
   width: 100%;
-  min-height: 34px;
-  padding: 0 12px;
+  min-height: 28px;
+  padding: 0 6px;
   border: 1px solid var(--line-soft);
   border-radius: 6px;
   background: var(--panel-2);
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.15s ease;
   line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .editor-btn:hover {
@@ -1645,25 +1664,33 @@ svg {
 }
 
 .welcome-screen {
-  display: grid;
-  grid-template-columns: minmax(320px, 440px) minmax(360px, 620px);
+  display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 48px;
+  justify-content: flex-start;
   flex: 1;
   min-height: 0;
-  padding: 42px;
-  overflow: hidden;
+  width: 100%;
+  padding: clamp(16px, 3.5vw, 40px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  box-sizing: border-box;
 }
 
 .welcome-copy {
+  width: 100%;
+  max-width: 600px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
   min-width: 0;
 }
 
 .welcome-mark {
-  width: 54px;
-  height: 54px;
-  margin-bottom: 18px;
+  width: 48px;
+  height: 48px;
+  margin-bottom: 12px;
   border-radius: 8px;
 }
 
@@ -1672,40 +1699,47 @@ svg {
 }
 
 .welcome-copy h2 {
-  margin: 8px 0 12px;
-  max-width: 560px;
-  font-size: clamp(28px, 3vw, 40px);
-  line-height: 1.08;
+  margin: 4px 0 10px;
+  max-width: 100%;
+  font-size: clamp(20px, 3vw, 32px);
+  line-height: 1.15;
+  font-weight: 700;
 }
 
 .welcome-copy p {
-  max-width: 520px;
+  max-width: 100%;
   margin: 0;
   color: var(--text-muted);
-  font-size: 14px;
+  font-size: 13px;
+  line-height: 1.45;
 }
 
 .welcome-btn {
   display: inline-flex;
   align-items: center;
-  gap: 9px;
-  min-height: 40px;
-  margin-top: 24px;
+  gap: 8px;
+  min-height: 38px;
+  margin-top: 16px;
   padding: 0 16px;
   border: 1px solid rgba(255, 255, 255, 0.4);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.08);
   color: var(--accent);
-  font-weight: 800;
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s ease;
 }
 
 .welcome-btn:hover {
-  background: rgba(255, 255, 255, 0.13);
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.6);
 }
 
 .recent-repos {
-  width: min(100%, 460px);
-  margin-top: 28px;
+  width: 100%;
+  max-width: 600px;
+  margin-top: 24px;
 }
 
 .recent-repos-head {
@@ -1728,24 +1762,28 @@ svg {
 }
 
 .recent-repo-list {
-  display: grid;
-  gap: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
 }
 
 .recent-repo-item {
   display: grid;
-  grid-template-columns: 34px minmax(0, 1fr);
+  grid-template-columns: 32px minmax(0, 1fr);
   align-items: center;
   gap: 10px;
   width: 100%;
-  min-height: 52px;
-  padding: 8px 10px;
+  min-height: 46px;
+  padding: 8px 12px;
   border: 1px solid var(--line-soft);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.035);
   color: var(--text);
   text-align: left;
   cursor: pointer;
+  transition: all 0.15s ease;
+  box-sizing: border-box;
 }
 
 .recent-repo-item:hover,
@@ -1758,10 +1796,10 @@ svg {
 .recent-repo-icon {
   display: grid;
   place-items: center;
-  width: 34px;
-  height: 34px;
+  width: 32px;
+  height: 32px;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 6px;
   color: var(--text-muted);
 }
 
@@ -1895,7 +1933,8 @@ svg {
 }
 
 .modal-overlay[hidden] {
-  display: none;
+  display: none !important;
+  pointer-events: none !important;
 }
 
 .contributors-modal {
@@ -2088,14 +2127,18 @@ svg {
   }
 }
 
-@media (max-width: 1180px) {
+@media (max-width: 1280px) {
   .main-content {
-    grid-template-columns: 250px minmax(360px, 1fr) 420px;
+    grid-template-columns: 240px minmax(280px, 1fr) minmax(280px, 400px);
+  }
+
+  .main-content.hide-detail-panel {
+    grid-template-columns: 240px minmax(280px, 1fr) 0px !important;
   }
 
   .commit-list-header,
   .commit-row {
-    grid-template-columns: 150px minmax(170px, 1fr) 132px 94px;
+    grid-template-columns: 75px minmax(200px, 1fr) 130px 90px;
   }
 
   .panel-head p {
@@ -2103,30 +2146,112 @@ svg {
   }
 }
 
-@media (max-width: 980px) {
+@media (max-width: 1050px) {
   #app {
     min-width: 0;
   }
 
-  .welcome-screen {
-    grid-template-columns: 1fr;
-    align-content: center;
+  .main-content {
+    grid-template-columns: 220px minmax(0, 1fr) 0px;
   }
 
-  .welcome-preview {
+  .main-content.hide-detail-panel {
+    grid-template-columns: 220px minmax(0, 1fr) 0px !important;
+  }
+
+  .main-content:not(.hide-detail-panel) {
+    grid-template-columns: 220px minmax(0, 1fr) minmax(260px, 360px);
+  }
+
+  .commit-list-header,
+  .commit-row {
+    grid-template-columns: 65px minmax(150px, 1fr) 110px 80px;
+  }
+
+  .repo-pill:not(.sync-pill):not(:first-child) {
     display: none;
+  }
+}
+
+@media (max-width: 800px) {
+  .topbar {
+    padding: 0 8px;
+    gap: 6px;
+    min-height: 48px;
+  }
+
+  .brand strong {
+    font-size: 13px;
+  }
+
+  .brand small {
+    display: none;
+  }
+
+  .brand-mark {
+    width: 26px;
+    height: 26px;
+  }
+
+  .search-box {
+    flex: 0 1 140px;
+    min-width: 80px;
+    padding: 0 6px;
+    font-size: 12px;
+  }
+
+  .gh-nav-btn {
+    padding: 0 6px;
+    font-size: 11px;
+    gap: 4px;
   }
 
   .main-content {
-    grid-template-columns: 230px minmax(0, 1fr);
+    grid-template-columns: 190px minmax(0, 1fr) 0px;
   }
 
-  .detail-panel {
-    display: none;
+  .main-content:not(.hide-detail-panel) {
+    grid-template-columns: 0px minmax(0, 1fr) minmax(240px, 1fr);
+  }
+
+  .commit-list-header,
+  .commit-row {
+    grid-template-columns: 55px minmax(130px, 1fr) 95px 70px;
+    padding: 0 8px;
+  }
+
+  .commit-hash {
+    font-size: 9px;
+    padding: 1px 4px;
   }
 
   .repo-info {
-    display: none !important;
+    gap: 4px;
+    padding-right: 2px;
+  }
+}
+
+@media (max-width: 600px) {
+  .main-content {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    display: none;
+  }
+
+  .commit-list-header,
+  .commit-row {
+    grid-template-columns: 50px minmax(110px, 1fr) 30px 60px;
+    padding: 0 6px;
+  }
+
+  .commit-author-cell span:last-child {
+    display: none;
+  }
+
+  .gh-nav-btn span:not(.gh-nav-count) {
+    display: none;
   }
 }
 
