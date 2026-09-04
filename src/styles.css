@@ -276,6 +276,32 @@ svg {
   color: var(--text-muted);
 }
 
+.top-nav-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--line-soft);
+  color: var(--text-muted);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.top-nav-btn:hover {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.3);
+  color: #ffffff;
+}
+
+.settings-btn {
+  margin-left: 2px;
+}
+
 .detail-toggle-btn {
   display: inline-flex;
   align-items: center;
@@ -290,7 +316,7 @@ svg {
   cursor: pointer;
   transition: all 0.15s ease;
   flex-shrink: 0;
-  margin-left: 4px;
+  margin-left: 2px;
 }
 
 .detail-toggle-btn:hover {
