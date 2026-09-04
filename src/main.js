@@ -3596,9 +3596,9 @@ async function checkAndRenderInstalledEditors() {
       };
 
       return `
-        <button class="editor-btn ${cfg.className}" type="button" data-editor-id="${escapeHtml(editor.id)}">
+        <button class="editor-btn ${cfg.className}" type="button" data-editor-id="${escapeHtml(editor.id)}" title="Open in ${escapeHtml(editor.name)}">
           ${cfg.icon}
-          <span>Open in ${escapeHtml(editor.name)}</span>
+          <span>${escapeHtml(editor.name)}</span>
         </button>
       `;
     }).join('');
@@ -3617,7 +3617,7 @@ async function checkAndRenderInstalledEditors() {
       });
     });
 
-    els.editorActions.style.display = 'flex';
+    els.editorActions.style.display = 'grid';
   } catch (err) {
     console.error('Failed to detect editors:', err);
   }

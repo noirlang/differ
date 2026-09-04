@@ -523,7 +523,7 @@ svg {
 
 .editor-actions {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 5px;
   margin-top: 8px;
 }
@@ -532,7 +532,7 @@ svg {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: 5px;
   width: 100%;
   min-height: 28px;
   padding: 0 6px;
@@ -545,9 +545,15 @@ svg {
   cursor: pointer;
   transition: all 0.15s ease;
   line-height: 1;
-  white-space: nowrap;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.editor-btn span {
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
 }
 
 .editor-btn:hover {
@@ -557,9 +563,9 @@ svg {
 }
 
 .editor-btn svg {
-  width: 16px;
-  height: 16px;
-  flex: 0 0 16px;
+  width: 15px;
+  height: 15px;
+  flex: 0 0 15px;
   display: block;
 }
 
@@ -1087,9 +1093,37 @@ svg {
 .commit-list-header,
 .commit-row {
   display: grid !important;
-  grid-template-columns: 85px minmax(320px, 1fr) 150px 110px;
+  grid-template-columns: 75px minmax(200px, 1fr) 140px 90px;
   align-items: center;
   box-sizing: border-box;
+}
+
+/* Detail panel is open (3 columns active) -> optimize message width */
+.main-content:not(.hide-detail-panel) .commit-list-header,
+.main-content:not(.hide-detail-panel) .commit-row {
+  grid-template-columns: 55px minmax(160px, 1fr) 36px 70px;
+}
+
+.main-content:not(.hide-detail-panel) .commit-author-cell .author-name {
+  display: none !important;
+}
+
+.main-content:not(.hide-detail-panel) .commit-message-cell .commit-hash {
+  display: none !important;
+}
+
+/* Detail panel is closed (2 columns: wide history view) */
+.main-content.hide-detail-panel .commit-list-header,
+.main-content.hide-detail-panel .commit-row {
+  grid-template-columns: 85px minmax(320px, 1fr) 150px 110px;
+}
+
+.main-content.hide-detail-panel .commit-author-cell .author-name {
+  display: inline-block !important;
+}
+
+.main-content.hide-detail-panel .commit-message-cell .commit-hash {
+  display: inline-flex !important;
 }
 
 .commit-list-header {
@@ -2136,13 +2170,34 @@ svg {
     grid-template-columns: 240px minmax(280px, 1fr) 0px !important;
   }
 
-  .commit-list-header,
-  .commit-row {
-    grid-template-columns: 75px minmax(200px, 1fr) 130px 90px;
-  }
-
   .panel-head p {
     max-width: 34%;
+  }
+}
+
+@media (max-width: 1150px) {
+  .topbar .btn-text,
+  .topbar .gh-tab-label {
+    display: none !important;
+  }
+
+  .topbar .icon-btn {
+    padding: 0 8px;
+    gap: 0;
+  }
+
+  .topbar .gh-nav-btn {
+    padding: 0 8px;
+    gap: 4px;
+  }
+
+  .search-box {
+    width: min(200px, 18vw);
+    min-width: 90px;
+  }
+
+  .repo-pill:not(.sync-pill):not(:first-child) {
+    display: none;
   }
 }
 
@@ -2165,11 +2220,19 @@ svg {
 
   .commit-list-header,
   .commit-row {
-    grid-template-columns: 65px minmax(150px, 1fr) 110px 80px;
+    grid-template-columns: 50px minmax(130px, 1fr) 36px 65px;
   }
 
-  .repo-pill:not(.sync-pill):not(:first-child) {
-    display: none;
+  .commit-author-cell .author-name {
+    display: none !important;
+  }
+
+  .commit-message-cell .commit-hash {
+    display: none !important;
+  }
+
+  .panel-head p {
+    max-width: 30%;
   }
 }
 
@@ -2216,7 +2279,7 @@ svg {
 
   .commit-list-header,
   .commit-row {
-    grid-template-columns: 55px minmax(130px, 1fr) 95px 70px;
+    grid-template-columns: 45px minmax(120px, 1fr) 36px 60px;
     padding: 0 8px;
   }
 
@@ -2242,7 +2305,7 @@ svg {
 
   .commit-list-header,
   .commit-row {
-    grid-template-columns: 50px minmax(110px, 1fr) 30px 60px;
+    grid-template-columns: 40px minmax(100px, 1fr) 30px 55px;
     padding: 0 6px;
   }
 

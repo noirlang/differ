@@ -24,7 +24,7 @@
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <path d="M3 7.5A2.5 2.5 0 0 1 5.5 5h4l2 2.5h7A2.5 2.5 0 0 1 21 10v7.5a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5z"></path>
         </svg>
-        <span>Open Repo</span>
+        <span class="btn-text">Open Repo</span>
       </button>
 
       <button class="icon-btn" id="btn-open-settings" type="button" title="Settings & AI Config" aria-label="Settings">
@@ -39,7 +39,7 @@
           <line x1="9" y1="8" x2="15" y2="8"></line>
           <line x1="17" y1="16" x2="23" y2="16"></line>
         </svg>
-        <span>Settings</span>
+        <span class="btn-text">Settings</span>
       </button>
 
       <label class="search-box" id="search-box" style="display:none;">
@@ -51,23 +51,23 @@
       </label>
 
       <nav class="github-nav" id="github-nav" style="display:none;" aria-label="GitHub panels">
-        <button class="gh-nav-btn active" id="btn-gh-tab-history" type="button" data-panel="history">
+        <button class="gh-nav-btn active" id="btn-gh-tab-history" type="button" data-panel="history" title="Commit History">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 10h16M4 14h16M4 18h16"></path></svg>
-          <span>History</span>
+          <span class="gh-tab-label">History</span>
         </button>
-        <button class="gh-nav-btn" id="btn-gh-tab-issues" type="button" data-panel="issues">
+        <button class="gh-nav-btn" id="btn-gh-tab-issues" type="button" data-panel="issues" title="GitHub Issues">
           <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="7"></circle><path d="M12 8v4"></path><circle cx="12" cy="16" r="0.5" fill="currentColor"></circle></svg>
-          <span>Issues</span>
+          <span class="gh-tab-label">Issues</span>
           <span class="gh-nav-count" id="gh-issues-count" style="display:none;">0</span>
         </button>
-        <button class="gh-nav-btn" id="btn-gh-tab-prs" type="button" data-panel="prs">
+        <button class="gh-nav-btn" id="btn-gh-tab-prs" type="button" data-panel="prs" title="Pull Requests">
           <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="6" r="3"></circle><path d="M6 15V6"></path><path d="M18 9a9 9 0 0 1-9 9"></path></svg>
-          <span>Pull Requests</span>
+          <span class="gh-tab-label">Pull Requests</span>
           <span class="gh-nav-count" id="gh-prs-count" style="display:none;">0</span>
         </button>
-        <button class="gh-nav-btn" id="btn-gh-tab-actions" type="button" data-panel="actions">
+        <button class="gh-nav-btn" id="btn-gh-tab-actions" type="button" data-panel="actions" title="GitHub Actions CI/CD">
           <svg viewBox="0 0 24 24" aria-hidden="true"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
-          <span>Actions</span>
+          <span class="gh-tab-label">Actions</span>
           <span class="gh-nav-count" id="gh-actions-count" style="display:none;">0</span>
         </button>
       </nav>
@@ -85,7 +85,7 @@
             <line x1="12" y1="19" x2="12" y2="5"></line>
             <polyline points="5 12 12 5 19 12"></polyline>
           </svg>
-          <span id="top-push-btn-text">Push</span>
+          <span id="top-push-btn-text" class="btn-text">Push</span>
         </button>
         <button class="top-nav-btn icon-only-btn detail-toggle-btn" id="btn-toggle-detail-panel" type="button" title="Commit Detail Panelini Aç/Kapat" aria-label="Toggle Commit Detail">
           <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
