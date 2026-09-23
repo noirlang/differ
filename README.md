@@ -40,6 +40,7 @@ https://github.com/user-attachments/assets/0b8d5afc-c62e-420d-b321-f82076453d70
 | Debian / Ubuntu | `differ-linux-x64.deb` | [Download](https://github.com/noirlang/differ/releases/latest/download/differ-linux-x64.deb) |
 | Arch Linux | `differ-linux-x64.pkg.tar.zst` | [Download](https://github.com/noirlang/differ/releases/latest/download/differ-linux-x64.pkg.tar.zst) |
 | RPM Linux | `differ-linux-x64.rpm` | [Download](https://github.com/noirlang/differ/releases/latest/download/differ-linux-x64.rpm) |
+| Linux Flatpak | `differ-linux-x64.flatpak` | [Download](https://github.com/noirlang/differ/releases/latest/download/differ-linux-x64.flatpak) |
 | Windows | `differ-windows-x64.msi` | [Download](https://github.com/noirlang/differ/releases/latest/download/differ-windows-x64.msi) |
 
 All Releases: [GitHub Releases](https://github.com/noirlang/differ/releases/latest)

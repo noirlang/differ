@@ -226,6 +226,99 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
+  flatpak-bundle:
+    name: Linux Flatpak bundle
+    needs:
+      - metadata
+      - quality
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Install Flatpak tooling
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y flatpak flatpak-builder ccache
+          flatpak --version
+          flatpak-builder --version
+
+      - name: Set up Flathub and GNOME SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          flatpak remote-add --user --if-not-exists flathub \
+            https://dl.flathub.org/repo/flathub.flatpakrepo
+          flatpak install --user -y flathub \
+            org.gnome.Platform//48 \
+            org.gnome.Sdk//48 \
+            org.freedesktop.Sdk.Extension.rust-stable//24.08 \
+            org.freedesktop.Sdk.Extension.node22//24.08
+
+      - name: Validate Flatpak manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          flatpak-builder --show-manifest flatpak/com.raodrin.differ.yaml > /dev/null
+          python3 -c "import xml.dom.minidom; xml.dom.minidom.parse('flatpak/com.raodrin.differ.metainfo.xml')"
+          desktop-file-validate flatpak/com.raodrin.differ.desktop || \
+            echo "::warning::desktop-file-validate not available or desktop file has warnings"
+
+      - name: Build Flatpak
+        shell: bash
+        run: |
+          set -euo pipefail
+          flatpak-builder --user --share=network --force-clean \
+            --ccache --repo=repo build-dir flatpak/com.raodrin.differ.yaml
+
+      - name: Import Flatpak GPG key (noirLang)
+        if: secrets.FLATPAK_GPG_PRIVATE_KEY != ''
+        env:
+          FLATPAK_GPG_PRIVATE_KEY: ${{ secrets.FLATPAK_GPG_PRIVATE_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf '%s' "$FLATPAK_GPG_PRIVATE_KEY" | gpg --batch --import
+          gpg --batch --list-secret-keys
+
+      - name: Bundle Flatpak
+        env:
+          FLATPAK_GPG_KEY_ID: ${{ secrets.FLATPAK_GPG_KEY_ID }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          args=(--runtime-repo=https://flathub.org/repo/flathub.flatpakrepo)
+          if [[ -n "${FLATPAK_GPG_KEY_ID:-}" ]]; then
+            args+=(--gpg-sign="$FLATPAK_GPG_KEY_ID")
+            echo "Signing Flatpak bundle as $FLATPAK_GPG_KEY_ID"
+          else
+            echo "No FLATPAK_GPG_KEY_ID secret: building unsigned bundle"
+          fi
+          flatpak build-bundle repo dist/differ-linux-x64.flatpak \
+            com.raodrin.differ "${args[@]}"
+          ls -lh dist/differ-linux-x64.flatpak
+
+      - name: Name Flatpak asset from commit
+        env:
+          ASSET_SUFFIX: ${{ needs.metadata.outputs.asset_suffix }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p release-assets
+          cp dist/differ-linux-x64.flatpak \
+            "release-assets/differ-${ASSET_SUFFIX}-linux-x64.flatpak"
+
+      - name: Upload Flatpak bundle
+        uses: actions/upload-artifact@v7
+        with:
+          name: flatpak-bundle-${{ needs.metadata.outputs.short_sha }}
+          path: release-assets/*
+          if-no-files-found: error
+          retention-days: 30
+
   release:
     name: Publish commit prerelease
     if: github.event_name == 'push'
@@ -233,6 +326,7 @@ jobs:
       - metadata
       - linux-packages
       - windows-msi
+      - flatpak-bundle
     runs-on: ubuntu-24.04
     permissions:
       contents: write
@@ -264,9 +358,12 @@ jobs:
           - Debian/Ubuntu DEB
           - Fedora/RHEL RPM
           - Arch Linux package
+          - Linux Flatpak bundle (`*.flatpak`, install with `flatpak install --user`)
           - Windows x64 MSI
 
           This is an unsigned prerelease generated from a development commit.
+          Flatpak is signed only when the `FLATPAK_GPG_PRIVATE_KEY` /
+          `FLATPAK_GPG_KEY_ID` (noirLang) secrets are configured.
           EOF
 
       - name: Create or update commit release

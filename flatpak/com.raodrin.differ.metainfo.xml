@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>com.raodrin.differ</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-or-later</project_license>
+  <name>differ</name>
+  <summary>Focused desktop Git change explorer</summary>
+  <description>
+    <p>
+      differ is a focused desktop Git change explorer for commit history,
+      contributors, diffs, AI commit generation, working tree status,
+      and repository sync state.
+    </p>
+    <p>Features include multi-provider AI commit messages (Ollama, Gemini, LM Studio), commit editing and amending, SMTP patch emails, GPG signing, GitHub history/issues/PRs/Actions views, and one-click external editor launchers.</p>
+  </description>
+  <developer>
+    <name>noirLang</name>
+  </developer>
+  <url type="homepage">https://github.com/noirlang/differ</url>
+  <url type="bugtracker">https://github.com/noirlang/differ/issues</url>
+  <url type="help">https://github.com/noirlang/differ#readme</url>
+  <launchable type="desktop-id">com.raodrin.differ.desktop</launchable>
+  <provides>
+    <binary>differ</binary>
+    <id>com.raodrin.differ.desktop</id>
+  </provides>
+  <requires>
+    <display_length compare="ge">360</display_length>
+  </requires>
+  <content_rating type="oars-1.1" />
+  <releases>
+    <release version="0.0.5" date="2026-09-23">
+      <description>
+        <p>Flatpak release: sandboxed build with host git/gpg/ssh integration via flatpak-spawn.</p>
+      </description>
+    </release>
+  </releases>
+</component>

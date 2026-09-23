@@ -12,6 +12,7 @@
     "build": "tauri build",
     "build:windows": "tauri build --bundles msi",
     "build:linux:appimage": "scripts/build-appimage-ubuntu.sh",
+    "build:flatpak": "scripts/build-flatpak.sh",
     "tauri": "tauri"
   },
   "devDependencies": {
