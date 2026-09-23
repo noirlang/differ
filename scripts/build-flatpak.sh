@@ -8,7 +8,7 @@ set -euo pipefail
 project_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$project_dir"
 
-APP_ID="com.raodrin.differ"
+APP_ID="com.noirlang.differ"
 RUNTIME="org.gnome.Platform//48"
 SDK="org.gnome.Sdk//48"
 RUST_EXT="org.freedesktop.Sdk.Extension.rust-stable//24.08"

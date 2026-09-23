@@ -232,6 +232,11 @@ jobs:
       - metadata
       - quality
     runs-on: ubuntu-24.04
+    # NOTE: `secrets.*` cannot be used in step `if:` conditions, so the
+    # noirLang signing secrets are mapped to env here and steps test `env.*`.
+    env:
+      FLATPAK_GPG_PRIVATE_KEY: ${{ secrets.FLATPAK_GPG_PRIVATE_KEY }}
+      FLATPAK_GPG_KEY_ID: ${{ secrets.FLATPAK_GPG_KEY_ID }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -261,9 +266,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          flatpak-builder --show-manifest flatpak/com.raodrin.differ.yaml > /dev/null
-          python3 -c "import xml.dom.minidom; xml.dom.minidom.parse('flatpak/com.raodrin.differ.metainfo.xml')"
-          desktop-file-validate flatpak/com.raodrin.differ.desktop || \
+          flatpak-builder --show-manifest flatpak/com.noirlang.differ.yaml > /dev/null
+          python3 -c "import xml.dom.minidom; xml.dom.minidom.parse('flatpak/com.noirlang.differ.metainfo.xml')"
+          desktop-file-validate flatpak/com.noirlang.differ.desktop || \
             echo "::warning::desktop-file-validate not available or desktop file has warnings"
 
       - name: Build Flatpak
@@ -271,12 +276,10 @@ jobs:
         run: |
           set -euo pipefail
           flatpak-builder --user --share=network --force-clean \
-            --ccache --repo=repo build-dir flatpak/com.raodrin.differ.yaml
+            --ccache --repo=repo build-dir flatpak/com.noirlang.differ.yaml
 
       - name: Import Flatpak GPG key (noirLang)
-        if: secrets.FLATPAK_GPG_PRIVATE_KEY != ''
-        env:
-          FLATPAK_GPG_PRIVATE_KEY: ${{ secrets.FLATPAK_GPG_PRIVATE_KEY }}
+        if: env.FLATPAK_GPG_PRIVATE_KEY != ''
         shell: bash
         run: |
           set -euo pipefail
@@ -284,8 +287,6 @@ jobs:
           gpg --batch --list-secret-keys
 
       - name: Bundle Flatpak
-        env:
-          FLATPAK_GPG_KEY_ID: ${{ secrets.FLATPAK_GPG_KEY_ID }}
         shell: bash
         run: |
           set -euo pipefail
@@ -298,7 +299,7 @@ jobs:
             echo "No FLATPAK_GPG_KEY_ID secret: building unsigned bundle"
           fi
           flatpak build-bundle repo dist/differ-linux-x64.flatpak \
-            com.raodrin.differ "${args[@]}"
+            com.noirlang.differ "${args[@]}"
           ls -lh dist/differ-linux-x64.flatpak
 
       - name: Name Flatpak asset from commit
