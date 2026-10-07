@@ -56,6 +56,14 @@
           <div class="pill-dropdown-menu branch-dropdown" id="branch-dropdown-menu" style="display: none;">
             <div class="dropdown-menu-header">
               <span>Branches (<span id="branch-count">0</span>)</span>
+              <button class="section-icon-btn" id="btn-refresh-branches" type="button" title="Fetch branches from origin" aria-label="Refresh branches">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21 12a9 9 0 0 1-15.5 6.3L3 16"></path>
+                  <path d="M3 21v-5h5"></path>
+                  <path d="M3 12A9 9 0 0 1 18.5 5.7L21 8"></path>
+                  <path d="M21 3v5h-5"></path>
+                </svg>
+              </button>
             </div>
             <div class="dropdown-menu-list" id="top-branch-list"></div>
           </div>
@@ -253,6 +261,29 @@
             </button>
           </div>
           <div class="unpushed-commit-list" id="unpushed-commit-list"></div>
+        </div>
+
+        <div class="unmerged-banner" id="unmerged-banner" style="display: none;">
+          <div class="unmerged-banner-head">
+            <div class="unmerged-banner-title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="unmerged-icon">
+                <circle cx="18" cy="18" r="3"></circle>
+                <circle cx="6" cy="6" r="3"></circle>
+                <path d="M6 21V9a9 9 0 0 0 9 9"></path>
+              </svg>
+              <span><strong>Unmerged Commits (<span id="unmerged-banner-count">0</span>)</strong> &mdash; <span id="unmerged-banner-source">current branch</span> not merged into</span>
+              <select id="unmerged-target-select" class="unmerged-source-select" title="Branch to merge into"></select>
+            </div>
+            <button class="top-push-btn large merge-all" id="btn-unmerged-merge-all" type="button" title="Merge this branch into the selected target branch">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="18" cy="18" r="3"></circle>
+                <circle cx="6" cy="6" r="3"></circle>
+                <path d="M6 21V9a9 9 0 0 0 9 9"></path>
+              </svg>
+              <span>Merge All</span>
+            </button>
+          </div>
+          <div class="unmerged-commit-list" id="unmerged-commit-list"></div>
         </div>
 
         <div class="commit-list-header" aria-hidden="true">
@@ -479,6 +510,49 @@
           <div class="merge-modal-actions">
             <button class="mini-btn cancel" id="btn-cancel-merge" type="button">Cancel</button>
             <button class="mini-btn primary" id="btn-confirm-merge" type="button">Confirm Merge</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Conflict Resolution Modal -->
+    <div class="modal-overlay" id="conflict-modal" hidden>
+      <div class="merge-modal conflict-modal" role="dialog" aria-modal="true" aria-labelledby="conflict-title">
+        <div class="modal-head">
+          <div>
+            <span id="conflict-kicker">Merge Conflicts</span>
+            <h2 id="conflict-title">Resolve Conflicts</h2>
+          </div>
+          <button class="modal-close" id="btn-close-conflict" type="button" aria-label="Close">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>
+          </button>
+        </div>
+
+        <div class="modal-body">
+          <p class="conflict-subtitle" id="conflict-subtitle">Choose which version to keep for all conflicted files:</p>
+          <div class="conflict-file-list" id="conflict-file-list"></div>
+
+          <div class="conflict-diff-legend">
+            <span class="legend-del">&minus; <span id="conflict-legend-ours">target</span></span>
+            <span class="legend-add">+ <span id="conflict-legend-theirs">incoming</span></span>
+          </div>
+          <div class="conflict-diff-list" id="conflict-diff-list"></div>
+
+          <div class="conflict-choices">
+            <button class="conflict-choice ours" id="btn-keep-ours" type="button">
+              <span class="choice-kicker">Keep target version</span>
+              <strong id="keep-ours-label">-</strong>
+              <small>Overwrite conflicts with the target branch state</small>
+            </button>
+            <button class="conflict-choice theirs" id="btn-keep-theirs" type="button">
+              <span class="choice-kicker">Keep incoming version</span>
+              <strong id="keep-theirs-label">-</strong>
+              <small>Overwrite conflicts with the incoming branch state</small>
+            </button>
+          </div>
+
+          <div class="merge-modal-actions conflict-abort-row">
+            <button class="mini-btn cancel" id="btn-abort-conflict" type="button">Abort instead</button>
           </div>
         </div>
       </div>

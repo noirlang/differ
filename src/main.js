@@ -34,7 +34,17 @@ const state = {
   ghUser: '',
   remotes: [],
   activeRemote: 'origin',
+  unmergedCommits: [],
+  unmergedTarget: null,
+  unmergedManual: false,
+  activeConflict: null,
+  refreshTimer: null,
+  lastFingerprint: null,
+  isRefreshing: false,
+  lastAutoCheck: 0,
 };
+
+const AUTO_REFRESH_MS = 40000;
 
 const $ = (id) => document.getElementById(id);
 
@@ -168,6 +178,20 @@ const els = {
   mergeSourceLabel: $('merge-source-label'),
   mergeTargetLabel: $('merge-target-label'),
   mergeTargetSelect: $('merge-target-select'),
+  conflictModal: $('conflict-modal'),
+  conflictKicker: $('conflict-kicker'),
+  conflictTitle: $('conflict-title'),
+  conflictSubtitle: $('conflict-subtitle'),
+  conflictFileList: $('conflict-file-list'),
+  conflictDiffList: $('conflict-diff-list'),
+  conflictLegendOurs: $('conflict-legend-ours'),
+  conflictLegendTheirs: $('conflict-legend-theirs'),
+  btnKeepOurs: $('btn-keep-ours'),
+  btnKeepTheirs: $('btn-keep-theirs'),
+  keepOursLabel: $('keep-ours-label'),
+  keepTheirsLabel: $('keep-theirs-label'),
+  btnAbortConflict: $('btn-abort-conflict'),
+  btnCloseConflict: $('btn-close-conflict'),
   settingsModal: $('settings-modal'),
   btnCloseSettings: $('btn-close-settings'),
   btnCancelSettings: $('btn-cancel-settings'),
@@ -269,6 +293,13 @@ const els = {
   btnAddRemoteToggle: $('btn-add-remote-toggle'),
   unpushedBannerRemote: $('unpushed-banner-remote'),
   btnUnpushedBannerPush: $('btn-unpushed-banner-push'),
+  btnRefreshBranches: $('btn-refresh-branches'),
+  unmergedBanner: $('unmerged-banner'),
+  unmergedBannerCount: $('unmerged-banner-count'),
+  unmergedBannerSource: $('unmerged-banner-source'),
+  unmergedTargetSelect: $('unmerged-target-select'),
+  unmergedCommitList: $('unmerged-commit-list'),
+  btnUnmergedMergeAll: $('btn-unmerged-merge-all'),
 };
 
 const graphColors = [
@@ -686,37 +717,88 @@ function renderRepoShell() {
 }
 
 async function refreshRepositoryData({ selectLatest = false } = {}) {
-  const branch = state.selectedBranch;
-  const [branches, commits, tree, worktreeFiles, syncStatus] = await Promise.all([
-    invoke('get_branches'),
-    invoke('get_commits', { limit: 500, branch, targetRemote: state.activeRemote }),
-    invoke('get_file_tree', { commitId: null }),
-    invoke('get_worktree_status'),
-    invoke('get_sync_status', { targetRemote: state.activeRemote }),
-    fetchAndPopulateGitSettings(),
-  ]);
+  if (state.isRefreshing) return;
+  state.isRefreshing = true;
 
-  state.branches = branches;
-  state.commits = commits;
-  state.fileTree = tree;
-  state.worktreeFiles = worktreeFiles;
-  state.syncStatus = syncStatus;
+  try {
+    const branch = state.selectedBranch;
+    const [branches, commits, tree, worktreeFiles, syncStatus] = await Promise.all([
+      invoke('get_branches'),
+      invoke('get_commits', { limit: 500, branch, targetRemote: state.activeRemote }),
+      invoke('get_file_tree', { commitId: null }),
+      invoke('get_worktree_status'),
+      invoke('get_sync_status', { targetRemote: state.activeRemote }),
+      fetchAndPopulateGitSettings(),
+    ]);
 
-  renderRepoShell();
-  renderSyncStatus();
-  renderWorktreeStatus();
-  renderBranches();
-  renderTeam();
-  renderFileTree();
-  renderCommits();
+    state.branches = branches;
+    state.commits = commits;
+    state.fileTree = tree;
+    state.worktreeFiles = worktreeFiles;
+    state.syncStatus = syncStatus;
 
-  if (selectLatest && state.commits.length > 0) {
-    const visibleCommits = getFilteredCommits();
-    await selectCommit((visibleCommits[0] || state.commits[0]).id);
+    renderRepoShell();
+    renderSyncStatus();
+    renderWorktreeStatus();
+    renderBranches();
+    renderTeam();
+    renderFileTree();
+    renderCommits();
+    await loadUnmergedCommits();
+
+    if (selectLatest && state.commits.length > 0) {
+      const visibleCommits = getFilteredCommits();
+      await selectCommit((visibleCommits[0] || state.commits[0]).id);
+    }
+
+    try {
+      state.lastFingerprint = await invoke('get_repo_fingerprint');
+    } catch (fpErr) {
+      console.warn('Could not update repo fingerprint:', fpErr);
+    }
+  } finally {
+    state.isRefreshing = false;
+  }
+}
+
+function startAutoRefresh() {
+  stopAutoRefresh();
+  state.refreshTimer = setInterval(autoRefreshTick, AUTO_REFRESH_MS);
+}
+
+function stopAutoRefresh() {
+  if (state.refreshTimer) {
+    clearInterval(state.refreshTimer);
+    state.refreshTimer = null;
+  }
+  state.lastFingerprint = null;
+  state.isRefreshing = false;
+  state.lastAutoCheck = 0;
+}
+
+async function autoRefreshTick() {
+  if (!state.repoInfo || !invoke) return;
+  if (document.hidden) return;
+  if (state.isRefreshing) return;
+
+  state.lastAutoCheck = Date.now();
+
+  try {
+    const fingerprint = await invoke('get_repo_fingerprint');
+    if (state.lastFingerprint && fingerprint !== state.lastFingerprint) {
+      state.lastFingerprint = fingerprint;
+      await refreshRepositoryData();
+      setStatus('Refreshed: new changes detected');
+    } else {
+      state.lastFingerprint = fingerprint;
+    }
+  } catch (err) {
+    console.warn('Auto-refresh check failed:', err);
   }
 }
 
 function showHomeScreen() {
+  stopAutoRefresh();
   els.welcomeScreen.style.display = '';
   els.mainContent.style.display = 'none';
   els.repoInfo.style.display = 'none';
@@ -829,6 +911,7 @@ async function openRepo(repoPath = null) {
 
     await refreshRepositoryData({ selectLatest: true });
     rememberRecentRepo(repoInfo.path || selected);
+    startAutoRefresh();
 
     // Load all git remotes (origin, upstream, fork, etc.)
     await loadGitRemotes();
@@ -855,12 +938,15 @@ async function loadCommits(branch = null) {
     state.selectedBranch = branch;
     state.selectedCommit = null;
     state.diffData = [];
+    state.unmergedTarget = null;
+    state.unmergedManual = false;
 
     renderRepoShell();
     renderBranches();
     renderTeam();
     renderCommits();
     await loadSyncStatus();
+    await loadUnmergedCommits();
 
     els.detailEmpty.style.display = 'flex';
     els.detailContent.style.display = 'none';
@@ -960,6 +1046,244 @@ function renderSyncStatus() {
       els.pushLabel.textContent = sync.unpushed_count > 0
         ? `${sync.unpushed_count} commit(s) ahead of ${activeRemote}`
         : `up to date with ${activeRemote}`;
+    }
+  }
+}
+
+function currentHeadBranch() {
+  return state.syncStatus?.current_branch || state.repoInfo?.current_branch || '';
+}
+
+function isMainlineBranch(name) {
+  return name === 'main' || name === 'master';
+}
+
+function unmergedSourceBranch() {
+  // The branch whose unmerged work we inspect: the viewed branch, or HEAD.
+  return state.selectedBranch || currentHeadBranch();
+}
+
+function listUnmergedCandidates() {
+  // Targets must be local branches (merge/cherry-pick checks the target out).
+  const source = unmergedSourceBranch();
+  return state.branches.filter((b) => (
+    b.name && !b.is_remote && b.name !== 'detached' && b.name !== source
+  ));
+}
+
+function pickUnmergedTarget() {
+  const candidates = listUnmergedCandidates();
+  if (candidates.length === 0) return null;
+
+  if (state.unmergedTarget && candidates.some((b) => b.name === state.unmergedTarget)) {
+    return state.unmergedTarget;
+  }
+
+  const preferred = candidates.find((b) => b.name === 'main' || b.name === 'master');
+  if (preferred) return preferred.name;
+  return candidates[0].name;
+}
+
+async function loadUnmergedCommits() {
+  if (!els.unmergedBanner) return;
+
+  const source = unmergedSourceBranch();
+
+  // The banner only makes sense on a feature branch: on main/master (or a
+  // detached HEAD) there is nothing "waiting to be merged" to show.
+  if (!source || source === 'detached' || isMainlineBranch(source)) {
+    state.unmergedCommits = [];
+    state.unmergedTarget = null;
+    state.unmergedManual = false;
+    renderUnmergedBanner();
+    return;
+  }
+
+  const target = pickUnmergedTarget();
+  state.unmergedTarget = target;
+
+  if (!target) {
+    state.unmergedCommits = [];
+    renderUnmergedBanner();
+    return;
+  }
+
+  try {
+    state.unmergedCommits = await invoke('get_unmerged_commits', {
+      targetBranch: target,
+      sourceBranch: state.selectedBranch || null,
+    });
+  } catch (err) {
+    console.error('Unmerged commits could not be loaded:', err);
+    state.unmergedCommits = [];
+  }
+
+  renderUnmergedBanner();
+}
+
+function renderUnmergedBanner() {
+  if (!els.unmergedBanner) return;
+
+  const commits = state.unmergedCommits;
+  const target = state.unmergedTarget;
+  const source = unmergedSourceBranch();
+
+  if (!target || !source || source === 'detached' || isMainlineBranch(source)
+      || (commits.length === 0 && !state.unmergedManual)) {
+    els.unmergedBanner.style.display = 'none';
+    return;
+  }
+
+  els.unmergedBanner.style.display = 'flex';
+  els.unmergedBannerCount.textContent = commits.length;
+  if (els.unmergedBannerSource) {
+    els.unmergedBannerSource.textContent = source;
+  }
+
+  if (els.unmergedTargetSelect) {
+    const candidates = listUnmergedCandidates();
+    els.unmergedTargetSelect.innerHTML = candidates.map((b) => `
+      <option value="${escapeHtml(b.name)}" ${b.name === target ? 'selected' : ''}>${escapeHtml(b.name)}</option>
+    `).join('');
+  }
+
+  if (commits.length === 0) {
+    els.unmergedCommitList.innerHTML = `
+      <div class="muted-row" style="padding: 8px 10px; font-size: 11px; color: var(--text-dim);">
+        ${escapeHtml(source)} is fully merged into ${escapeHtml(target)}.
+      </div>`;
+    if (els.btnUnmergedMergeAll) els.btnUnmergedMergeAll.disabled = true;
+    return;
+  }
+
+  if (els.btnUnmergedMergeAll) els.btnUnmergedMergeAll.disabled = false;
+
+  els.unmergedCommitList.innerHTML = commits.map((c) => `
+    <div class="unmerged-commit-card" data-commit-id="${c.id}">
+      <div class="unpushed-commit-info">
+        <span class="unpushed-hash">${escapeHtml(c.short_id)}</span>
+        <span class="unpushed-msg" title="${escapeHtml(firstLine(c.message))}">${escapeHtml(firstLine(c.message))}</span>
+      </div>
+      <div class="unpushed-meta">
+        <span>${escapeHtml(c.author_name || 'Unknown')}</span>
+        <span>&bull; ${formatDate(c.timestamp)}</span>
+        <span class="commit-state-label unmerged-badge">UNMERGED</span>
+        <button class="cherry-pick-btn" type="button" data-commit-id="${c.id}" title="Cherry-pick this commit into ${escapeHtml(target)}">
+          <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="18" cy="18" r="3"></circle>
+            <circle cx="6" cy="6" r="3"></circle>
+            <path d="M6 21V9a9 9 0 0 0 9 9"></path>
+          </svg>
+          <span>Cherry-pick</span>
+        </button>
+      </div>
+    </div>
+  `).join('');
+
+  els.unmergedCommitList.querySelectorAll('.cherry-pick-btn').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      cherryPickCommit(btn.dataset.commitId, btn);
+    });
+  });
+}
+
+async function followMergedBranch(target) {
+  // merge/cherry-pick checks out the target branch in the backend;
+  // re-open the repo so the UI follows the new active branch (e.g. main).
+  try {
+    if (state.repoInfo?.path) {
+      state.repoInfo = await invoke('open_repo', { path: state.repoInfo.path });
+    }
+  } catch (repoErr) {
+    console.warn('Could not refresh repo info after merge:', repoErr);
+  }
+  state.selectedBranch = null;
+  state.selectedCommit = null;
+  state.unmergedTarget = null;
+  state.unmergedManual = false;
+
+  await refreshRepositoryData({ selectLatest: true });
+}
+
+async function offerPush(target) {
+  const remoteName = state.activeRemote || 'origin';
+  const canPush = state.syncStatus?.can_push && state.syncStatus?.has_origin;
+  if (canPush && confirm(`Push ${target} to ${remoteName} now?`)) {
+    await pushOrigin();
+  }
+}
+
+async function cherryPickCommit(commitId, btn) {
+  if (!commitId) return;
+
+  const target = state.unmergedTarget;
+  if (!target) return;
+
+  const commit = state.unmergedCommits.find((c) => c.id === commitId);
+  const label = commit ? `${commit.short_id} — ${firstLine(commit.message)}` : commitId;
+
+  if (!confirm(`Cherry-pick this commit into ${target}?\n\n${label}`)) return;
+
+  try {
+    if (btn) {
+      btn.disabled = true;
+      btn.classList.add('is-loading');
+    }
+    setStatus(`Cherry-picking ${commitId.substring(0, 7)} into ${target}...`);
+
+    const res = await invoke('cherry_pick_commit', { commitId, targetBranch: target });
+
+    if (typeof res === 'string' && res.includes('already applied')) {
+      setStatus(res);
+    } else {
+      setStatus(`Cherry-picked ${commitId.substring(0, 7)} into ${target}`);
+    }
+    await followMergedBranch(target);
+    await offerPush(target);
+  } catch (err) {
+    console.error(err);
+    setStatus('Cherry-pick failed');
+    if (btn) {
+      btn.disabled = false;
+      btn.classList.remove('is-loading');
+    }
+    await handleOpFailure('cherry-pick', target, target, `incoming commit ${commitId.substring(0, 7)}`, err);
+  }
+}
+
+async function refreshBranchesFromOrigin() {
+  const btn = els.btnRefreshBranches;
+  if (btn) {
+    btn.disabled = true;
+    btn.classList.add('spinning');
+  }
+
+  const remoteName = state.activeRemote || 'origin';
+  const hasRemote = Array.isArray(state.remotes) && state.remotes.length > 0;
+  let fetched = false;
+
+  try {
+    if (hasRemote) {
+      await invoke('fetch_remote', { remoteName });
+      fetched = true;
+    }
+  } catch (err) {
+    console.warn(`Fetch from ${remoteName} failed, reloading local branches only:`, err);
+  }
+
+  try {
+    state.branches = await invoke('get_branches');
+    renderBranches();
+    await loadUnmergedCommits();
+    setStatus(fetched ? `Branches fetched from ${remoteName}` : 'Branches refreshed');
+  } catch (err) {
+    console.error(err);
+    setStatus('Branches could not be refreshed');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.classList.remove('spinning');
     }
   }
 }
@@ -1191,15 +1515,12 @@ async function saveRemoteOrigin() {
 
 state.activeMergeSource = null;
 
-function openMergeModal(sourceBranch) {
+function openMergeModal(sourceBranch, preferredTarget = null) {
   state.activeMergeSource = sourceBranch;
 
   const localBranches = state.branches.filter((b) => !b.is_remote && b.name !== 'detached');
   const activeBranch = state.branches.find((b) => b.is_head);
   const activeBranchName = activeBranch ? activeBranch.name : '';
-
-  els.mergeSourceLabel.textContent = sourceBranch;
-  els.mergeTargetLabel.textContent = activeBranchName || '-';
 
   const targetBranches = localBranches.filter((b) => b.name !== sourceBranch);
 
@@ -1208,8 +1529,17 @@ function openMergeModal(sourceBranch) {
     return;
   }
 
+  const chosenTarget = preferredTarget && targetBranches.some((b) => b.name === preferredTarget)
+    ? preferredTarget
+    : (targetBranches.some((b) => b.name === activeBranchName)
+      ? activeBranchName
+      : targetBranches[0].name);
+
+  els.mergeSourceLabel.textContent = sourceBranch;
+  els.mergeTargetLabel.textContent = chosenTarget;
+
   els.mergeTargetSelect.innerHTML = targetBranches.map((b) => {
-    const selected = b.name === activeBranchName ? 'selected' : '';
+    const selected = b.name === chosenTarget ? 'selected' : '';
     return `<option value="${escapeHtml(b.name)}" ${selected}>${escapeHtml(b.name)}</option>`;
   }).join('');
 
@@ -1240,15 +1570,173 @@ async function confirmMerge() {
     setStatus(`Merged ${source} into ${target} successfully`);
     closeMergeModal();
 
-    await refreshRepositoryData();
+    await followMergedBranch(target);
+    await offerPush(target);
   } catch (err) {
     console.error(err);
     setStatus('Merge failed');
-    alert(`Merge failed: ${err}`);
+    closeMergeModal();
+    await handleOpFailure('merge', target, target, source, err);
   } finally {
     els.btnConfirmMerge.disabled = false;
     els.btnConfirmMerge.textContent = 'Confirm Merge';
   }
+}
+
+function closeConflictModal() {
+  if (els.conflictModal) els.conflictModal.setAttribute('hidden', '');
+  state.activeConflict = null;
+}
+
+function openConflictModal(op, target, oursLabel, theirsLabel, files) {
+  state.activeConflict = { op, target, oursLabel, theirsLabel };
+
+  const opName = op === 'cherry-pick' ? 'Cherry-pick' : 'Merge';
+  if (els.conflictKicker) els.conflictKicker.textContent = `${opName} Conflicts`;
+  if (els.conflictTitle) els.conflictTitle.textContent = `Resolve ${opName} Conflicts`;
+  if (els.conflictSubtitle) {
+    els.conflictSubtitle.textContent = `${files.length} file(s) have conflicts. Choose which version to keep for all of them:`;
+  }
+  if (els.conflictFileList) {
+    els.conflictFileList.innerHTML = files.map((f) => `<span>${escapeHtml(f)}</span>`).join('');
+  }
+  if (els.keepOursLabel) els.keepOursLabel.textContent = oursLabel;
+  if (els.keepTheirsLabel) els.keepTheirsLabel.textContent = theirsLabel;
+  if (els.conflictLegendOurs) els.conflictLegendOurs.textContent = oursLabel;
+  if (els.conflictLegendTheirs) els.conflictLegendTheirs.textContent = theirsLabel;
+  if (els.btnKeepOurs) els.btnKeepOurs.disabled = false;
+  if (els.btnKeepTheirs) els.btnKeepTheirs.disabled = false;
+  if (els.btnAbortConflict) els.btnAbortConflict.textContent = `Abort ${op} instead`;
+
+  if (els.conflictDiffList) {
+    els.conflictDiffList.innerHTML = '<div class="muted-row" style="padding: 8px 10px; font-size: 11px; color: var(--text-dim);">Loading diffs...</div>';
+    loadConflictDiffs(files);
+  }
+
+  els.conflictModal.removeAttribute('hidden');
+}
+
+async function loadConflictDiffs(files) {
+  if (!els.conflictDiffList) return;
+
+  const blocks = await Promise.all(files.map(async (filePath) => {
+    try {
+      const diff = await invoke('get_conflict_diff', { filePath });
+      return { filePath, diff, error: null };
+    } catch (err) {
+      console.warn(`Conflict diff failed for ${filePath}:`, err);
+      return { filePath, diff: null, error: String(err) };
+    }
+  }));
+
+  // The user may have closed/resolved meanwhile — do not render into a dead modal.
+  if (!state.activeConflict || els.conflictModal?.hasAttribute('hidden')) return;
+
+  els.conflictDiffList.innerHTML = blocks.map(({ filePath, diff, error }) => {
+    if (error) {
+      return `
+        <section class="diff-file-block">
+          <div class="diff-file-header">
+            <span>${escapeHtml(filePath)}</span>
+            <small>diff unavailable</small>
+          </div>
+          <div class="diff-placeholder" style="padding: 8px 12px; font-size: 11px; color: var(--text-dim);">Could not load diff: ${escapeHtml(error)}</div>
+        </section>`;
+    }
+    if (!diff || !diff.hunks || diff.hunks.length === 0) {
+      return `
+        <section class="diff-file-block">
+          <div class="diff-file-header">
+            <span>${escapeHtml(filePath)}</span>
+            <small>binary or no text diff available</small>
+          </div>
+        </section>`;
+    }
+
+    const hunks = diff.hunks.map((hunk) => `
+      <div class="diff-hunk">
+        <div class="diff-hunk-header">${escapeHtml(hunk.header)}</div>
+        ${hunk.lines.map((line) => `
+          <div class="diff-line ${line.line_type}">
+            <span class="diff-line-num">${line.old_lineno || ''}</span>
+            <span class="diff-line-num">${line.new_lineno || ''}</span>
+            <span class="diff-line-content">${escapeHtml((line.content || '').replace(/\n$/, ''))}</span>
+          </div>
+        `).join('')}
+      </div>
+    `).join('');
+
+    return `
+      <section class="diff-file-block">
+        <div class="diff-file-header">
+          <span>${escapeHtml(filePath)}</span>
+          <small>target vs incoming</small>
+        </div>
+        ${hunks}
+      </section>`;
+  }).join('');
+}
+
+// When a merge/cherry-pick fails, check whether it left real conflicts behind.
+// If so, offer the 2-option resolver; otherwise show the plain error.
+async function handleOpFailure(op, target, oursLabel, theirsLabel, err) {
+  let files = [];
+  try {
+    files = await invoke('get_merge_conflicts');
+  } catch (conflictErr) {
+    console.warn('Could not read conflicted files:', conflictErr);
+  }
+
+  if (files && files.length > 0) {
+    openConflictModal(op, target, oursLabel, theirsLabel, files);
+  } else {
+    const opName = op === 'cherry-pick' ? 'Cherry-pick' : 'Merge';
+    alert(`${opName} failed: ${err}`);
+  }
+}
+
+async function resolveConflictChoice(side) {
+  const ctx = state.activeConflict;
+  if (!ctx) return;
+
+  if (!confirm(`Keep the ${side === 'ours' ? ctx.oursLabel : ctx.theirsLabel} version for all conflicted files and complete the ${ctx.op}?`)) {
+    return;
+  }
+
+  try {
+    if (els.btnKeepOurs) els.btnKeepOurs.disabled = true;
+    if (els.btnKeepTheirs) els.btnKeepTheirs.disabled = true;
+    setStatus(`Resolving conflicts (keeping ${side})...`);
+
+    const res = await invoke('resolve_conflicts', { side });
+
+    setStatus(typeof res === 'string' && res ? res : 'Conflicts resolved');
+    closeConflictModal();
+
+    await followMergedBranch(ctx.target);
+    await offerPush(ctx.target);
+  } catch (err) {
+    console.error(err);
+    setStatus('Conflict resolution failed');
+    alert(`Could not resolve conflicts: ${err}`);
+    if (els.btnKeepOurs) els.btnKeepOurs.disabled = false;
+    if (els.btnKeepTheirs) els.btnKeepTheirs.disabled = false;
+  }
+}
+
+async function abortConflictOp() {
+  const ctx = state.activeConflict;
+
+  try {
+    const res = await invoke('abort_in_progress');
+    setStatus(typeof res === 'string' && res ? res : 'Operation aborted');
+  } catch (err) {
+    console.error(err);
+    alert(`Abort failed: ${err}`);
+  }
+
+  closeConflictModal();
+  await refreshRepositoryData({ selectLatest: true });
 }
 function renderBranches() {
   const currentBranchName = state.selectedBranch || state.repoInfo?.current_branch || 'All History';
@@ -2996,6 +3484,14 @@ function initEventHandlers() {
   });
 
   document.addEventListener('click', closeAllDropdowns);
+
+  // Refresh shortly after the window regains focus (e.g. commit made in a
+  // terminal while the app was in the background).
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden || !state.repoInfo || !state.refreshTimer) return;
+    if (Date.now() - state.lastAutoCheck < 10000) return;
+    autoRefreshTick();
+  });
   els.commitMessageInput.addEventListener('input', updateCommitAction);
   els.btnShowContributors.addEventListener('click', openContributorsModal);
   els.btnCloseContributors.addEventListener('click', closeContributorsModal);
@@ -3011,6 +3507,22 @@ function initEventHandlers() {
   els.btnConfirmMerge.addEventListener('click', confirmMerge);
   els.mergeModal.addEventListener('click', (event) => {
     if (event.target === els.mergeModal) closeMergeModal();
+  });
+
+  els.btnKeepOurs?.addEventListener('click', () => resolveConflictChoice('ours'));
+  els.btnKeepTheirs?.addEventListener('click', () => resolveConflictChoice('theirs'));
+  els.btnAbortConflict?.addEventListener('click', abortConflictOp);
+  els.btnCloseConflict?.addEventListener('click', () => {
+    // Closing leaves the repo mid-merge; offer to abort so it is not stuck.
+    if (state.activeConflict?.op
+        && confirm(`Close without resolving? The ${state.activeConflict.op} will stay in progress.\n\nAbort the ${state.activeConflict.op} instead?`)) {
+      abortConflictOp();
+    } else {
+      closeConflictModal();
+    }
+  });
+  els.conflictModal?.addEventListener('click', (event) => {
+    if (event.target === els.conflictModal) els.btnCloseConflict?.click();
   });
 
   els.coauthorInput.addEventListener('input', handleCoauthorInput);
@@ -3067,6 +3579,23 @@ function initEventHandlers() {
     els.addOriginForm.style.display = isHidden ? 'block' : 'none';
   });
   els.btnUnpushedBannerPush?.addEventListener('click', pushOrigin);
+
+  // Branch dropdown refresh (fetch from origin) & Unmerged banner listeners
+  els.btnRefreshBranches?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    refreshBranchesFromOrigin();
+  });
+  els.unmergedTargetSelect?.addEventListener('change', (e) => {
+    state.unmergedTarget = e.target.value || null;
+    state.unmergedManual = !!state.unmergedTarget;
+    loadUnmergedCommits();
+  });
+  els.btnUnmergedMergeAll?.addEventListener('click', () => {
+    const source = unmergedSourceBranch();
+    if (source && source !== 'detached' && state.unmergedTarget) {
+      openMergeModal(source, state.unmergedTarget);
+    }
+  });
 
   // Application update check button
   els.btnCheckUpdate?.addEventListener('click', checkAppUpdate);
@@ -4013,11 +4542,16 @@ async function confirmPrMerge() {
 
   try {
     setStatus(`Merging PR #${prNumber}...`);
-    const res = await invoke('merge_github_pr', { prNumber, mergeMethod: method });
+    await invoke('merge_github_pr', { prNumber, mergeMethod: method });
     setStatus(`PR #${prNumber} merged successfully!`);
-    alert(`PR #${prNumber} merged successfully!\n${res}`);
     closePrModal();
     loadGhPrs();
+
+    // PR was merged on GitHub — offer to update local branches from origin.
+    const baseBranch = currentModalPr.baseRef || currentModalPr.base_ref || 'main';
+    if (confirm(`PR #${prNumber} merged into ${baseBranch} on GitHub.\n\nFetch from ${state.activeRemote || 'origin'} to update local branches?`)) {
+      await fetchActiveRemote();
+    }
   } catch (err) {
     setStatus(`Failed to merge PR #${prNumber}`);
     alert(`Merge failed: ${err}`);

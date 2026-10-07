@@ -3022,6 +3022,160 @@ svg {
   margin-top: 6px;
 }
 
+/* ─── Conflict Resolution Modal ───────────────────────────────────────────── */
+
+.conflict-modal {
+  width: min(520px, 92vw);
+}
+
+.conflict-subtitle {
+  margin: 0 0 10px;
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+
+.conflict-file-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 140px;
+  overflow-y: auto;
+  background: rgba(248, 81, 73, 0.06);
+  border: 1px solid rgba(248, 81, 73, 0.25);
+  border-radius: 8px;
+  padding: 8px 10px;
+  margin-bottom: 12px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: #ffa198;
+}
+
+.conflict-choices {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.conflict-choice {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.02);
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.15s ease;
+}
+
+.conflict-choice .choice-kicker {
+  font-size: 9px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-dim);
+}
+
+.conflict-choice strong {
+  font-size: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.conflict-choice small {
+  font-size: 10.5px;
+  color: var(--text-dim);
+  line-height: 1.4;
+}
+
+.conflict-choice.ours {
+  border-color: rgba(57, 210, 192, 0.4);
+}
+
+.conflict-choice.ours strong {
+  color: #39d2c0;
+}
+
+.conflict-choice.ours:hover:not(:disabled) {
+  border-color: #39d2c0;
+  box-shadow: 0 0 12px rgba(57, 210, 192, 0.25);
+  background: rgba(57, 210, 192, 0.06);
+}
+
+.conflict-choice.theirs {
+  border-color: rgba(88, 166, 255, 0.4);
+}
+
+.conflict-choice.theirs strong {
+  color: #58a6ff;
+}
+
+.conflict-choice.theirs:hover:not(:disabled) {
+  border-color: #58a6ff;
+  box-shadow: 0 0 12px rgba(88, 166, 255, 0.25);
+  background: rgba(88, 166, 255, 0.06);
+}
+
+.conflict-choice:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
+.conflict-abort-row {
+  justify-content: flex-start;
+  margin-top: 12px;
+}
+
+/* ─── Conflict diff preview (reuses .diff-* classes) ───────────────────────── */
+
+.conflict-diff-legend {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 2px 0 8px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+}
+
+.conflict-diff-legend .legend-del {
+  color: #f0807f;
+  font-weight: 700;
+}
+
+.conflict-diff-legend .legend-add {
+  color: #3fb950;
+  font-weight: 700;
+}
+
+.conflict-diff-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 300px;
+  overflow-y: auto;
+  margin-bottom: 12px;
+  padding-right: 2px;
+}
+
+.conflict-diff-list .diff-file-block {
+  border: 1px solid var(--line-soft);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.conflict-diff-list .diff-line-content {
+  font-size: 11px;
+}
+
+.conflict-diff-list .diff-hunk-header {
+  font-size: 10px;
+}
+
 /* ==========================================================================
    Top Bar Push Button & Settings Button
    ========================================================================== */
@@ -3730,6 +3884,154 @@ input:checked + .slider:before {
   padding: 1px 6px;
   border-radius: 4px;
   box-shadow: 0 0 8px rgba(210, 153, 34, 0.3);
+}
+
+/* ─── Unmerged Commits Banner ─────────────────────────────────────────────── */
+
+.unmerged-banner {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: linear-gradient(135deg, rgba(137, 87, 229, 0.12) 0%, rgba(31, 107, 235, 0.10) 100%);
+  border: 1px solid rgba(188, 140, 255, 0.35);
+  border-radius: 10px;
+  padding: 14px;
+  margin-bottom: 16px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+
+.unmerged-banner-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.unmerged-banner-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #e6edf3;
+  font-size: 13px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.unmerged-icon {
+  width: 16px;
+  height: 16px;
+  color: #bc8cff;
+  flex-shrink: 0;
+}
+
+.unmerged-source-select {
+  background: #0d1117;
+  color: #e6edf3;
+  border: 1px solid rgba(188, 140, 255, 0.4);
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  font-family: var(--mono);
+  padding: 3px 6px;
+  max-width: 200px;
+  cursor: pointer;
+  outline: none;
+}
+
+.unmerged-source-select:hover,
+.unmerged-source-select:focus {
+  border-color: #bc8cff;
+}
+
+.top-push-btn.merge-all {
+  border-color: rgba(188, 140, 255, 0.5);
+  color: #d2b3ff;
+}
+
+.top-push-btn.merge-all:hover {
+  border-color: #bc8cff;
+  box-shadow: 0 0 12px rgba(188, 140, 255, 0.35);
+}
+
+.unmerged-commit-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.unmerged-commit-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 12px;
+  background: #0d1117;
+  border: 1px solid rgba(188, 140, 255, 0.22);
+  border-radius: 6px;
+  transition: all 0.15s ease;
+}
+
+.unmerged-commit-card:hover {
+  border-color: #bc8cff;
+  background: #161b22;
+}
+
+.commit-state-label.unmerged-badge {
+  display: inline-block;
+  font-size: 9px;
+  font-weight: 800;
+  text-transform: uppercase;
+  background: rgba(188, 140, 255, 0.16);
+  color: #d2b3ff;
+  border: 1px solid rgba(188, 140, 255, 0.4);
+  padding: 1px 6px;
+  border-radius: 4px;
+  box-shadow: 0 0 8px rgba(188, 140, 255, 0.25);
+}
+
+.cherry-pick-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 24px;
+  padding: 0 10px;
+  border: 1px solid rgba(63, 185, 80, 0.45);
+  border-radius: 6px;
+  background: rgba(35, 134, 54, 0.18);
+  color: #3fb950;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.cherry-pick-btn:hover:not(:disabled) {
+  background: rgba(35, 134, 54, 0.35);
+  border-color: #3fb950;
+  box-shadow: 0 0 10px rgba(63, 185, 80, 0.3);
+}
+
+.cherry-pick-btn:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+
+.cherry-pick-btn.is-loading svg {
+  animation: spinner-rotate 0.8s linear infinite;
+}
+
+/* Branch dropdown refresh button spin feedback */
+#btn-refresh-branches.spinning svg {
+  animation: spinner-rotate 0.8s linear infinite;
+}
+
+#btn-refresh-branches:disabled {
+  opacity: 0.6;
+  cursor: wait;
 }
 
 @keyframes spinner-rotate {

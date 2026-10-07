@@ -475,6 +475,13 @@ fn run_git(repo: &Repository, args: &[&str]) -> Result<String, String> {
         .args(args)
         .env("GIT_TERMINAL_PROMPT", "0")
         .env("GCM_INTERACTIVE", "never")
+        // Force English git output so message matching ("empty", "CONFLICT", ...)
+        // works regardless of the user's locale.
+        .env("LC_ALL", "C")
+        .env("LANG", "C")
+        .env("LANGUAGE", "C")
+        // Never block waiting for an editor (merge commits, cherry-pick --continue).
+        .env("GIT_EDITOR", "true")
         .output()
         .map_err(|e| {
             if e.kind() == io::ErrorKind::NotFound {
@@ -587,12 +594,15 @@ fn get_repo_info_from_repository(repo: &Repository, path: &str) -> Result<RepoIn
 }
 
 #[tauri::command]
-fn is_git_repository(path: String) -> Result<bool, String> {
+async fn is_git_repository(path: String) -> Result<bool, String> {
     Ok(Repository::discover(&path).is_ok())
 }
 
 #[tauri::command]
-fn init_repository(path: String, state: State<'_, Mutex<AppState>>) -> Result<RepoInfo, String> {
+async fn init_repository(
+    path: String,
+    state: State<'_, Mutex<AppState>>,
+) -> Result<RepoInfo, String> {
     let repo = Repository::init(&path)
         .map_err(|e| format!("Failed to initialize Git repository: {}", e))?;
     let info = get_repo_info_from_repository(&repo, &path)?;
@@ -605,7 +615,7 @@ fn init_repository(path: String, state: State<'_, Mutex<AppState>>) -> Result<Re
 }
 
 #[tauri::command]
-fn open_repo(path: String, state: State<'_, Mutex<AppState>>) -> Result<RepoInfo, String> {
+async fn open_repo(path: String, state: State<'_, Mutex<AppState>>) -> Result<RepoInfo, String> {
     let repo = Repository::discover(&path)
         .map_err(|e| format!("Repository could not be opened: {}", e))?;
 
@@ -619,7 +629,7 @@ fn open_repo(path: String, state: State<'_, Mutex<AppState>>) -> Result<RepoInfo
 }
 
 #[tauri::command]
-fn get_commits(
+async fn get_commits(
     limit: Option<usize>,
     branch: Option<String>,
     target_remote: Option<String>,
@@ -683,7 +693,7 @@ fn get_commits(
 }
 
 #[tauri::command]
-fn get_branches(state: State<'_, Mutex<AppState>>) -> Result<Vec<BranchInfo>, String> {
+async fn get_branches(state: State<'_, Mutex<AppState>>) -> Result<Vec<BranchInfo>, String> {
     let app_state = state.lock().map_err(|e| e.to_string())?;
     let repo = app_state.repo.as_ref().ok_or("Repository is not open")?;
 
@@ -769,7 +779,7 @@ fn get_branches(state: State<'_, Mutex<AppState>>) -> Result<Vec<BranchInfo>, St
 }
 
 #[tauri::command]
-fn get_commit_diff(
+async fn get_commit_diff(
     commit_id: String,
     state: State<'_, Mutex<AppState>>,
 ) -> Result<Vec<DiffFile>, String> {
@@ -863,7 +873,7 @@ fn get_commit_diff(
 }
 
 #[tauri::command]
-fn get_file_tree(
+async fn get_file_tree(
     commit_id: Option<String>,
     state: State<'_, Mutex<AppState>>,
 ) -> Result<Vec<FileTreeEntry>, String> {
@@ -924,7 +934,7 @@ fn get_file_tree(
 }
 
 #[tauri::command]
-fn get_file_content(
+async fn get_file_content(
     commit_id: String,
     file_path: String,
     state: State<'_, Mutex<AppState>>,
@@ -952,7 +962,9 @@ fn get_file_content(
 }
 
 #[tauri::command]
-fn get_worktree_status(state: State<'_, Mutex<AppState>>) -> Result<Vec<WorktreeFile>, String> {
+async fn get_worktree_status(
+    state: State<'_, Mutex<AppState>>,
+) -> Result<Vec<WorktreeFile>, String> {
     let app_state = state.lock().map_err(|e| e.to_string())?;
     let repo = app_state.repo.as_ref().ok_or("Repository is not open")?;
 
@@ -997,16 +1009,16 @@ fn get_worktree_status(state: State<'_, Mutex<AppState>>) -> Result<Vec<Worktree
 }
 
 #[tauri::command]
-fn commit_changes(
+async fn commit_changes(
     paths: Vec<String>,
     message: String,
     state: State<'_, Mutex<AppState>>,
 ) -> Result<String, String> {
-    commit_changes_with_options(paths, message, None, None, None, None, None, None, state)
+    commit_changes_with_options(paths, message, None, None, None, None, None, None, state).await
 }
 
 #[tauri::command]
-fn commit_changes_with_options(
+async fn commit_changes_with_options(
     paths: Vec<String>,
     message: String,
     author_name: Option<String>,
@@ -1105,7 +1117,7 @@ fn commit_changes_with_options(
 }
 
 #[tauri::command]
-fn get_sync_status(
+async fn get_sync_status(
     state: State<'_, Mutex<AppState>>,
     target_remote: Option<String>,
 ) -> Result<SyncStatus, String> {
@@ -1168,7 +1180,7 @@ fn get_sync_status(
 }
 
 #[tauri::command]
-fn push_origin(
+async fn push_origin(
     state: State<'_, Mutex<AppState>>,
     target_remote: Option<String>,
 ) -> Result<String, String> {
@@ -1188,7 +1200,7 @@ fn push_origin(
 }
 
 #[tauri::command]
-fn add_origin(state: State<'_, Mutex<AppState>>, url: String) -> Result<String, String> {
+async fn add_origin(state: State<'_, Mutex<AppState>>, url: String) -> Result<String, String> {
     let app_state = state.lock().map_err(|e| e.to_string())?;
     let repo = app_state.repo.as_ref().ok_or("Repository is not open")?;
 
@@ -1201,7 +1213,7 @@ fn add_origin(state: State<'_, Mutex<AppState>>, url: String) -> Result<String, 
 }
 
 #[tauri::command]
-fn merge_branches(
+async fn merge_branches(
     state: State<'_, Mutex<AppState>>,
     source: String,
     target: String,
@@ -1211,6 +1223,419 @@ fn merge_branches(
 
     run_git(repo, &["checkout", &target])?;
     run_git(repo, &["merge", &source])
+}
+
+#[tauri::command]
+async fn get_merge_conflicts(state: State<'_, Mutex<AppState>>) -> Result<Vec<String>, String> {
+    let app_state = state.lock().map_err(|e| e.to_string())?;
+    let repo = app_state.repo.as_ref().ok_or("Repository is not open")?;
+
+    let out = run_git(repo, &["diff", "--name-only", "--diff-filter=U"])?;
+    Ok(out
+        .lines()
+        .map(|l| l.trim().to_string())
+        .filter(|l| !l.is_empty())
+        .collect())
+}
+
+#[tauri::command]
+async fn resolve_conflicts(
+    state: State<'_, Mutex<AppState>>,
+    side: String,
+) -> Result<String, String> {
+    let app_state = state.lock().map_err(|e| e.to_string())?;
+    let repo = app_state.repo.as_ref().ok_or("Repository is not open")?;
+
+    let side = side.trim().to_lowercase();
+    if side != "ours" && side != "theirs" {
+        return Err("Side must be \"ours\" or \"theirs\"".to_string());
+    }
+
+    let out = run_git(repo, &["diff", "--name-only", "--diff-filter=U", "-z"])?;
+    let files: Vec<String> = out
+        .split_terminator('\0')
+        .map(|s| s.to_string())
+        .filter(|s| !s.is_empty())
+        .collect();
+    if files.is_empty() {
+        return Err("No conflicted files to resolve".to_string());
+    }
+
+    let flag = if side == "ours" { "--ours" } else { "--theirs" };
+    let mut checkout_args: Vec<String> =
+        vec!["checkout".to_string(), flag.to_string(), "--".to_string()];
+    checkout_args.extend(files.clone());
+    let checkout_refs: Vec<&str> = checkout_args.iter().map(|s| s.as_str()).collect();
+    run_git(repo, &checkout_refs)?;
+
+    let mut add_args: Vec<String> = vec!["add".to_string(), "--".to_string()];
+    add_args.extend(files.clone());
+    let add_refs: Vec<&str> = add_args.iter().map(|s| s.as_str()).collect();
+    run_git(repo, &add_refs)?;
+
+    let git_dir = repo.path();
+    if git_dir.join("MERGE_HEAD").exists() {
+        run_git(repo, &["commit", "--no-edit"])?;
+        Ok(format!(
+            "Merge completed keeping {} version ({} file(s)).",
+            side,
+            files.len()
+        ))
+    } else if git_dir.join("CHERRY_PICK_HEAD").exists() {
+        run_git(repo, &["cherry-pick", "--continue"])?;
+        Ok(format!(
+            "Cherry-pick completed keeping {} version ({} file(s)).",
+            side,
+            files.len()
+        ))
+    } else if git_dir.join("REVERT_HEAD").exists() {
+        run_git(repo, &["revert", "--continue"])?;
+        Ok(format!(
+            "Revert completed keeping {} version ({} file(s)).",
+            side,
+            files.len()
+        ))
+    } else {
+        Err("No merge or cherry-pick in progress".to_string())
+    }
+}
+
+#[tauri::command]
+async fn get_conflict_diff(
+    state: State<'_, Mutex<AppState>>,
+    file_path: String,
+) -> Result<DiffFile, String> {
+    let app_state = state.lock().map_err(|e| e.to_string())?;
+    let repo = app_state.repo.as_ref().ok_or("Repository is not open")?;
+
+    build_conflict_diff(repo, file_path.trim())
+}
+
+fn build_conflict_diff(repo: &Repository, path: &str) -> Result<DiffFile, String> {
+    if path.is_empty() {
+        return Err("File path cannot be empty".to_string());
+    }
+
+    // Conflict stages from the index: 2 = ours (target branch), 3 = theirs (incoming).
+    let index = repo.index().map_err(|e| e.to_string())?;
+    let blob_content = |stage: i32| -> Option<Vec<u8>> {
+        index
+            .get_path(std::path::Path::new(path), stage)
+            .and_then(|entry| repo.find_blob(entry.id).ok())
+            .map(|blob| blob.content().to_vec())
+    };
+
+    let ours = blob_content(2);
+    let theirs = blob_content(3);
+
+    if ours.is_none() && theirs.is_none() {
+        return Err(format!("No conflict stages found for: {path}"));
+    }
+
+    let ours_blob = match &ours {
+        Some(content) => Some(
+            repo.blob(content)
+                .and_then(|oid| repo.find_blob(oid))
+                .map_err(|e| e.to_string())?,
+        ),
+        None => None,
+    };
+    let theirs_blob = match &theirs {
+        Some(content) => Some(
+            repo.blob(content)
+                .and_then(|oid| repo.find_blob(oid))
+                .map_err(|e| e.to_string())?,
+        ),
+        None => None,
+    };
+
+    let mut opts = DiffOptions::new();
+    opts.context_lines(3);
+
+    let files: RefCell<Vec<DiffFile>> = RefCell::new(Vec::new());
+    files.borrow_mut().push(DiffFile {
+        old_path: path.to_string(),
+        new_path: path.to_string(),
+        status: "modified".to_string(),
+        hunks: Vec::new(),
+    });
+
+    repo.diff_blobs(
+        ours_blob.as_ref(),
+        Some(path),
+        theirs_blob.as_ref(),
+        Some(path),
+        Some(&mut opts),
+        None,
+        None,
+        Some(&mut |_delta, hunk| {
+            if let Some(file) = files.borrow_mut().last_mut() {
+                file.hunks.push(DiffHunk {
+                    header: String::from_utf8_lossy(hunk.header()).trim().to_string(),
+                    lines: Vec::new(),
+                });
+            }
+            true
+        }),
+        Some(&mut |_delta, _hunk, line| {
+            if let Some(file) = files.borrow_mut().last_mut() {
+                if let Some(hunk) = file.hunks.last_mut() {
+                    let line_type = match line.origin() {
+                        '+' => "add",
+                        '-' => "delete",
+                        _ => "context",
+                    };
+                    hunk.lines.push(DiffLine {
+                        content: String::from_utf8_lossy(line.content()).to_string(),
+                        line_type: line_type.to_string(),
+                        old_lineno: line.old_lineno(),
+                        new_lineno: line.new_lineno(),
+                    });
+                }
+            }
+            true
+        }),
+    )
+    .map_err(|e| e.to_string())?;
+
+    files
+        .into_inner()
+        .into_iter()
+        .next()
+        .ok_or_else(|| "Diff could not be built".to_string())
+}
+
+#[tauri::command]
+async fn get_repo_fingerprint(state: State<'_, Mutex<AppState>>) -> Result<String, String> {
+    let app_state = state.lock().map_err(|e| e.to_string())?;
+    let repo = app_state.repo.as_ref().ok_or("Repository is not open")?;
+
+    let mut parts: Vec<String> = Vec::new();
+
+    match repo.head() {
+        Ok(head) => parts.push(format!(
+            "HEAD={}",
+            head.target()
+                .map(|o| o.to_string())
+                .unwrap_or_else(|| "unborn".to_string())
+        )),
+        Err(_) => parts.push("HEAD=unborn".to_string()),
+    }
+
+    if let Ok(refs) = repo.references() {
+        let mut ref_parts: Vec<String> = Vec::new();
+        for r in refs.flatten() {
+            if let (Some(name), Some(target)) = (r.name(), r.target()) {
+                ref_parts.push(format!("{name}={target}"));
+            }
+        }
+        ref_parts.sort();
+        parts.push(ref_parts.join(","));
+    }
+
+    match run_git(repo, &["status", "--porcelain"]) {
+        Ok(s) => parts.push(format!("status:{s}")),
+        Err(_) => parts.push("status:?".to_string()),
+    }
+
+    Ok(parts.join("\n"))
+}
+
+#[tauri::command]
+async fn abort_in_progress(state: State<'_, Mutex<AppState>>) -> Result<String, String> {
+    let app_state = state.lock().map_err(|e| e.to_string())?;
+    let repo = app_state.repo.as_ref().ok_or("Repository is not open")?;
+
+    let git_dir = repo.path();
+    if git_dir.join("MERGE_HEAD").exists() {
+        run_git(repo, &["merge", "--abort"])?;
+        Ok("Merge aborted.".to_string())
+    } else if git_dir.join("CHERRY_PICK_HEAD").exists() {
+        run_git(repo, &["cherry-pick", "--abort"])?;
+        Ok("Cherry-pick aborted.".to_string())
+    } else if git_dir.join("REVERT_HEAD").exists() {
+        run_git(repo, &["revert", "--abort"])?;
+        Ok("Revert aborted.".to_string())
+    } else {
+        Err("No merge or cherry-pick in progress".to_string())
+    }
+}
+
+#[tauri::command]
+async fn get_unmerged_commits(
+    state: State<'_, Mutex<AppState>>,
+    target_branch: String,
+    source_branch: Option<String>,
+) -> Result<Vec<CommitInfo>, String> {
+    let app_state = state.lock().map_err(|e| e.to_string())?;
+    let repo = app_state.repo.as_ref().ok_or("Repository is not open")?;
+
+    let target_name = target_branch.trim();
+    if target_name.is_empty() {
+        return Err("Target branch cannot be empty".to_string());
+    }
+
+    let target = repo
+        .find_branch(target_name, BranchType::Local)
+        .or_else(|_| repo.find_branch(target_name, BranchType::Remote))
+        .map_err(|_| format!("Branch not found: {target_name}"))?;
+
+    let target_oid = target
+        .get()
+        .target()
+        .ok_or_else(|| format!("Branch has no commits: {target_name}"))?;
+
+    // Source: the viewed branch, or HEAD when none is selected.
+    let mut source_oid = None;
+    if let Some(name) = source_branch.filter(|s| !s.trim().is_empty()) {
+        let name = name.trim();
+        if let Ok(branch) = repo
+            .find_branch(name, BranchType::Local)
+            .or_else(|_| repo.find_branch(name, BranchType::Remote))
+        {
+            source_oid = branch.get().target();
+        }
+    }
+    if source_oid.is_none() {
+        source_oid = repo.head().ok().and_then(|head| head.target());
+    }
+
+    let Some(source_oid) = source_oid else {
+        return Ok(Vec::new());
+    };
+
+    // `git cherry` compares patches, not just hashes: commits whose patch
+    // already exists upstream are marked `-` and only `+` commits are truly
+    // unmerged. This way an already cherry-picked commit stops showing up.
+    let mut unmerged_ids: Vec<Oid> = Vec::new();
+    match run_git(
+        repo,
+        &["cherry", &target_oid.to_string(), &source_oid.to_string()],
+    ) {
+        Ok(out) => {
+            for line in out.lines() {
+                if unmerged_ids.len() >= 200 {
+                    break;
+                }
+                if let Some(sha) = line.trim().strip_prefix('+') {
+                    if let Ok(oid) = Oid::from_str(sha.trim()) {
+                        unmerged_ids.push(oid);
+                    }
+                }
+            }
+        }
+        Err(_) => {
+            // No merge base (unrelated histories): fall back to reachability.
+            if let Ok(mut revwalk) = repo.revwalk() {
+                let _ = revwalk.set_sorting(Sort::TIME | Sort::TOPOLOGICAL);
+                if revwalk.push(source_oid).is_ok() {
+                    let _ = revwalk.hide(target_oid);
+                    for oid in revwalk.take(200).flatten() {
+                        unmerged_ids.push(oid);
+                    }
+                }
+            }
+        }
+    }
+
+    let unpushed = unpushed_oids(repo, None);
+    let mut commits = Vec::new();
+
+    for oid in unmerged_ids {
+        let Ok(commit) = repo.find_commit(oid) else {
+            continue;
+        };
+
+        let short_id = &commit.id().to_string()[..7];
+
+        commits.push(CommitInfo {
+            id: commit.id().to_string(),
+            short_id: short_id.to_string(),
+            message: commit.message().unwrap_or("").trim().to_string(),
+            author_name: commit.author().name().unwrap_or("Unknown").to_string(),
+            author_email: commit.author().email().unwrap_or("").to_string(),
+            timestamp: commit.time().seconds(),
+            parent_ids: commit.parent_ids().map(|id| id.to_string()).collect(),
+            is_unpushed: unpushed.contains(&commit.id()),
+        });
+    }
+
+    // Newest first, independent of `git cherry` output order.
+    commits.sort_by(|a, b| b.timestamp.cmp(&a.timestamp));
+
+    Ok(commits)
+}
+
+#[tauri::command]
+async fn cherry_pick_commit(
+    state: State<'_, Mutex<AppState>>,
+    commit_id: String,
+    target_branch: Option<String>,
+) -> Result<String, String> {
+    let app_state = state.lock().map_err(|e| e.to_string())?;
+    let repo = app_state.repo.as_ref().ok_or("Repository is not open")?;
+
+    let id_trimmed = commit_id.trim();
+    if id_trimmed.is_empty() {
+        return Err("Commit id cannot be empty".to_string());
+    }
+
+    // Verify the commit exists before touching the worktree.
+    let oid = Oid::from_str(id_trimmed).map_err(|_| format!("Invalid commit id: {id_trimmed}"))?;
+    repo.find_commit(oid)
+        .map_err(|_| format!("Commit not found: {id_trimmed}"))?;
+
+    // A previous failed cherry-pick/merge leaves the repo locked in that state;
+    // a new cherry-pick cannot start until it is resolved.
+    let git_dir = repo.path();
+    for lock_file in ["CHERRY_PICK_HEAD", "MERGE_HEAD", "REVERT_HEAD"] {
+        if git_dir.join(lock_file).exists() {
+            return Err("Another cherry-pick or merge is already in progress. Resolve it in your terminal first (git cherry-pick --continue / --abort), then try again.".to_string());
+        }
+    }
+
+    // Cherry-pick applies onto the target branch: check it out first when needed.
+    if let Some(target) = target_branch
+        .map(|t| t.trim().to_string())
+        .filter(|t| !t.is_empty())
+    {
+        if repo.find_branch(&target, BranchType::Local).is_err() {
+            return Err(format!("Target branch not found: {target}"));
+        }
+        let current = current_branch_name(repo).unwrap_or_default();
+        if current != target {
+            // A dirty worktree blocks checkout — fail early with a clear message
+            // instead of a cryptic git checkout error.
+            let status = run_git(repo, &["status", "--porcelain"])?;
+            if !status.trim().is_empty() {
+                let count = status.lines().count();
+                let sample: Vec<&str> = status.lines().take(5).map(|l| l.trim()).collect();
+                return Err(format!(
+                    "Uncommitted changes would be overwritten by switching to {target} ({count} file(s): {}). Commit or stash your changes first, then try again.",
+                    sample.join(", ")
+                ));
+            }
+            run_git(repo, &["checkout", &target])?;
+        }
+    }
+
+    match run_git(repo, &["cherry-pick", id_trimmed]) {
+        Ok(out) => Ok(out),
+        Err(err) => {
+            // Commit content already exists on the target — nothing to apply.
+            if err.contains("empty") {
+                let _ = run_git(repo, &["cherry-pick", "--quit"]);
+                return Ok(format!(
+                    "Commit {id_trimmed} is already applied on this branch — nothing to cherry-pick."
+                ));
+            }
+            // Conflicts leave the repo in CHERRY_PICKING state on purpose so the
+            // user can resolve them; surface git's message with guidance.
+            Err(format!(
+                "{err}\n\nResolve the conflicts in your terminal, then run \"git cherry-pick --continue\" or \"git cherry-pick --abort\"."
+            ))
+        }
+    }
 }
 
 fn detect_os_and_distro() -> (String, String) {
@@ -1580,6 +2005,127 @@ mod tests {
         assert_eq!(response.body, "{\"ok\":true}xxxx");
     }
 
+    fn test_git(args: &[&str], dir: &std::path::Path) {
+        let out = std::process::Command::new("git")
+            .args(args)
+            .current_dir(dir)
+            .env("LC_ALL", "C")
+            .output()
+            .expect("git should run");
+        assert!(
+            out.status.success(),
+            "git {:?} failed: {}",
+            args,
+            String::from_utf8_lossy(&out.stderr)
+        );
+    }
+
+    #[test]
+    fn conflict_diff_shows_ours_vs_theirs() {
+        let dir = std::env::temp_dir().join("differ-conflict-diff-test");
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).expect("temp dir");
+
+        test_git(&["init", "-b", "master"], &dir);
+        test_git(&["config", "user.email", "t@t.co"], &dir);
+        test_git(&["config", "user.name", "t"], &dir);
+        test_git(&["config", "commit.gpgsign", "false"], &dir);
+
+        std::fs::write(dir.join("conflicted.txt"), "line1\nline2\nline3\n").expect("write");
+        test_git(&["add", "."], &dir);
+        test_git(&["commit", "-m", "base"], &dir);
+        test_git(&["checkout", "-b", "feature"], &dir);
+        std::fs::write(dir.join("conflicted.txt"), "line1\nINCOMING SIDE\nline3\n").expect("write");
+        test_git(&["commit", "-am", "memo"], &dir);
+        test_git(&["checkout", "master"], &dir);
+        std::fs::write(dir.join("conflicted.txt"), "line1\nTARGET SIDE\nline3\n").expect("write");
+        test_git(&["commit", "-am", "masterc"], &dir);
+
+        let merge_out = std::process::Command::new("git")
+            .args(["merge", "feature"])
+            .current_dir(&dir)
+            .env("LC_ALL", "C")
+            .output()
+            .expect("git merge");
+        assert!(
+            !merge_out.status.success(),
+            "merge should conflict, got: {}",
+            String::from_utf8_lossy(&merge_out.stdout)
+        );
+
+        let repo = Repository::open(&dir).expect("repo should open");
+        let diff =
+            build_conflict_diff(&repo, "conflicted.txt").expect("conflict diff should build");
+
+        // Mimic the app lifecycle: open the repo handle BEFORE the merge happens,
+        // then create the conflict via an external git process.
+        let dir2 = std::env::temp_dir().join("differ-conflict-diff-test2");
+        let _ = std::fs::remove_dir_all(&dir2);
+        std::fs::create_dir_all(&dir2).expect("temp dir");
+        test_git(&["init", "-b", "master"], &dir2);
+        test_git(&["config", "user.email", "t@t.co"], &dir2);
+        test_git(&["config", "user.name", "t"], &dir2);
+        test_git(&["config", "commit.gpgsign", "false"], &dir2);
+        std::fs::write(dir2.join("conflicted.txt"), "line1\nline2\nline3\n").expect("write");
+        test_git(&["add", "."], &dir2);
+        test_git(&["commit", "-m", "base"], &dir2);
+
+        let early_repo = Repository::open(&dir2).expect("repo should open");
+
+        test_git(&["checkout", "-b", "feature"], &dir2);
+        std::fs::write(dir2.join("conflicted.txt"), "line1\nINCOMING SIDE\nline3\n")
+            .expect("write");
+        test_git(&["commit", "-am", "memo"], &dir2);
+        test_git(&["checkout", "master"], &dir2);
+        std::fs::write(dir2.join("conflicted.txt"), "line1\nTARGET SIDE\nline3\n").expect("write");
+        test_git(&["commit", "-am", "masterc"], &dir2);
+        let _ = std::process::Command::new("git")
+            .args(["merge", "feature"])
+            .current_dir(&dir2)
+            .env("LC_ALL", "C")
+            .output()
+            .expect("git merge");
+
+        let stale_result = build_conflict_diff(&early_repo, "conflicted.txt");
+        eprintln!(
+            "early-handle result: {:?}",
+            stale_result.as_ref().map(|d| d.hunks.len())
+        );
+        assert!(
+            stale_result.is_ok(),
+            "conflict diff should work with a repo handle opened before the merge: {:?}",
+            stale_result.err()
+        );
+
+        let _ = std::fs::remove_dir_all(&dir);
+        let _ = std::fs::remove_dir_all(&dir2);
+
+        let texts: Vec<String> = diff
+            .hunks
+            .iter()
+            .flat_map(|h| h.lines.iter())
+            .map(|l| format!("{}:{}", l.line_type, l.content.trim()))
+            .collect();
+        eprintln!("conflict diff lines: {:?}", texts);
+
+        assert!(
+            texts
+                .iter()
+                .any(|l| l.starts_with("delete:") && l.contains("TARGET SIDE")),
+            "ours (target branch) line should appear as delete, got: {:?}",
+            texts
+        );
+        assert!(
+            texts
+                .iter()
+                .any(|l| l.starts_with("add:") && l.contains("INCOMING SIDE")),
+            "theirs (incoming branch) line should appear as add, got: {:?}",
+            texts
+        );
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
     #[test]
     fn parses_chunked_response() {
         let response = parse_http_response(
@@ -1635,7 +2181,7 @@ fn check_ollama_cli_and_daemon() -> (bool, bool, Vec<String>) {
 }
 
 #[tauri::command]
-fn get_system_info() -> Result<SystemInfo, String> {
+async fn get_system_info() -> Result<SystemInfo, String> {
     let (os, distro) = detect_os_and_distro();
     let ram_gb = detect_ram_gb();
     let (gpu_name, vram_gb) = detect_gpu_and_vram();
@@ -1664,12 +2210,12 @@ fn get_system_info() -> Result<SystemInfo, String> {
 }
 
 #[tauri::command]
-fn check_ollama_status() -> Result<SystemInfo, String> {
-    get_system_info()
+async fn check_ollama_status() -> Result<SystemInfo, String> {
+    get_system_info().await
 }
 
 #[tauri::command]
-fn install_ollama() -> Result<String, String> {
+async fn install_ollama() -> Result<String, String> {
     #[cfg(not(target_os = "windows"))]
     {
         let output = Command::new("sh")
@@ -1709,7 +2255,7 @@ fn install_ollama() -> Result<String, String> {
 }
 
 #[tauri::command]
-fn pull_ollama_model(model_name: String) -> Result<String, String> {
+async fn pull_ollama_model(model_name: String) -> Result<String, String> {
     let model = model_name.trim();
     if model.is_empty() {
         return Err("Model name cannot be empty".to_string());
@@ -1734,7 +2280,7 @@ fn pull_ollama_model(model_name: String) -> Result<String, String> {
 }
 
 #[tauri::command]
-fn check_lm_studio_status() -> Result<LmStudioInfo, String> {
+async fn check_lm_studio_status() -> Result<LmStudioInfo, String> {
     let mut running = false;
     let mut models = Vec::new();
 
@@ -3276,7 +3822,7 @@ fn get_gpg_keys() -> Vec<GpgKey> {
 }
 
 #[tauri::command]
-fn get_git_settings(state: State<'_, Mutex<AppState>>) -> Result<GitSettings, String> {
+async fn get_git_settings(state: State<'_, Mutex<AppState>>) -> Result<GitSettings, String> {
     let app_state = state.lock().map_err(|e| e.to_string())?;
     let repo_ref = app_state.repo.as_ref();
 
@@ -3367,7 +3913,7 @@ fn get_git_settings(state: State<'_, Mutex<AppState>>) -> Result<GitSettings, St
 }
 
 #[tauri::command]
-fn save_git_settings(
+async fn save_git_settings(
     state: State<'_, Mutex<AppState>>,
     name: String,
     email: String,
@@ -3403,12 +3949,12 @@ fn save_git_settings(
 }
 
 #[tauri::command]
-fn get_smtp_settings() -> Result<SmtpSettings, String> {
+async fn get_smtp_settings() -> Result<SmtpSettings, String> {
     Ok(load_smtp_settings())
 }
 
 #[tauri::command]
-fn save_smtp_settings(settings: SmtpSettings) -> Result<String, String> {
+async fn save_smtp_settings(settings: SmtpSettings) -> Result<String, String> {
     save_smtp_settings_to_file(&settings)?;
     Ok("SMTP settings saved successfully".to_string())
 }
@@ -3515,7 +4061,7 @@ fn run_gh(args: &[&str], cwd: Option<&Path>) -> Result<String, String> {
 }
 
 #[tauri::command]
-fn check_gh_auth(state: State<'_, Mutex<AppState>>) -> Result<GhAuthStatus, String> {
+async fn check_gh_auth(state: State<'_, Mutex<AppState>>) -> Result<GhAuthStatus, String> {
     let app_state = state.lock().map_err(|e| e.to_string())?;
     let cwd = app_state.repo_path.as_deref().map(Path::new);
 
@@ -3560,7 +4106,7 @@ fn check_gh_auth(state: State<'_, Mutex<AppState>>) -> Result<GhAuthStatus, Stri
 }
 
 #[tauri::command]
-fn get_github_issues(
+async fn get_github_issues(
     state: State<'_, Mutex<AppState>>,
     filter: Option<String>,
     limit: Option<u32>,
@@ -3611,7 +4157,7 @@ fn get_github_issues(
 }
 
 #[tauri::command]
-fn get_github_prs(
+async fn get_github_prs(
     state: State<'_, Mutex<AppState>>,
     filter: Option<String>,
     limit: Option<u32>,
@@ -3662,7 +4208,7 @@ fn get_github_prs(
 }
 
 #[tauri::command]
-fn get_github_actions(
+async fn get_github_actions(
     state: State<'_, Mutex<AppState>>,
     limit: Option<u32>,
     branch: Option<String>,
@@ -3712,7 +4258,7 @@ fn get_github_actions(
 }
 
 #[tauri::command]
-fn get_pr_diff(state: State<'_, Mutex<AppState>>, pr_number: u64) -> Result<String, String> {
+async fn get_pr_diff(state: State<'_, Mutex<AppState>>, pr_number: u64) -> Result<String, String> {
     let app_state = state.lock().map_err(|e| e.to_string())?;
     let cwd = app_state.repo_path.as_deref().map(Path::new);
     let num_str = pr_number.to_string();
@@ -3720,7 +4266,7 @@ fn get_pr_diff(state: State<'_, Mutex<AppState>>, pr_number: u64) -> Result<Stri
 }
 
 #[tauri::command]
-fn get_pr_commits(
+async fn get_pr_commits(
     state: State<'_, Mutex<AppState>>,
     pr_number: u64,
 ) -> Result<Vec<GithubPrCommit>, String> {
@@ -3767,7 +4313,7 @@ fn get_pr_commits(
 }
 
 #[tauri::command]
-fn merge_github_pr(
+async fn merge_github_pr(
     state: State<'_, Mutex<AppState>>,
     pr_number: u64,
     merge_method: Option<String>,
@@ -3796,7 +4342,7 @@ fn merge_github_pr(
 }
 
 #[tauri::command]
-fn get_action_log(state: State<'_, Mutex<AppState>>, run_id: u64) -> Result<String, String> {
+async fn get_action_log(state: State<'_, Mutex<AppState>>, run_id: u64) -> Result<String, String> {
     let app_state = state.lock().map_err(|e| e.to_string())?;
     let cwd = app_state.repo_path.as_deref().map(Path::new);
     let id_str = run_id.to_string();
@@ -3841,7 +4387,7 @@ fn is_version_newer(latest: &str, current: &str) -> bool {
 }
 
 #[tauri::command]
-fn check_app_update(state: State<'_, Mutex<AppState>>) -> Result<AppUpdateInfo, String> {
+async fn check_app_update(state: State<'_, Mutex<AppState>>) -> Result<AppUpdateInfo, String> {
     let app_state = state.lock().map_err(|e| e.to_string())?;
     let cwd = app_state.repo_path.as_deref().map(Path::new);
 
@@ -4172,7 +4718,7 @@ fn find_editor_launcher(editor_id: &str) -> Option<EditorLauncher> {
 }
 
 #[tauri::command]
-fn detect_installed_editors() -> Vec<InstalledEditor> {
+async fn detect_installed_editors() -> Vec<InstalledEditor> {
     let editors_to_check = vec![
         ("code", "VS Code"),
         ("code-oss", "Code OSS"),
@@ -4195,7 +4741,10 @@ fn detect_installed_editors() -> Vec<InstalledEditor> {
 }
 
 #[tauri::command]
-fn open_in_editor(editor_id: String, state: State<'_, Mutex<AppState>>) -> Result<String, String> {
+async fn open_in_editor(
+    editor_id: String,
+    state: State<'_, Mutex<AppState>>,
+) -> Result<String, String> {
     let app_state = state.lock().map_err(|e| e.to_string())?;
     let repo_path = app_state
         .repo_path
@@ -4223,7 +4772,7 @@ fn open_in_editor(editor_id: String, state: State<'_, Mutex<AppState>>) -> Resul
 }
 
 #[tauri::command]
-fn get_git_remotes(state: State<'_, Mutex<AppState>>) -> Result<Vec<GitRemoteInfo>, String> {
+async fn get_git_remotes(state: State<'_, Mutex<AppState>>) -> Result<Vec<GitRemoteInfo>, String> {
     let app_state = state.lock().map_err(|e| e.to_string())?;
     let repo = app_state.repo.as_ref().ok_or("Repository is not open")?;
 
@@ -4293,7 +4842,10 @@ fn get_git_remotes(state: State<'_, Mutex<AppState>>) -> Result<Vec<GitRemoteInf
 }
 
 #[tauri::command]
-fn fetch_remote(state: State<'_, Mutex<AppState>>, remote_name: String) -> Result<String, String> {
+async fn fetch_remote(
+    state: State<'_, Mutex<AppState>>,
+    remote_name: String,
+) -> Result<String, String> {
     let app_state = state.lock().map_err(|e| e.to_string())?;
     let repo = app_state.repo.as_ref().ok_or("Repository is not open")?;
     let r_name = if remote_name.is_empty() {
@@ -4305,7 +4857,7 @@ fn fetch_remote(state: State<'_, Mutex<AppState>>, remote_name: String) -> Resul
 }
 
 #[tauri::command]
-fn add_git_remote(
+async fn add_git_remote(
     state: State<'_, Mutex<AppState>>,
     name: String,
     url: String,
@@ -4345,6 +4897,13 @@ pub fn run() {
             push_origin,
             add_origin,
             merge_branches,
+            get_merge_conflicts,
+            resolve_conflicts,
+            abort_in_progress,
+            get_conflict_diff,
+            get_repo_fingerprint,
+            get_unmerged_commits,
+            cherry_pick_commit,
             get_system_info,
             check_ollama_status,
             install_ollama,

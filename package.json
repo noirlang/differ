@@ -1,7 +1,7 @@
 {
   "name": "differ",
   "private": true,
-  "version": "0.0.5",
+  "version": "0.0.6",
   "author": "noirLang",
   "license": "GPL-3.0-or-later",
   "type": "module",
@@ -12,7 +12,6 @@
     "build": "tauri build",
     "build:windows": "tauri build --bundles msi",
     "build:linux:appimage": "scripts/build-appimage-ubuntu.sh",
-    "build:flatpak": "scripts/build-flatpak.sh",
     "tauri": "tauri"
   },
   "devDependencies": {
