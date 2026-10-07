@@ -3185,21 +3185,24 @@ svg {
   gap: 6px;
   min-height: 26px;
   padding: 0 12px;
-  border: 1px solid rgba(56, 139, 253, 0.5);
+  border: 1px solid var(--line);
   border-radius: 999px;
-  background: linear-gradient(135deg, rgba(31, 107, 235, 0.8) 0%, rgba(35, 134, 54, 0.8) 100%);
-  color: #ffffff;
+  background: var(--panel-3);
+  color: var(--text);
   font-size: 11px;
   font-weight: 700;
   cursor: pointer;
-  box-shadow: 0 2px 8px rgba(31, 107, 235, 0.3);
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .top-push-btn:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 14px rgba(35, 134, 54, 0.5);
-  filter: brightness(1.15);
+  background: var(--hover);
+  border-color: #555555;
+}
+
+.top-push-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 
 .top-push-btn svg {
@@ -3774,12 +3777,11 @@ input:checked + .slider:before {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  background: linear-gradient(135deg, rgba(31, 107, 235, 0.12) 0%, rgba(35, 134, 54, 0.12) 100%);
-  border: 1px solid rgba(56, 139, 253, 0.35);
+  background: var(--panel-2);
+  border: 1px solid var(--line);
   border-radius: 10px;
   padding: 14px;
   margin-bottom: 16px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
 }
 
 .unpushed-banner-head {
@@ -3793,14 +3795,14 @@ input:checked + .slider:before {
   display: flex;
   align-items: center;
   gap: 8px;
-  color: #e6edf3;
+  color: var(--text);
   font-size: 13px;
 }
 
 .unpushed-icon {
   width: 16px;
   height: 16px;
-  color: #58a6ff;
+  color: var(--text-dim);
   flex-shrink: 0;
 }
 
@@ -3824,16 +3826,16 @@ input:checked + .slider:before {
   justify-content: space-between;
   gap: 12px;
   padding: 8px 12px;
-  background: #0d1117;
-  border: 1px solid rgba(56, 139, 253, 0.25);
+  background: var(--panel);
+  border: 1px solid var(--line-soft);
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.15s ease;
 }
 
 .unpushed-commit-card:hover {
-  border-color: #58a6ff;
-  background: #161b22;
+  border-color: var(--line);
+  background: var(--hover);
 }
 
 .unpushed-commit-info {
@@ -3848,17 +3850,17 @@ input:checked + .slider:before {
   font-family: var(--mono);
   font-size: 11px;
   font-weight: 700;
-  color: #d29922;
-  background: rgba(210, 153, 34, 0.15);
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.04);
   padding: 2px 6px;
   border-radius: 4px;
-  border: 1px solid rgba(210, 153, 34, 0.3);
+  border: 1px solid var(--line-soft);
 }
 
 .unpushed-msg {
   font-size: 12px;
   font-weight: 600;
-  color: #f0f6fc;
+  color: var(--text);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -3869,21 +3871,21 @@ input:checked + .slider:before {
   align-items: center;
   gap: 8px;
   font-size: 11px;
-  color: #8b949e;
+  color: var(--text-dim);
   flex-shrink: 0;
 }
 
-.commit-state-label.unpushed-badge {
+.commit-state-label.unpushed-badge,
+.commit-state-label.unmerged-badge {
   display: inline-block;
   font-size: 9px;
   font-weight: 800;
   text-transform: uppercase;
-  background: rgba(210, 153, 34, 0.2);
-  color: #f0b429;
-  border: 1px solid rgba(210, 153, 34, 0.4);
+  background: transparent;
+  color: var(--text-dim);
+  border: 1px solid var(--line);
   padding: 1px 6px;
   border-radius: 4px;
-  box-shadow: 0 0 8px rgba(210, 153, 34, 0.3);
 }
 
 /* ─── Unmerged Commits Banner ─────────────────────────────────────────────── */
@@ -3892,12 +3894,11 @@ input:checked + .slider:before {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  background: linear-gradient(135deg, rgba(137, 87, 229, 0.12) 0%, rgba(31, 107, 235, 0.10) 100%);
-  border: 1px solid rgba(188, 140, 255, 0.35);
+  background: var(--panel-2);
+  border: 1px solid var(--line);
   border-radius: 10px;
   padding: 14px;
   margin-bottom: 16px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
 }
 
 .unmerged-banner-head {
@@ -3912,7 +3913,7 @@ input:checked + .slider:before {
   display: flex;
   align-items: center;
   gap: 8px;
-  color: #e6edf3;
+  color: var(--text);
   font-size: 13px;
   flex-wrap: wrap;
   min-width: 0;
@@ -3921,14 +3922,14 @@ input:checked + .slider:before {
 .unmerged-icon {
   width: 16px;
   height: 16px;
-  color: #bc8cff;
+  color: var(--text-dim);
   flex-shrink: 0;
 }
 
 .unmerged-source-select {
-  background: #0d1117;
-  color: #e6edf3;
-  border: 1px solid rgba(188, 140, 255, 0.4);
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--line);
   border-radius: 6px;
   font-size: 11px;
   font-weight: 600;
@@ -3941,17 +3942,18 @@ input:checked + .slider:before {
 
 .unmerged-source-select:hover,
 .unmerged-source-select:focus {
-  border-color: #bc8cff;
+  border-color: #555555;
 }
 
 .top-push-btn.merge-all {
-  border-color: rgba(188, 140, 255, 0.5);
-  color: #d2b3ff;
+  border-color: var(--line);
+  color: var(--text);
 }
 
 .top-push-btn.merge-all:hover {
-  border-color: #bc8cff;
-  box-shadow: 0 0 12px rgba(188, 140, 255, 0.35);
+  border-color: #555555;
+  background: var(--hover);
+  box-shadow: none;
 }
 
 .unmerged-commit-list {
@@ -3968,28 +3970,15 @@ input:checked + .slider:before {
   justify-content: space-between;
   gap: 12px;
   padding: 8px 12px;
-  background: #0d1117;
-  border: 1px solid rgba(188, 140, 255, 0.22);
+  background: var(--panel);
+  border: 1px solid var(--line-soft);
   border-radius: 6px;
   transition: all 0.15s ease;
 }
 
 .unmerged-commit-card:hover {
-  border-color: #bc8cff;
-  background: #161b22;
-}
-
-.commit-state-label.unmerged-badge {
-  display: inline-block;
-  font-size: 9px;
-  font-weight: 800;
-  text-transform: uppercase;
-  background: rgba(188, 140, 255, 0.16);
-  color: #d2b3ff;
-  border: 1px solid rgba(188, 140, 255, 0.4);
-  padding: 1px 6px;
-  border-radius: 4px;
-  box-shadow: 0 0 8px rgba(188, 140, 255, 0.25);
+  border-color: var(--line);
+  background: var(--hover);
 }
 
 .cherry-pick-btn {
@@ -3998,10 +3987,10 @@ input:checked + .slider:before {
   gap: 5px;
   min-height: 24px;
   padding: 0 10px;
-  border: 1px solid rgba(63, 185, 80, 0.45);
+  border: 1px solid var(--line);
   border-radius: 6px;
-  background: rgba(35, 134, 54, 0.18);
-  color: #3fb950;
+  background: transparent;
+  color: var(--text-muted);
   font-size: 10px;
   font-weight: 700;
   cursor: pointer;
@@ -4010,9 +3999,9 @@ input:checked + .slider:before {
 }
 
 .cherry-pick-btn:hover:not(:disabled) {
-  background: rgba(35, 134, 54, 0.35);
-  border-color: #3fb950;
-  box-shadow: 0 0 10px rgba(63, 185, 80, 0.3);
+  background: var(--hover);
+  border-color: #555555;
+  color: var(--text);
 }
 
 .cherry-pick-btn:disabled {
