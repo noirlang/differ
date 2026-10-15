@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="tr">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -10,30 +10,30 @@
 <body>
   <div id="app">
     <header class="topbar">
-      <button class="brand" id="btn-home" type="button" title="Go to home" aria-label="Go to home">
+      <button class="brand" id="btn-home" type="button" title="Ana Sayfaya Git" aria-label="Ana Sayfaya Git">
         <span class="brand-mark" aria-hidden="true">
           <img src="assets/differ-white.svg" alt="" />
         </span>
       </button>
 
       <nav class="github-nav" id="github-nav" style="display:none;" aria-label="GitHub panels">
-        <button class="gh-nav-btn active" id="btn-gh-tab-history" type="button" data-panel="history" title="Commit History">
+        <button class="gh-nav-btn active" id="btn-gh-tab-history" type="button" data-panel="history" title="Commit Geçmişi">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 10h16M4 14h16M4 18h16"></path></svg>
-          <span class="gh-tab-label">History</span>
+          <span class="gh-tab-label">Geçmiş</span>
         </button>
-        <button class="gh-nav-btn" id="btn-gh-tab-issues" type="button" data-panel="issues" title="GitHub Issues">
+        <button class="gh-nav-btn" id="btn-gh-tab-issues" type="button" data-panel="issues" title="GitHub Sorunları">
           <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="7"></circle><path d="M12 8v4"></path><circle cx="12" cy="16" r="0.5" fill="currentColor"></circle></svg>
-          <span class="gh-tab-label">Issues</span>
+          <span class="gh-tab-label">Sorunlar</span>
           <span class="gh-nav-count" id="gh-issues-count" style="display:none;">0</span>
         </button>
-        <button class="gh-nav-btn" id="btn-gh-tab-prs" type="button" data-panel="prs" title="Pull Requests">
+        <button class="gh-nav-btn" id="btn-gh-tab-prs" type="button" data-panel="prs" title="Pull Request'ler">
           <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="6" r="3"></circle><path d="M6 15V6"></path><path d="M18 9a9 9 0 0 1-9 9"></path></svg>
-          <span class="gh-tab-label">Pull Requests</span>
+          <span class="gh-tab-label">Pull Request'ler</span>
           <span class="gh-nav-count" id="gh-prs-count" style="display:none;">0</span>
         </button>
         <button class="gh-nav-btn" id="btn-gh-tab-actions" type="button" data-panel="actions" title="GitHub Actions CI/CD">
           <svg viewBox="0 0 24 24" aria-hidden="true"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
-          <span class="gh-tab-label">Actions</span>
+          <span class="gh-tab-label">İşlemler</span>
           <span class="gh-nav-count" id="gh-actions-count" style="display:none;">0</span>
         </button>
       </nav>
@@ -43,20 +43,20 @@
           <circle cx="11" cy="11" r="7"></circle>
           <path d="m20 20-3.5-3.5"></path>
         </svg>
-        <input id="search-input" type="search" placeholder="search commits, hashes, authors" autocomplete="off" />
+        <input id="search-input" type="search" placeholder="commit, hash veya yazar ara..." autocomplete="off" />
       </label>
 
       <div class="repo-info" id="repo-info" style="display:none;">
         <div class="repo-pill-dropdown-wrapper" id="top-branch-pill-wrapper">
-          <div class="repo-pill branch-pill" id="top-branch-pill" title="Click to switch branch" role="button" tabindex="0">
+          <div class="repo-pill branch-pill" id="top-branch-pill" title="Dalı değiştirmek için tıklayın" role="button" tabindex="0">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3v12"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="6" r="3"></circle><path d="M18 9a9 9 0 0 1-9 9"></path></svg>
             <span id="active-branch">-</span>
             <svg class="pill-chevron" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"></polyline></svg>
           </div>
           <div class="pill-dropdown-menu branch-dropdown" id="branch-dropdown-menu" style="display: none;">
             <div class="dropdown-menu-header">
-              <span>Branches (<span id="branch-count">0</span>)</span>
-              <button class="section-icon-btn" id="btn-refresh-branches" type="button" title="Fetch branches from origin" aria-label="Refresh branches">
+              <span>Dallar (<span id="branch-count">0</span>)</span>
+              <button class="section-icon-btn" id="btn-refresh-branches" type="button" title="Dalları origin'den getir (fetch)" aria-label="Dalları yenile">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M21 12a9 9 0 0 1-15.5 6.3L3 16"></path>
                   <path d="M3 21v-5h5"></path>
@@ -72,40 +72,40 @@
         <span class="repo-pill"><span id="commit-count">0</span> commit</span>
 
         <div class="repo-pill-dropdown-wrapper" id="top-remote-pill-wrapper">
-          <div class="repo-pill sync-pill" id="top-sync-pill" title="Click to manage remotes" role="button" tabindex="0">
+          <div class="repo-pill sync-pill" id="top-sync-pill" title="Uzak depoları yönetmek için tıklayın" role="button" tabindex="0">
             <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <circle cx="12" cy="12" r="10"></circle>
               <line x1="2" y1="12" x2="22" y2="12"></line>
               <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
             </svg>
-            <span id="top-sync-pill-text">no origin</span>
+            <span id="top-sync-pill-text">origin yok</span>
             <svg class="pill-chevron" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"></polyline></svg>
           </div>
           <div class="pill-dropdown-menu remote-dropdown" id="remote-dropdown-menu" style="display: none;">
             <div class="dropdown-menu-header">
-              <span>Git Remotes</span>
-              <button class="section-text-btn" id="btn-top-add-remote-toggle" type="button" title="Add remote">+</button>
+              <span>Uzak Depolar (Remotes)</span>
+              <button class="section-text-btn" id="btn-top-add-remote-toggle" type="button" title="Uzak depo ekle">+</button>
             </div>
             <div class="remote-add-form" id="top-add-remote-form" style="display: none;">
-              <input type="text" id="top-remote-name-input" placeholder="Remote name (default: origin)" autocomplete="off" />
-              <input type="url" id="top-remote-url-input" placeholder="Remote URL (https://... or git@...)" autocomplete="off" />
+              <input type="text" id="top-remote-name-input" placeholder="Uzak depo adı (varsayılan: origin)" autocomplete="off" />
+              <input type="url" id="top-remote-url-input" placeholder="Uzak depo URL'si (https://... veya git@...)" autocomplete="off" />
               <div class="form-actions">
-                <button class="mini-btn cancel" id="btn-cancel-top-remote" type="button">Cancel</button>
-                <button class="mini-btn primary" id="btn-save-top-remote" type="button">Save</button>
+                <button class="mini-btn cancel" id="btn-cancel-top-remote" type="button">İptal</button>
+                <button class="mini-btn primary" id="btn-save-top-remote" type="button">Kaydet</button>
               </div>
             </div>
             <div class="dropdown-menu-list" id="top-remote-list"></div>
           </div>
         </div>
 
-        <button class="top-push-btn" id="top-push-btn" type="button" style="display:none;" title="Push commits to remote origin">
+        <button class="top-push-btn" id="top-push-btn" type="button" style="display:none;" title="Commit'leri uzak depoya gönder (push)">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
             <line x1="12" y1="19" x2="12" y2="5"></line>
             <polyline points="5 12 12 5 19 12"></polyline>
           </svg>
-          <span id="top-push-btn-text" class="btn-text">Push</span>
+          <span id="top-push-btn-text" class="btn-text">Gönder</span>
         </button>
-        <button class="top-nav-btn icon-only-btn settings-btn" id="btn-open-settings" type="button" title="Settings & AI Config" aria-label="Settings">
+        <button class="top-nav-btn icon-only-btn settings-btn" id="btn-open-settings" type="button" title="Ayarlar & Yapay Zeka Tercihleri" aria-label="Ayarlar">
           <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <line x1="4" y1="21" x2="4" y2="14"></line>
             <line x1="4" y1="10" x2="4" y2="3"></line>
@@ -118,7 +118,7 @@
             <line x1="17" y1="16" x2="23" y2="16"></line>
           </svg>
         </button>
-        <button class="top-nav-btn icon-only-btn detail-toggle-btn is-closed" id="btn-toggle-detail-panel" type="button" title="Commit Detail Panelini Aç" aria-label="Toggle Commit Detail">
+        <button class="top-nav-btn icon-only-btn detail-toggle-btn is-closed" id="btn-toggle-detail-panel" type="button" title="Commit Detay Panelini Aç" aria-label="Commit Detayını Aç">
           <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
             <line x1="15" y1="3" x2="15" y2="21"></line>
@@ -128,18 +128,18 @@
     </header>
 
     <main class="main-content hide-detail-panel" id="main-content" style="display:none;">
-      <aside class="sidebar" aria-label="Repository navigation">
+      <aside class="sidebar" aria-label="Depo gezintisi">
         <section class="repo-card">
-          <div class="repo-kicker">Repository</div>
+          <div class="repo-kicker">Depo</div>
           <div class="repo-title" id="side-repo-name">-</div>
           <div class="repo-path" id="repo-path">-</div>
           <div class="repo-metrics">
             <span><strong id="side-commit-count">0</strong> commit</span>
-            <span><strong id="side-author-count">0</strong> people</span>
+            <span><strong id="side-author-count">0</strong> kişi</span>
           </div>
           <div class="repo-quick-actions">
-            <button class="mini-btn primary" id="btn-push-origin" type="button" disabled>Push</button>
-            <button class="mini-btn icon-only" id="btn-fetch-origin" type="button" title="Fetch from active remote" aria-label="Fetch">
+            <button class="mini-btn primary" id="btn-push-origin" type="button" disabled>Gönder</button>
+            <button class="mini-btn icon-only" id="btn-fetch-origin" type="button" title="Etkin uzak depodan getir (fetch)" aria-label="Getir">
               <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M21 12a9 9 0 0 1-15.5 6.3L3 16"></path>
                 <path d="M3 21v-5h5"></path>
@@ -153,8 +153,8 @@
 
         <section class="sidebar-section workspace-section">
           <div class="section-head">
-            <span>Changes</span>
-            <button class="section-icon-btn" id="btn-refresh-status" type="button" title="Refresh status" aria-label="Refresh status">
+            <span>Değişiklikler</span>
+            <button class="section-icon-btn" id="btn-refresh-status" type="button" title="Durumu yenile" aria-label="Durumu yenile">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 0 1-15.5 6.3L3 16"></path><path d="M3 21v-5h5"></path><path d="M3 12A9 9 0 0 1 18.5 5.7L21 8"></path><path d="M21 3v5h-5"></path></svg>
             </button>
           </div>
@@ -169,31 +169,31 @@
               </div>
             </div>
             <div class="commit-box-header">
-              <button class="ai-generate-btn" id="btn-ai-generate-commit" type="button" title="AI Write Commit">
+              <button class="ai-generate-btn" id="btn-ai-generate-commit" type="button" title="Yapay Zeka ile Commit Yaz">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"></path>
                 </svg>
-                <span>AI Write Commit</span>
+                <span>Yapay Zeka ile Commit Yaz</span>
               </button>
-              <select id="commit-ai-model-select" class="commit-ai-select" title="Default Active AI Model">
+              <select id="commit-ai-model-select" class="commit-ai-select" title="Varsayılan Etkin Yapay Zeka Modeli">
                 <option value="ollama:gemma4:12b">Ollama: gemma4:12b</option>
               </select>
             </div>
 
-            <textarea id="commit-message-input" rows="2" placeholder="Commit message"></textarea>
+            <textarea id="commit-message-input" rows="2" placeholder="Commit mesajı"></textarea>
 
             <div class="commit-options-bar">
               <div class="commit-option-field">
-                <label for="commit-identity-select">Identity:</label>
+                <label for="commit-identity-select">Kimlik:</label>
                 <select id="commit-identity-select">
-                  <option value="">Default Identity</option>
+                  <option value="">Varsayılan Kimlik</option>
                 </select>
               </div>
               <div class="commit-option-field">
-                <label for="commit-gpg-select">PGP Key:</label>
+                <label for="commit-gpg-select">PGP Anahtarı:</label>
                 <select id="commit-gpg-select">
-                  <option value="none">No Signing</option>
-                  <option value="default">Default Key (-S)</option>
+                  <option value="none">İmzalama Yok</option>
+                  <option value="default">Varsayılan Anahtar (-S)</option>
                 </select>
               </div>
               <div class="commit-option-field checkbox-field">
@@ -209,12 +209,12 @@
               <div class="coauthors-list" id="coauthors-list"></div>
               <div class="coauthor-input-wrapper">
                 <div class="coauthor-suggestions" id="coauthor-suggestions" style="display: none;"></div>
-                <input id="coauthor-username-input" type="text" placeholder="Co-author (e.g. @username)" autocomplete="off" />
+                <input id="coauthor-username-input" type="text" placeholder="Ortak yazar (örn. @kullanıcıadı)" autocomplete="off" />
               </div>
             </div>
             
             <div class="commit-btn-row">
-              <button class="commit-action" id="btn-commit-selected" type="button" disabled>Commit selected files</button>
+              <button class="commit-action" id="btn-commit-selected" type="button" disabled>Seçilen dosyaları commit'le</button>
               <button class="cancel-edit-btn" id="btn-cancel-edit-commit" type="button" style="display: none;" title="Commit düzenlemeyi iptal et">
                 <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <line x1="18" y1="6" x2="6" y2="18"></line>
@@ -227,20 +227,20 @@
 
         <section class="sidebar-section team-section">
           <div class="section-head">
-            <span>Contributors</span>
-            <button class="section-text-btn" id="btn-show-contributors" type="button">Top 3</button>
+            <span>Katkıda Bulunanlar</span>
+            <button class="section-text-btn" id="btn-show-contributors" type="button">İlk 3</button>
           </div>
           <div class="team-list" id="team-list"></div>
         </section>
       </aside>
 
-      <section class="history-panel" aria-label="Commit history">
+      <section class="history-panel" aria-label="Commit geçmişi">
         <div class="panel-head">
           <div>
-            <div class="panel-kicker">History</div>
-            <h1>Commit History</h1>
+            <div class="panel-kicker">Geçmiş</div>
+            <h1>Commit Geçmişi</h1>
           </div>
-          <p id="history-subtitle">Development history in the selected repository</p>
+          <p id="history-subtitle">Seçili depodaki geliştirme geçmişi</p>
         </div>
 
         <div class="unpushed-banner" id="unpushed-banner" style="display: none;">
@@ -250,14 +250,14 @@
                 <line x1="12" y1="19" x2="12" y2="5"></line>
                 <polyline points="5 12 12 5 19 12"></polyline>
               </svg>
-              <span><strong>Unpushed Commits (<span id="unpushed-banner-count">0</span>)</strong> &mdash; Pending remote push to <span id="unpushed-banner-remote">origin</span></span>
+              <span><strong>Gönderilmemiş Commit'ler (<span id="unpushed-banner-count">0</span>)</strong> &mdash; Uzak depoya gönderim bekliyor: <span id="unpushed-banner-remote">origin</span></span>
             </div>
             <button class="top-push-btn large" id="btn-unpushed-banner-push" type="button">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                 <line x1="12" y1="19" x2="12" y2="5"></line>
                 <polyline points="5 12 12 5 19 12"></polyline>
               </svg>
-              <span>Push All</span>
+              <span>Tümünü Gönder</span>
             </button>
           </div>
           <div class="unpushed-commit-list" id="unpushed-commit-list"></div>
@@ -271,26 +271,26 @@
                 <circle cx="6" cy="6" r="3"></circle>
                 <path d="M6 21V9a9 9 0 0 0 9 9"></path>
               </svg>
-              <span><strong>Unmerged Commits (<span id="unmerged-banner-count">0</span>)</strong> &mdash; <span id="unmerged-banner-source">current branch</span> not merged into</span>
-              <select id="unmerged-target-select" class="unmerged-source-select" title="Branch to merge into"></select>
+              <span><strong>Birleştirilmemiş Commit'ler (<span id="unmerged-banner-count">0</span>)</strong> &mdash; <span id="unmerged-banner-source">etkin dal</span> şuraya birleştirilmedi:</span>
+              <select id="unmerged-target-select" class="unmerged-source-select" title="Birleştirilecek hedef dal"></select>
             </div>
-            <button class="top-push-btn large merge-all" id="btn-unmerged-merge-all" type="button" title="Merge this branch into the selected target branch">
+            <button class="top-push-btn large merge-all" id="btn-unmerged-merge-all" type="button" title="Bu dalı seçilen hedef dala birleştir">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <circle cx="18" cy="18" r="3"></circle>
                 <circle cx="6" cy="6" r="3"></circle>
                 <path d="M6 21V9a9 9 0 0 0 9 9"></path>
               </svg>
-              <span>Merge All</span>
+              <span>Tümünü Birleştir</span>
             </button>
           </div>
           <div class="unmerged-commit-list" id="unmerged-commit-list"></div>
         </div>
 
         <div class="commit-list-header" aria-hidden="true">
-          <span>Graph</span>
-          <span>Commit Message</span>
-          <span>Author</span>
-          <span>Date</span>
+          <span>Grafik</span>
+          <span>Commit Mesajı</span>
+          <span>Yazar</span>
+          <span>Tarih</span>
         </div>
         <div class="commit-list" id="commit-list"></div>
       </section>
@@ -300,17 +300,17 @@
         <div class="panel-head">
           <div>
             <div class="panel-kicker">GitHub</div>
-            <h1>Issues</h1>
+            <h1>Sorunlar</h1>
           </div>
           <div class="gh-panel-controls">
             <div class="gh-filter-group" id="issues-filter-group">
-              <button class="gh-filter-btn active" type="button" data-filter="open">Open</button>
-              <button class="gh-filter-btn" type="button" data-filter="closed">Closed</button>
-              <button class="gh-filter-btn" type="button" data-filter="all">All</button>
+              <button class="gh-filter-btn active" type="button" data-filter="open">Açık</button>
+              <button class="gh-filter-btn" type="button" data-filter="closed">Kapalı</button>
+              <button class="gh-filter-btn" type="button" data-filter="all">Tümü</button>
             </div>
-            <button class="icon-btn" id="btn-refresh-issues" type="button" title="Refresh issues">
+            <button class="icon-btn" id="btn-refresh-issues" type="button" title="Sorunları yenile">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 0 1-15.5 6.3L3 16"></path><path d="M3 21v-5h5"></path><path d="M3 12A9 9 0 0 1 18.5 5.7L21 8"></path><path d="M21 3v5h-5"></path></svg>
-              <span>Refresh</span>
+              <span>Yenile</span>
             </button>
           </div>
         </div>
@@ -318,22 +318,22 @@
       </section>
 
       <!-- GitHub PRs Panel -->
-      <section class="github-panel" id="panel-prs" aria-label="Pull Requests" style="display:none;">
+      <section class="github-panel" id="panel-prs" aria-label="Pull Request'ler" style="display:none;">
         <div class="panel-head">
           <div>
             <div class="panel-kicker">GitHub</div>
-            <h1>Pull Requests</h1>
+            <h1>Pull Request'ler</h1>
           </div>
           <div class="gh-panel-controls">
             <div class="gh-filter-group" id="prs-filter-group">
-              <button class="gh-filter-btn active" type="button" data-filter="open">Open</button>
-              <button class="gh-filter-btn" type="button" data-filter="closed">Closed</button>
-              <button class="gh-filter-btn" type="button" data-filter="merged">Merged</button>
-              <button class="gh-filter-btn" type="button" data-filter="all">All</button>
+              <button class="gh-filter-btn active" type="button" data-filter="open">Açık</button>
+              <button class="gh-filter-btn" type="button" data-filter="closed">Kapalı</button>
+              <button class="gh-filter-btn" type="button" data-filter="merged">Birleştirildi</button>
+              <button class="gh-filter-btn" type="button" data-filter="all">Tümü</button>
             </div>
-            <button class="icon-btn" id="btn-refresh-prs" type="button" title="Refresh PRs">
+            <button class="icon-btn" id="btn-refresh-prs" type="button" title="PR'ları yenile">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 0 1-15.5 6.3L3 16"></path><path d="M3 21v-5h5"></path><path d="M3 12A9 9 0 0 1 18.5 5.7L21 8"></path><path d="M21 3v5h-5"></path></svg>
-              <span>Refresh</span>
+              <span>Yenile</span>
             </button>
           </div>
         </div>
@@ -345,19 +345,19 @@
         <div class="panel-head">
           <div>
             <div class="panel-kicker">GitHub</div>
-            <h1>Actions</h1>
+            <h1>İşlemler (Actions)</h1>
           </div>
           <div class="gh-panel-controls">
-            <button class="icon-btn" id="btn-refresh-actions" type="button" title="Refresh Actions">
+            <button class="icon-btn" id="btn-refresh-actions" type="button" title="İşlemleri yenile">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 0 1-15.5 6.3L3 16"></path><path d="M3 21v-5h5"></path><path d="M3 12A9 9 0 0 1 18.5 5.7L21 8"></path><path d="M21 3v5h-5"></path></svg>
-              <span>Refresh</span>
+              <span>Yenile</span>
             </button>
           </div>
         </div>
         <div class="gh-item-list" id="actions-list"></div>
       </section>
 
-      <aside class="detail-panel" id="commit-detail-panel" aria-label="Commit details">
+      <aside class="detail-panel" id="commit-detail-panel" aria-label="Commit detayları">
         <div class="empty-state" id="detail-empty">
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7z"></path>
@@ -365,8 +365,8 @@
             <path d="M9 13h6"></path>
             <path d="M9 17h4"></path>
           </svg>
-          <strong>No commit selected</strong>
-          <span>Select a commit from the history to inspect changes, files, and author details.</span>
+          <strong>Seçili commit yok</strong>
+          <span>Değişiklikleri, dosyaları ve yazar detaylarını incelemek için geçmişten bir commit seçin.</span>
         </div>
 
         <div class="detail-content" id="detail-content" style="display:none;">
@@ -376,8 +376,8 @@
                 <div class="detail-avatar-slot" id="detail-avatar"></div>
                 <div class="detail-title-copy" style="flex: 1; min-width: 0;">
                   <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
-                    <span class="detail-eyebrow">Commit Detail</span>
-                    <button class="icon-btn" id="btn-close-detail-panel" type="button" title="Detail panelini kapat">
+                    <span class="detail-eyebrow">Commit Detayı</span>
+                    <button class="icon-btn" id="btn-close-detail-panel" type="button" title="Detay panelini kapat">
                       <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <line x1="18" y1="6" x2="6" y2="18"></line>
                         <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -406,9 +406,9 @@
           </div>
 
           <div class="detail-tabs" role="tablist" aria-label="Commit detail tabs">
-            <button class="detail-tab active" type="button" data-tab="diff">Changes</button>
-            <button class="detail-tab" type="button" data-tab="files">Files</button>
-            <button class="detail-tab" type="button" data-tab="description">Description</button>
+            <button class="detail-tab active" type="button" data-tab="diff">Değişiklikler</button>
+            <button class="detail-tab" type="button" data-tab="files">Dosyalar</button>
+            <button class="detail-tab" type="button" data-tab="description">Açıklama</button>
           </div>
 
           <div class="changed-files" id="changed-files"></div>
@@ -423,19 +423,19 @@
         <div class="welcome-mark">
           <img src="assets/differ-white.svg" alt="" />
         </div>
-        <h2>Review commits, authors, and changed files in one focused timeline.</h2>
-        <p>Open a repository to inspect branches, project files, commit messages, authors, and diffs in one workspace.</p>
+        <h2>Commit'leri, yazarları ve değişen dosyaları odaklanmış tek bir zaman çizelgesinde inceleyin.</h2>
+        <p>Dalları, proje dosyalarını, commit mesajlarını, yazarları ve diff'leri tek bir çalışma alanında incelemek için bir depo açın.</p>
         <button class="welcome-btn" id="btn-welcome-open" type="button">
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="M3 7.5A2.5 2.5 0 0 1 5.5 5h4l2 2.5h7A2.5 2.5 0 0 1 21 10v7.5a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5z"></path>
           </svg>
-          Open Git Repository
+          Git Deposu Aç
         </button>
 
         <div class="recent-repos" id="recent-repos" hidden>
           <div class="recent-repos-head">
-            <span>Recent repositories</span>
-            <small>Last 5</small>
+            <span>Son depolar</span>
+            <small>Son 5</small>
           </div>
           <div class="recent-repo-list" id="recent-repo-list"></div>
         </div>
@@ -459,10 +459,10 @@
       <div class="contributors-modal" role="dialog" aria-modal="true" aria-labelledby="contributors-title">
         <div class="modal-head">
           <div>
-            <span>Contributors</span>
-            <h2 id="contributors-title">Contribution Ranking</h2>
+            <span>Katkıda Bulunanlar</span>
+            <h2 id="contributors-title">Katkı Sıralaması</h2>
           </div>
-          <button class="modal-close" id="btn-close-contributors" type="button" aria-label="Close">
+          <button class="modal-close" id="btn-close-contributors" type="button" aria-label="Kapat">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>
           </button>
         </div>
@@ -476,10 +476,10 @@
       <div class="merge-modal" role="dialog" aria-modal="true" aria-labelledby="merge-title">
         <div class="modal-head">
           <div>
-            <span>Merge Branches</span>
-            <h2 id="merge-title">Merge Branch</h2>
+            <span>Dalları Birleştir</span>
+            <h2 id="merge-title">Dalı Birleştir</h2>
           </div>
-          <button class="modal-close" id="btn-close-merge" type="button" aria-label="Close">
+          <button class="modal-close" id="btn-close-merge" type="button" aria-label="Kapat">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>
           </button>
         </div>
@@ -487,7 +487,7 @@
         <div class="modal-body">
           <div class="merge-flow-diagram">
             <div class="merge-node source">
-              <span class="label">Source Branch</span>
+              <span class="label">Kaynak Dal</span>
               <strong id="merge-source-label">-</strong>
             </div>
             <div class="merge-connector">
@@ -497,19 +497,19 @@
               </svg>
             </div>
             <div class="merge-node target">
-              <span class="label">Target Branch</span>
+              <span class="label">Hedef Dal</span>
               <strong id="merge-target-label">-</strong>
             </div>
           </div>
 
           <div class="merge-form-group">
-            <label for="merge-target-select">Merge into branch:</label>
+            <label for="merge-target-select">Bu dala birleştir:</label>
             <select id="merge-target-select"></select>
           </div>
 
           <div class="merge-modal-actions">
-            <button class="mini-btn cancel" id="btn-cancel-merge" type="button">Cancel</button>
-            <button class="mini-btn primary" id="btn-confirm-merge" type="button">Confirm Merge</button>
+            <button class="mini-btn cancel" id="btn-cancel-merge" type="button">İptal</button>
+            <button class="mini-btn primary" id="btn-confirm-merge" type="button">Birleştirmeyi Onayla</button>
           </div>
         </div>
       </div>
@@ -520,39 +520,39 @@
       <div class="merge-modal conflict-modal" role="dialog" aria-modal="true" aria-labelledby="conflict-title">
         <div class="modal-head">
           <div>
-            <span id="conflict-kicker">Merge Conflicts</span>
-            <h2 id="conflict-title">Resolve Conflicts</h2>
+            <span id="conflict-kicker">Birleştirme Çakışmaları</span>
+            <h2 id="conflict-title">Çakışmaları Çöz</h2>
           </div>
-          <button class="modal-close" id="btn-close-conflict" type="button" aria-label="Close">
+          <button class="modal-close" id="btn-close-conflict" type="button" aria-label="Kapat">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>
           </button>
         </div>
 
         <div class="modal-body">
-          <p class="conflict-subtitle" id="conflict-subtitle">Choose which version to keep for all conflicted files:</p>
+          <p class="conflict-subtitle" id="conflict-subtitle">Çakışan tüm dosyalar için hangi sürümün korunacağını seçin:</p>
           <div class="conflict-file-list" id="conflict-file-list"></div>
 
           <div class="conflict-diff-legend">
-            <span class="legend-del">&minus; <span id="conflict-legend-ours">target</span></span>
-            <span class="legend-add">+ <span id="conflict-legend-theirs">incoming</span></span>
+            <span class="legend-del">&minus; <span id="conflict-legend-ours">hedef</span></span>
+            <span class="legend-add">+ <span id="conflict-legend-theirs">gelen</span></span>
           </div>
           <div class="conflict-diff-list" id="conflict-diff-list"></div>
 
           <div class="conflict-choices">
             <button class="conflict-choice ours" id="btn-keep-ours" type="button">
-              <span class="choice-kicker">Keep target version</span>
+              <span class="choice-kicker">Hedef sürümü koru</span>
               <strong id="keep-ours-label">-</strong>
-              <small>Overwrite conflicts with the target branch state</small>
+              <small>Çakışmaları hedef dalın durumuyla değiştir</small>
             </button>
             <button class="conflict-choice theirs" id="btn-keep-theirs" type="button">
-              <span class="choice-kicker">Keep incoming version</span>
+              <span class="choice-kicker">Gelen sürümü koru</span>
               <strong id="keep-theirs-label">-</strong>
-              <small>Overwrite conflicts with the incoming branch state</small>
+              <small>Çakışmaları gelen dalın durumuyla değiştir</small>
             </button>
           </div>
 
           <div class="merge-modal-actions conflict-abort-row">
-            <button class="mini-btn cancel" id="btn-abort-conflict" type="button">Abort instead</button>
+            <button class="mini-btn cancel" id="btn-abort-conflict" type="button">Birleştirmeyi İptal Et</button>
           </div>
         </div>
       </div>
@@ -563,21 +563,21 @@
       <div class="confirm-modal" role="dialog" aria-modal="true" style="max-width: 480px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; box-shadow: 0 16px 48px rgba(0,0,0,0.6);">
         <div class="modal-head" style="padding: 16px 20px; border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between;">
           <div>
-            <span style="font-size: 11px; color: var(--accent); font-weight: 700; text-transform: uppercase;">Git Repository Required</span>
-            <h2 style="font-size: 16px; margin: 2px 0 0;">Initialize Git Repository?</h2>
+            <span style="font-size: 11px; color: var(--accent); font-weight: 700; text-transform: uppercase;">Git Deposu Gerekli</span>
+            <h2 style="font-size: 16px; margin: 2px 0 0;">Git Deposu Başlatılsın mı?</h2>
           </div>
-          <button class="modal-close" id="btn-cancel-init-repo" type="button" aria-label="Close">
+          <button class="modal-close" id="btn-cancel-init-repo" type="button" aria-label="Kapat">
             <svg viewBox="0 0 24 24" aria-hidden="true" width="16" height="16"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>
           </button>
         </div>
         <div class="modal-body" style="padding: 20px;">
-          <p style="margin: 0 0 10px; font-size: 13px; color: var(--text-dim);">Selected folder is not a Git repository:</p>
+          <p style="margin: 0 0 10px; font-size: 13px; color: var(--text-dim);">Seçilen klasör bir Git deposu değil:</p>
           <div style="background: rgba(255,255,255,0.04); border: 1px solid var(--line-soft); border-radius: 6px; padding: 10px; font-family: var(--mono); font-size: 12px; color: var(--text); word-break: break-all; margin-bottom: 14px;" id="init-repo-path-display">-</div>
-          <p style="margin: 0; font-size: 13px; color: var(--text-dim);">Would you like to turn this folder into a Git repository (<code style="color: var(--accent);">git init</code>)?</p>
+          <p style="margin: 0; font-size: 13px; color: var(--text-dim);">Bu klasörü bir Git deposuna dönüştürmek ister misiniz (<code style="color: var(--accent);">git init</code>)?</p>
         </div>
         <div class="modal-actions" style="display: flex; justify-content: flex-end; gap: 8px; padding: 14px 20px; border-top: 1px solid var(--line); background: var(--panel-2);">
-          <button class="mini-btn cancel" id="btn-decline-init-repo" type="button">No, Cancel</button>
-          <button class="mini-btn primary" id="btn-confirm-init-repo" type="button">Yes, Initialize Git Repository</button>
+          <button class="mini-btn cancel" id="btn-decline-init-repo" type="button">Hayır, İptal</button>
+          <button class="mini-btn primary" id="btn-confirm-init-repo" type="button">Evet, Git Deposu Başlat</button>
         </div>
       </div>
     </div>
@@ -587,10 +587,10 @@
       <div class="settings-modal" role="dialog" aria-modal="true" aria-labelledby="settings-title">
         <div class="modal-head">
           <div>
-            <span>Preferences</span>
-            <h2 id="settings-title">Settings & AI Preferences</h2>
+            <span>Tercihler</span>
+            <h2 id="settings-title">Ayarlar ve Yapay Zeka Tercihleri</h2>
           </div>
-          <button class="modal-close" id="btn-close-settings" type="button" aria-label="Close">
+          <button class="modal-close" id="btn-close-settings" type="button" aria-label="Kapat">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>
           </button>
         </div>
@@ -598,38 +598,38 @@
         <div class="modal-body settings-body">
           <!-- UI Scale & Display Section -->
           <section class="settings-section">
-            <h3>UI Scale & Interface Zoom</h3>
+            <h3>Arayüz Ölçeği ve Yakınlaştırma</h3>
             <div class="settings-form-row">
-              <label for="setting-ui-scale">UI Scale / Zoom:</label>
+              <label for="setting-ui-scale">Arayüz Ölçeği / Yakınlaştırma:</label>
               <select id="setting-ui-scale">
-                <option value="0.75">75% (Smallest)</option>
-                <option value="0.85">85% (Compact)</option>
-                <option value="0.90">90% (Slightly Compact)</option>
-                <option value="1.0" selected>100% (Default Normal)</option>
-                <option value="1.10">110% (Large)</option>
-                <option value="1.25">125% (Extra Large)</option>
+                <option value="0.75">%75 (En Küçük)</option>
+                <option value="0.85">%85 (Kompakt)</option>
+                <option value="0.90">%90 (Hafif Kompakt)</option>
+                <option value="1.0" selected>%100 (Varsayılan Normal)</option>
+                <option value="1.10">%110 (Büyük)</option>
+                <option value="1.25">%125 (Çok Büyük)</option>
               </select>
             </div>
           </section>
 
           <!-- Git Identity & PGP Signing Section -->
           <section class="settings-section">
-            <h3>Git Identity & PGP Signing</h3>
+            <h3>Git Kimliği ve PGP İmzalama</h3>
             
             <div class="settings-form-row">
-              <label for="setting-git-name">Default Git Name:</label>
-              <input type="text" id="setting-git-name" placeholder="Name" autocomplete="off" />
+              <label for="setting-git-name">Varsayılan Git Adı:</label>
+              <input type="text" id="setting-git-name" placeholder="Ad Soyad" autocomplete="off" />
             </div>
 
             <div class="settings-form-row">
-              <label for="setting-git-email">Default Git Email:</label>
-              <input type="email" id="setting-git-email" placeholder="email@example.com" autocomplete="off" />
+              <label for="setting-git-email">Varsayılan Git E-postası:</label>
+              <input type="email" id="setting-git-email" placeholder="ornek@alanadi.com" autocomplete="off" />
             </div>
 
             <div class="settings-form-row">
-              <label for="setting-gpg-key">Default PGP Key:</label>
+              <label for="setting-gpg-key">Varsayılan PGP Anahtarı:</label>
               <select id="setting-gpg-key">
-                <option value="none">None / Git Default</option>
+                <option value="none">Yok / Git Varsayılanı</option>
               </select>
             </div>
 
@@ -638,7 +638,7 @@
                 <input type="checkbox" id="setting-gpg-sign" />
                 <span class="slider"></span>
               </label>
-              <span>Automatically GPG sign commits (commit.gpgsign)</span>
+              <span>Commit'leri otomatik olarak GPG ile imzala (commit.gpgsign)</span>
             </div>
           </section>
 
@@ -646,8 +646,8 @@
           <section class="settings-section ai-section">
             <div class="ai-section-header">
               <div>
-                <h3>AI Support</h3>
-                <small>Auto-generate commit messages using AI</small>
+                <h3>Yapay Zeka Desteği</h3>
+                <small>Yapay zeka ile commit mesajlarını otomatik oluşturun</small>
               </div>
             </div>
 
@@ -655,22 +655,22 @@
               <label class="ai-provider-card" data-provider="ollama">
                 <input type="radio" name="ai-provider" value="ollama" id="ai-provider-ollama" checked />
                 <div class="provider-card-inner">
-                  <strong>Ollama (Local)</strong>
-                  <span>Free, runs on your machine</span>
+                  <strong>Ollama (Yerel)</strong>
+                  <span>Ücretsiz, cihazınızda çalışır</span>
                 </div>
               </label>
               <label class="ai-provider-card" data-provider="gemini">
                 <input type="radio" name="ai-provider" value="gemini" id="ai-provider-gemini" />
                 <div class="provider-card-inner">
-                  <strong>Gemini (Cloud)</strong>
-                  <span>Free tier, requires API key</span>
+                  <strong>Gemini (Bulut)</strong>
+                  <span>Ücretsiz katman, API anahtarı gerektirir</span>
                 </div>
               </label>
               <label class="ai-provider-card" data-provider="lmstudio">
                 <input type="radio" name="ai-provider" value="lmstudio" id="ai-provider-lmstudio" />
                 <div class="provider-card-inner">
-                  <strong>LM Studio (Local)</strong>
-                  <span>Free, OpenAI-compatible server</span>
+                  <strong>LM Studio (Yerel)</strong>
+                  <span>Ücretsiz, OpenAI uyumlu sunucu</span>
                 </div>
               </label>
             </div>
@@ -679,56 +679,56 @@
             <div class="ai-provider-panel" id="ollama-panel">
               <div class="ai-details-panel" id="ai-details-panel">
                 <div class="system-specs-card">
-                  <h4>System Hardware & Environment</h4>
+                  <h4>Sistem Donanımı ve Ortamı</h4>
                   <div class="specs-grid">
                     <div class="spec-item">
-                      <span class="spec-label">OS / Distribution:</span>
-                      <strong id="spec-os-distro">Detecting...</strong>
+                      <span class="spec-label">İşletim Sistemi:</span>
+                      <strong id="spec-os-distro">Algılanıyor...</strong>
                     </div>
                     <div class="spec-item">
-                      <span class="spec-label">System RAM:</span>
-                      <strong id="spec-ram">Detecting...</strong>
+                      <span class="spec-label">Sistem Belleği (RAM):</span>
+                      <strong id="spec-ram">Algılanıyor...</strong>
                     </div>
                     <div class="spec-item">
-                      <span class="spec-label">GPU & VRAM:</span>
-                      <strong id="spec-gpu">Detecting...</strong>
+                      <span class="spec-label">Ekran Kartı (GPU):</span>
+                      <strong id="spec-gpu">Algılanıyor...</strong>
                     </div>
                     <div class="spec-item">
-                      <span class="spec-label">Ollama Status:</span>
-                      <strong id="spec-ollama-status">Checking...</strong>
+                      <span class="spec-label">Ollama Durumu:</span>
+                      <strong id="spec-ollama-status">Kontrol ediliyor...</strong>
                     </div>
                   </div>
                 </div>
 
                 <div class="ollama-install-box" id="ollama-install-box" style="display:none;">
-                  <p id="ollama-install-msg">Ollama is not installed. Click below to automatically install Ollama for your OS.</p>
-                  <button class="mini-btn primary large" id="btn-install-ollama" type="button">Auto-Install Ollama</button>
+                  <p id="ollama-install-msg">Ollama kurulu değil. İşletim sisteminize otomatik kurmak için aşağıdaki butona tıklayın.</p>
+                  <button class="mini-btn primary large" id="btn-install-ollama" type="button">Ollama'yı Otomatik Kur</button>
                 </div>
 
                 <div class="model-recommendation-box" id="model-recommendation-box">
                   <div class="recommendation-header">
-                    <span class="badge-recommended">Top Recommended Model</span>
+                    <span class="badge-recommended">En Çok Önerilen Model</span>
                     <h4 id="recommended-model-title">gemma4:12b</h4>
-                    <p id="recommended-model-desc">Optimal model recommended for your hardware specs.</p>
+                    <p id="recommended-model-desc">Donanım özellikleriniz için önerilen en uygun model.</p>
                   </div>
 
                   <div class="settings-form-row">
-                    <label for="setting-ai-model">Selected Gemma Model:</label>
+                    <label for="setting-ai-model">Seçilen Gemma Modeli:</label>
                     <div class="gemini-model-row">
                       <select id="setting-ai-model">
-                        <option value="gemma4:12b">gemma4:12b (Top Recommended)</option>
+                        <option value="gemma4:12b">gemma4:12b (Önerilen)</option>
                         <option value="gemma2:9b">gemma2:9b</option>
                         <option value="gemma2:27b">gemma2:27b</option>
                         <option value="gemma:7b">gemma:7b</option>
                         <option value="gemma:2b">gemma:2b</option>
                       </select>
-                      <button class="mini-btn primary" id="btn-save-ollama-default" type="button">Save as Default</button>
+                      <button class="mini-btn primary" id="btn-save-ollama-default" type="button">Varsayılan Olarak Kaydet</button>
                     </div>
                   </div>
 
                   <div class="model-pull-status" id="model-pull-status">
-                    <span id="model-status-text">Status: Checking...</span>
-                    <button class="mini-btn primary" id="btn-pull-model" type="button">Pull / Download Model</button>
+                    <span id="model-status-text">Durum: Kontrol ediliyor...</span>
+                    <button class="mini-btn primary" id="btn-pull-model" type="button">Modeli İndir (Pull)</button>
                   </div>
                 </div>
               </div>
@@ -738,23 +738,23 @@
             <div class="ai-provider-panel" id="gemini-panel" style="display:none;">
               <div class="gemini-settings-card">
                 <div class="settings-form-row">
-                  <label for="setting-gemini-api-key">API Key:</label>
+                  <label for="setting-gemini-api-key">API Anahtarı:</label>
                   <div class="gemini-key-row">
                     <input type="password" id="setting-gemini-api-key" placeholder="AIza..." class="gemini-key-input" />
-                    <button class="mini-btn" id="btn-toggle-gemini-key" type="button">Show</button>
-                    <button class="mini-btn" id="btn-copy-gemini-key" type="button">Copy</button>
+                    <button class="mini-btn" id="btn-toggle-gemini-key" type="button">Göster</button>
+                    <button class="mini-btn" id="btn-copy-gemini-key" type="button">Kopyala</button>
                   </div>
-                  <small class="field-help">Free key from <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a>. Saved locally only.</small>
+                  <small class="field-help"><a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a> adresinden ücretsiz anahtar. Yalnızca yerel olarak saklanır.</small>
                 </div>
 
                 <div class="settings-form-row">
                   <label for="setting-gemini-model">Model:</label>
                   <div class="gemini-model-row">
                     <select id="setting-gemini-model">
-                      <option value="">Enter API key and click Refresh</option>
+                      <option value="">API anahtarını girip Yenile'ye tıklayın</option>
                     </select>
-                    <button class="mini-btn" id="btn-fetch-gemini-models" type="button">Refresh</button>
-                    <button class="mini-btn primary" id="btn-save-gemini-default" type="button">Save as Default</button>
+                    <button class="mini-btn" id="btn-fetch-gemini-models" type="button">Yenile</button>
+                    <button class="mini-btn primary" id="btn-save-gemini-default" type="button">Varsayılan Olarak Kaydet</button>
                   </div>
                   <small class="field-help" id="gemini-model-status"></small>
                 </div>
@@ -764,26 +764,26 @@
             <!-- LM Studio Panel -->
             <div class="ai-provider-panel" id="lmstudio-panel" style="display: none;">
               <div class="system-specs-card">
-                <h4>LM Studio Server & Models</h4>
+                <h4>LM Studio Sunucusu ve Modeller</h4>
                 <div class="specs-grid">
                   <div class="spec-item">
-                    <span class="spec-label">Server Endpoint:</span>
+                    <span class="spec-label">Sunucu Adresi:</span>
                     <strong>http://127.0.0.1:1234/v1</strong>
                   </div>
                   <div class="spec-item">
-                    <span class="spec-label">Status:</span>
-                    <strong id="spec-lmstudio-status">Checking...</strong>
+                    <span class="spec-label">Durum:</span>
+                    <strong id="spec-lmstudio-status">Kontrol ediliyor...</strong>
                   </div>
                 </div>
 
                 <div class="settings-form-row" style="margin-top: 14px;">
-                  <label for="setting-lmstudio-model">LM Studio Loaded Model:</label>
+                  <label for="setting-lmstudio-model">LM Studio Yüklü Model:</label>
                   <div class="gemini-model-row">
                     <select id="setting-lmstudio-model">
-                      <option value="">Checking LM Studio...</option>
+                      <option value="">LM Studio kontrol ediliyor...</option>
                     </select>
-                    <button class="mini-btn" id="btn-refresh-lmstudio" type="button">Refresh</button>
-                    <button class="mini-btn primary" id="btn-save-lmstudio-default" type="button">Save as Default</button>
+                    <button class="mini-btn" id="btn-refresh-lmstudio" type="button">Yenile</button>
+                    <button class="mini-btn primary" id="btn-save-lmstudio-default" type="button">Varsayılan Olarak Kaydet</button>
                   </div>
                 </div>
               </div>
@@ -792,25 +792,25 @@
 
           <!-- SMTP Email Notifications Section -->
           <section class="settings-section smtp-section">
-            <h3>SMTP Email Notifications</h3>
-            <small>Send patch files via email after each commit</small>
+            <h3>SMTP E-posta Bildirimleri</h3>
+            <small>Her commit sonrası e-posta ile yama (patch) dosyası gönderin</small>
 
             <div class="settings-form-row checkbox-row">
               <label class="toggle-switch">
                 <input type="checkbox" id="setting-smtp-enabled" />
                 <span class="slider"></span>
               </label>
-              <span>Enable SMTP patch email notifications</span>
+              <span>SMTP yama e-posta bildirimlerini etkinleştir</span>
             </div>
 
             <div id="smtp-config-fields" style="display:none;">
               <div class="settings-form-row">
-                <label for="setting-smtp-host">SMTP Host:</label>
+                <label for="setting-smtp-host">SMTP Sunucusu:</label>
                 <input type="text" id="setting-smtp-host" placeholder="smtp.gmail.com" autocomplete="off" />
               </div>
 
               <div class="settings-form-row">
-                <label for="setting-smtp-port">Port:</label>
+                <label for="setting-smtp-port">Bağlantı Noktası (Port):</label>
                 <input type="number" id="setting-smtp-port" value="587" min="1" max="65535" />
               </div>
 
@@ -819,30 +819,30 @@
                   <input type="checkbox" id="setting-smtp-tls" checked />
                   <span class="slider"></span>
                 </label>
-                <span>Use STARTTLS</span>
+                <span>STARTTLS Kullan</span>
               </div>
 
               <div class="settings-form-row">
-                <label for="setting-smtp-username">Username:</label>
-                <input type="text" id="setting-smtp-username" placeholder="your@email.com" autocomplete="off" />
+                <label for="setting-smtp-username">Kullanıcı Adı:</label>
+                <input type="text" id="setting-smtp-username" placeholder="ornek@email.com" autocomplete="off" />
               </div>
 
               <div class="settings-form-row">
-                <label for="setting-smtp-password">Password:</label>
-                <input type="password" id="setting-smtp-password" placeholder="App password" autocomplete="off" />
+                <label for="setting-smtp-password">Parola:</label>
+                <input type="password" id="setting-smtp-password" placeholder="Uygulama parolası" autocomplete="off" />
               </div>
 
               <div class="settings-form-row">
-                <label for="setting-smtp-from">From Email:</label>
-                <input type="email" id="setting-smtp-from" placeholder="sender@example.com" autocomplete="off" />
+                <label for="setting-smtp-from">Gönderen E-posta:</label>
+                <input type="email" id="setting-smtp-from" placeholder="gonderen@ornek.com" autocomplete="off" />
               </div>
 
               <div class="settings-form-row">
-                <label for="setting-smtp-to">To Email:</label>
-                <input type="email" id="setting-smtp-to" placeholder="recipient@example.com" autocomplete="off" />
+                <label for="setting-smtp-to">Alıcı E-posta:</label>
+                <input type="email" id="setting-smtp-to" placeholder="alici@ornek.com" autocomplete="off" />
               </div>
 
-              <small class="field-help">After each commit, a patch file will be generated and sent to the recipient email via SMTP.</small>
+              <small class="field-help">Her commit sonrasında bir yama (patch) dosyası oluşturulacak ve SMTP ile alıcı e-postasına iletilecektir.</small>
             </div>
           </section>
 
@@ -850,8 +850,8 @@
           <section class="settings-section update-section">
             <div class="update-section-header">
               <div>
-                <h3>Application Updates</h3>
-                <small>Current Version: <strong id="settings-app-version">v0.0.5</strong></small>
+                <h3>Uygulama Güncellemeleri</h3>
+                <small>Mevcut Sürüm: <strong id="settings-app-version">v0.0.5</strong></small>
               </div>
               <button class="mini-btn primary" id="btn-check-update" type="button">
                 <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px; vertical-align: middle;">
@@ -860,18 +860,18 @@
                   <path d="M3 12A9 9 0 0 1 18.5 5.7L21 8"></path>
                   <path d="M21 3v5h-5"></path>
                 </svg>
-                <span>Check for Updates</span>
+                <span>Güncellemeleri Kontrol Et</span>
               </button>
             </div>
 
             <div class="update-status-box" id="update-status-box" style="display: none;">
               <div class="update-status-info" id="update-status-info"></div>
               <div class="update-notes-box" id="update-notes-box" style="display: none;">
-                <h4 style="margin: 8px 0 4px; font-size: 12px; color: var(--text);">Release Notes</h4>
+                <h4 style="margin: 8px 0 4px; font-size: 12px; color: var(--text);">Sürüm Notları</h4>
                 <div class="update-notes-content" id="update-notes-content"></div>
               </div>
               <div class="update-assets-box" id="update-assets-box" style="display: none;">
-                <h4 style="margin: 10px 0 4px; font-size: 12px; color: var(--text);">Release Packages (Built via Actions)</h4>
+                <h4 style="margin: 10px 0 4px; font-size: 12px; color: var(--text);">Sürüm Paketleri (Actions ile Oluşturuldu)</h4>
                 <div class="update-assets-list" id="update-assets-list"></div>
               </div>
             </div>
@@ -879,8 +879,8 @@
         </div>
 
         <div class="modal-actions">
-          <button class="mini-btn cancel" id="btn-cancel-settings" type="button">Cancel</button>
-          <button class="mini-btn primary" id="btn-save-settings" type="button">Save Preferences</button>
+          <button class="mini-btn cancel" id="btn-cancel-settings" type="button">İptal</button>
+          <button class="mini-btn primary" id="btn-save-settings" type="button">Tercihleri Kaydet</button>
         </div>
       </div>
     </div>
@@ -891,11 +891,11 @@
         <div class="modal-head">
           <div>
             <span>GitHub Actions</span>
-            <h2 id="action-log-title">Run Log</h2>
+            <h2 id="action-log-title">Çalıştırma Günlüğü</h2>
           </div>
           <div style="display:flex;align-items:center;gap:8px;">
             <span class="action-log-meta" id="action-log-meta"></span>
-            <button class="modal-close" id="btn-close-action-log" type="button" aria-label="Close">
+            <button class="modal-close" id="btn-close-action-log" type="button" aria-label="Kapat">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>
             </button>
           </div>
@@ -903,7 +903,7 @@
         <div class="action-log-body" id="action-log-body">
           <div class="action-log-loading" id="action-log-loading">
             <div class="spinner"></div>
-            <span>Loading run log...</span>
+            <span>Çalıştırma günlüğü yükleniyor...</span>
           </div>
           <pre class="action-log-pre" id="action-log-pre" style="display:none;"></pre>
         </div>
@@ -916,14 +916,14 @@
         <div class="modal-head">
           <div>
             <span>Pull Request #<span id="pr-modal-number">-</span></span>
-            <h2 id="pr-detail-title">PR Details</h2>
+            <h2 id="pr-detail-title">PR Ayrıntıları</h2>
           </div>
           <div style="display:flex;align-items:center;gap:8px;">
             <button class="gh-view-btn" id="btn-open-pr-browser" type="button">
               <svg viewBox="0 0 24 24" width="12" height="12"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
-              Open on GitHub
+              GitHub'da Aç
             </button>
-            <button class="modal-close" id="btn-close-pr-detail" type="button" aria-label="Close">
+            <button class="modal-close" id="btn-close-pr-detail" type="button" aria-label="Kapat">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>
             </button>
           </div>
@@ -936,21 +936,21 @@
           </div>
 
           <div class="detail-tabs" role="tablist" style="padding:0 16px;margin-top:8px;">
-            <button class="detail-tab active" type="button" data-pr-tab="diff" id="btn-pr-tab-diff">Changes (Diff)</button>
-            <button class="detail-tab" type="button" data-pr-tab="commits" id="btn-pr-tab-commits">Commits (<span id="pr-commits-count">0</span>)</button>
-            <button class="detail-tab" type="button" data-pr-tab="body" id="btn-pr-tab-body">Description</button>
+            <button class="detail-tab active" type="button" data-pr-tab="diff" id="btn-pr-tab-diff">Değişiklikler (Diff)</button>
+            <button class="detail-tab" type="button" data-pr-tab="commits" id="btn-pr-tab-commits">Commit'ler (<span id="pr-commits-count">0</span>)</button>
+            <button class="detail-tab" type="button" data-pr-tab="body" id="btn-pr-tab-body">Açıklama</button>
           </div>
 
           <div class="pr-tab-panel" id="pr-panel-diff" style="display:block;">
             <div class="action-log-loading" id="pr-diff-loading" style="display:none;">
-              <div class="spinner"></div><span>Loading PR diff...</span>
+              <div class="spinner"></div><span>PR diff yükleniyor...</span>
             </div>
             <pre class="pr-diff-content" id="pr-diff-content"></pre>
           </div>
 
           <div class="pr-tab-panel" id="pr-panel-commits" style="display:none;">
             <div class="action-log-loading" id="pr-commits-loading" style="display:none;">
-              <div class="spinner"></div><span>Loading PR commits...</span>
+              <div class="spinner"></div><span>PR commit'leri yükleniyor...</span>
             </div>
             <div class="pr-commits-list" id="pr-commits-list"></div>
           </div>
@@ -963,22 +963,22 @@
         <div class="modal-actions" style="justify-content:space-between;padding:12px 16px;">
           <div style="display:flex;align-items:center;gap:8px;">
             <select id="pr-merge-method" class="mini-select">
-              <option value="merge">Create a merge commit (--merge)</option>
-              <option value="squash">Squash and merge (--squash)</option>
-              <option value="rebase">Rebase and merge (--rebase)</option>
+              <option value="merge">Birleştirme commit'i oluştur (--merge)</option>
+              <option value="squash">Ez ve birleştir (--squash)</option>
+              <option value="rebase">Yeniden temelle ve birleştir (--rebase)</option>
             </select>
             <button class="mini-btn primary" id="btn-confirm-pr-merge" type="button" style="background:#238636;border-color:#2ea043;color:#fff;">
               <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;"><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="6" r="3"></circle><path d="M6 15V6"></path><path d="M18 9a9 9 0 0 1-9 9"></path></svg>
-              Merge Pull Request
+              Pull Request'i Birleştir
             </button>
           </div>
-          <button class="mini-btn cancel" id="btn-close-pr-modal-bottom" type="button">Close</button>
+          <button class="mini-btn cancel" id="btn-close-pr-modal-bottom" type="button">Kapat</button>
         </div>
       </div>
     </div>
 
     <footer class="statusbar" id="statusbar">
-      <span id="status-text">Ready</span>
+      <span id="status-text">Hazır</span>
     </footer>
   </div>
 </body>

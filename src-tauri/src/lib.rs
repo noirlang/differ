@@ -43,6 +43,8 @@ struct BranchInfo {
     is_head: bool,
     commit_id: String,
     is_remote: bool,
+    #[serde(default)]
+    is_tag: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -718,6 +720,7 @@ async fn get_branches(state: State<'_, Mutex<AppState>>) -> Result<Vec<BranchInf
                         is_head,
                         commit_id,
                         is_remote: branch_type == BranchType::Remote,
+                        is_tag: false,
                     });
                 }
             }
@@ -734,21 +737,54 @@ async fn get_branches(state: State<'_, Mutex<AppState>>) -> Result<Vec<BranchInf
                 let remote_name = trimmed.trim_start_matches("remotes/");
                 if !seen_names.contains(remote_name) {
                     seen_names.insert(remote_name.to_string());
+                    let cid = repo
+                        .revparse_single(trimmed)
+                        .ok()
+                        .and_then(|obj| obj.as_commit().map(|c| c.id().to_string()))
+                        .unwrap_or_default();
                     branches.push(BranchInfo {
                         name: remote_name.to_string(),
                         is_head: false,
-                        commit_id: String::new(),
+                        commit_id: cid,
                         is_remote: true,
+                        is_tag: false,
                     });
                 }
             } else if !seen_names.contains(trimmed) {
                 seen_names.insert(trimmed.to_string());
+                let cid = repo
+                    .revparse_single(trimmed)
+                    .ok()
+                    .and_then(|obj| obj.as_commit().map(|c| c.id().to_string()))
+                    .unwrap_or_default();
                 branches.push(BranchInfo {
                     name: trimmed.to_string(),
                     is_head: false,
-                    commit_id: String::new(),
+                    commit_id: cid,
                     is_remote: false,
+                    is_tag: false,
                 });
+            }
+        }
+    }
+
+    if let Ok(tag_out) = run_git(
+        repo,
+        &["tag", "-l", "--format=%(refname:short)|%(objectname)"],
+    ) {
+        for line in tag_out.lines() {
+            let parts: Vec<&str> = line.split('|').collect();
+            if parts.len() == 2 && !parts[0].is_empty() {
+                let tag_name = parts[0].trim();
+                if !tag_name.starts_with("commit-") {
+                    branches.push(BranchInfo {
+                        name: tag_name.to_string(),
+                        is_head: false,
+                        commit_id: parts[1].trim().to_string(),
+                        is_remote: false,
+                        is_tag: true,
+                    });
+                }
             }
         }
     }
@@ -765,6 +801,7 @@ async fn get_branches(state: State<'_, Mutex<AppState>>) -> Result<Vec<BranchInf
             is_head: true,
             commit_id: String::new(),
             is_remote: false,
+            is_tag: false,
         });
     }
 

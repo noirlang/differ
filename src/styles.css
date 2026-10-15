@@ -20,12 +20,14 @@
   --radius: 8px;
   --mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
   --sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --graph-1: #ffffff;
-  --graph-2: #cfcfcf;
-  --graph-3: #a7a7a7;
-  --graph-4: #8a8a8a;
-  --graph-5: #dcdcdc;
-  --graph-6: #707070;
+  --graph-0: #eab308;
+  --graph-1: #f97316;
+  --graph-2: #3b82f6;
+  --graph-3: #a855f7;
+  --graph-4: #ef4444;
+  --graph-5: #22c55e;
+  --graph-6: #06b6d4;
+  --graph-7: #ec4899;
 }
 
 *,
@@ -58,7 +60,7 @@ button {
   color: inherit;
 }
 
-svg {
+svg:not(.graph-svg) {
   width: 16px;
   height: 16px;
   fill: none;
@@ -1297,7 +1299,7 @@ svg {
 .commit-list-header,
 .commit-row {
   display: grid !important;
-  grid-template-columns: 75px minmax(200px, 1fr) 140px 90px;
+  grid-template-columns: var(--graph-col-width, 70px) minmax(200px, 1fr) 140px 90px;
   align-items: center;
   box-sizing: border-box;
 }
@@ -1305,7 +1307,7 @@ svg {
 /* Detail panel is open (3 columns active) -> optimize message width */
 .main-content:not(.hide-detail-panel) .commit-list-header,
 .main-content:not(.hide-detail-panel) .commit-row {
-  grid-template-columns: 55px minmax(160px, 1fr) 36px 70px;
+  grid-template-columns: var(--graph-col-width, 60px) minmax(160px, 1fr) 36px 70px;
 }
 
 .main-content:not(.hide-detail-panel) .commit-author-cell .author-name {
@@ -1319,7 +1321,7 @@ svg {
 /* Detail panel is closed (2 columns: wide history view) */
 .main-content.hide-detail-panel .commit-list-header,
 .main-content.hide-detail-panel .commit-row {
-  grid-template-columns: 85px minmax(320px, 1fr) 150px 110px;
+  grid-template-columns: var(--graph-col-width, 75px) minmax(320px, 1fr) 150px 110px;
 }
 
 .main-content.hide-detail-panel .commit-author-cell .author-name {
@@ -1375,39 +1377,38 @@ svg {
   position: relative;
   display: flex;
   align-items: center;
+  justify-content: flex-start;
   min-width: 0;
-  min-height: 46px;
-  height: 100%;
-  overflow: hidden;
+  height: 46px;
+  overflow: visible;
+  padding: 0;
 }
 
-.graph-track {
-  position: absolute;
-  inset: -1px auto -1px 0;
-  width: calc((var(--lane-count) * 14px) + 16px);
+svg.graph-svg {
+  display: block !important;
+  width: var(--graph-col-width, 70px) !important;
+  height: 46px !important;
+  min-width: var(--graph-col-width, 70px) !important;
+  max-width: none !important;
+  min-height: 46px !important;
+  max-height: 46px !important;
+  overflow: visible !important;
+  pointer-events: none;
 }
 
-.graph-track::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: calc((var(--lane) * 14px) + 7px);
-  width: 2px;
-  border-radius: 2px;
-  background: var(--graph-color);
-  opacity: 0.48;
+svg.graph-svg line,
+svg.graph-svg path {
+  stroke-linecap: round !important;
+  stroke-linejoin: round !important;
+  stroke-width: 2.5px;
 }
 
-.commit-dot {
-  position: absolute;
-  left: calc((var(--lane) * 14px) + 2px);
-  width: 12px;
-  height: 12px;
-  border: 2px solid #050505;
-  border-radius: 50%;
-  background: var(--graph-color);
-  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.08);
+svg.graph-svg circle {
+  stroke: #141416 !important;
+}
+
+.commit-row:hover svg.graph-svg circle {
+  stroke-width: 3px !important;
 }
 
 .commit-message-cell {
@@ -1484,25 +1485,18 @@ svg {
   padding-right: 10px;
 }
 
-.branch-labels {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  min-width: 0;
-  flex: 0 1 auto;
-}
-
 .branch-label {
   display: inline-flex;
   align-items: center;
-  max-width: 118px;
+  flex-shrink: 0;
+  max-width: 140px;
   min-height: 20px;
   padding: 0 7px;
   border: 1px solid transparent;
   border-radius: 999px;
   overflow: hidden;
-  font-size: 10px;
-  font-weight: 700;
+  font-size: 10.5px;
+  font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
 }

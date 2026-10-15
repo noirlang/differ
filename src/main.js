@@ -302,31 +302,44 @@ const els = {
   btnUnmergedMergeAll: $('btn-unmerged-merge-all'),
 };
 
+const GRAPH_PALETTE = [
+  '#eab308', // 0: golden amber trunk (GitKraken)
+  '#f97316', // 1: orange
+  '#3b82f6', // 2: blue
+  '#a855f7', // 3: purple
+  '#ef4444', // 4: red
+  '#22c55e', // 5: green
+  '#06b6d4', // 6: cyan
+  '#ec4899', // 7: pink
+];
+
 const graphColors = [
+  'var(--graph-0)',
   'var(--graph-1)',
   'var(--graph-2)',
   'var(--graph-3)',
   'var(--graph-4)',
   'var(--graph-5)',
   'var(--graph-6)',
+  'var(--graph-7)',
 ];
 
 const statusConfig = {
-  added: { label: 'A', text: 'Added' },
-  deleted: { label: 'D', text: 'Deleted' },
-  modified: { label: 'M', text: 'Modified' },
-  renamed: { label: 'R', text: 'Renamed' },
-  copied: { label: 'C', text: 'Copied' },
-  unknown: { label: '?', text: 'Unknown' },
+  added: { label: 'A', text: 'Eklendi' },
+  deleted: { label: 'D', text: 'Silindi' },
+  modified: { label: 'M', text: 'Değiştirildi' },
+  renamed: { label: 'R', text: 'Yeniden Adlandırıldı' },
+  copied: { label: 'C', text: 'Kopyalandı' },
+  unknown: { label: '?', text: 'Bilinmiyor' },
 };
 
 const worktreeStatusConfig = {
-  added: { label: 'A', text: 'New' },
-  deleted: { label: 'D', text: 'Deleted' },
-  modified: { label: 'M', text: 'Modified' },
-  renamed: { label: 'R', text: 'Renamed' },
-  typechange: { label: 'T', text: 'Type' },
-  conflicted: { label: '!', text: 'Conflict' },
+  added: { label: 'A', text: 'Yeni' },
+  deleted: { label: 'D', text: 'Silindi' },
+  modified: { label: 'M', text: 'Değiştirildi' },
+  renamed: { label: 'R', text: 'Yeniden Adlandırıldı' },
+  typechange: { label: 'T', text: 'Tür Değişimi' },
+  conflicted: { label: '!', text: 'Çakışma' },
 };
 
 function setStatus(message) {
@@ -522,12 +535,12 @@ function formatDate(timestamp) {
   const hours = Math.floor(diff / 3600000);
   const days = Math.floor(diff / 86400000);
 
-  if (minutes < 1) return 'just now';
-  if (minutes < 60) return `${minutes}m ago`;
-  if (hours < 24) return `${hours}h ago`;
-  if (days < 7) return `${days}d ago`;
+  if (minutes < 1) return 'az önce';
+  if (minutes < 60) return `${minutes} dk önce`;
+  if (hours < 24) return `${hours} sa önce`;
+  if (days < 7) return `${days} gün önce`;
 
-  return date.toLocaleDateString('en-US', {
+  return date.toLocaleDateString('tr-TR', {
     day: 'numeric',
     month: 'short',
     year: 'numeric',
@@ -535,7 +548,7 @@ function formatDate(timestamp) {
 }
 
 function formatFullDate(timestamp) {
-  return new Date(timestamp * 1000).toLocaleString('en-US', {
+  return new Date(timestamp * 1000).toLocaleString('tr-TR', {
     day: 'numeric',
     month: 'long',
     year: 'numeric',
@@ -545,7 +558,7 @@ function formatFullDate(timestamp) {
 }
 
 function firstLine(message) {
-  return (message || '(no commit message)').split('\n')[0];
+  return (message || '(commit mesajı yok)').split('\n')[0];
 }
 
 function splitPath(path) {
@@ -594,7 +607,7 @@ function renderRecentRepos() {
     const button = document.createElement('button');
     button.className = 'recent-repo-item';
     button.type = 'button';
-    button.setAttribute('aria-label', `Open ${getRepoDisplayName(repoPath)}`);
+    button.setAttribute('aria-label', `${getRepoDisplayName(repoPath)} deposunu aç`);
 
     const icon = document.createElement('span');
     icon.className = 'recent-repo-icon';
@@ -617,7 +630,7 @@ function renderRecentRepos() {
 }
 
 function getGraphColor(index) {
-  return graphColors[index % graphColors.length];
+  return GRAPH_PALETTE[index % GRAPH_PALETTE.length];
 }
 
 function getFilteredCommits() {
@@ -702,15 +715,15 @@ function renderRepoShell() {
   if (els.repoName) els.repoName.textContent = state.repoInfo.name;
   els.sideRepoName.textContent = state.repoInfo.name;
   els.repoPath.textContent = state.repoInfo.path;
-  els.activeBranch.textContent = state.selectedBranch || state.repoInfo.current_branch || 'all';
+  els.activeBranch.textContent = state.selectedBranch || state.repoInfo.current_branch || 'tümü';
   els.branchCount.textContent = state.repoInfo.branch_count;
   els.commitCount.textContent = state.repoInfo.commit_count;
   if (els.sideBranchCount) els.sideBranchCount.textContent = state.branches.length;
   els.sideCommitCount.textContent = state.commits.length;
   els.sideAuthorCount.textContent = authors.length;
   const scope = state.selectedBranch
-    ? `${state.selectedBranch} branch history`
-    : `All visible commits in ${state.repoInfo.name}`;
+    ? `${state.selectedBranch} dalı geçmişi`
+    : `${state.repoInfo.name} deposundaki tüm görünür commit'ler`;
   els.historySubtitle.textContent = selectedAuthor
     ? `${scope} · ${selectedAuthor.name}`
     : scope;
@@ -788,7 +801,7 @@ async function autoRefreshTick() {
     if (state.lastFingerprint && fingerprint !== state.lastFingerprint) {
       state.lastFingerprint = fingerprint;
       await refreshRepositoryData();
-      setStatus('Refreshed: new changes detected');
+      setStatus('Yenilendi: yeni değişiklikler algılandı');
     } else {
       state.lastFingerprint = fingerprint;
     }
@@ -806,7 +819,7 @@ function showHomeScreen() {
   els.githubNav.style.display = 'none';
   if (els.btnOpenRepo) els.btnOpenRepo.style.display = '';
   renderRecentRepos();
-  setStatus('Ready');
+  setStatus('Hazır');
 }
 
 function promptGitInit(path) {
@@ -818,7 +831,7 @@ function promptGitInit(path) {
     const btnClose = document.getElementById('btn-cancel-init-repo');
 
     if (!modal || !btnConfirm || !btnDecline) {
-      const ok = confirm(`Selected directory is not a Git repository:\n\n${path}\n\nInitialize as a Git repository (git init)?`);
+      const ok = confirm(`Seçilen dizin bir Git deposu değil:\n\n${path}\n\nGit deposu olarak başlatılsın mı (git init)?`);
       return resolve(ok);
     }
 
@@ -844,7 +857,7 @@ function promptGitInit(path) {
 
 async function openRepo(repoPath = null) {
   if (!invoke) {
-    alert('This interface must be run inside Tauri.');
+    alert('Bu arayüz Tauri içinde çalıştırılmalıdır.');
     return;
   }
 
@@ -853,13 +866,13 @@ async function openRepo(repoPath = null) {
 
     if (!selected) {
       if (!tauri?.dialog?.open) {
-        alert('The repository picker is not available.');
+        alert('Depo seçici kullanılamıyor.');
         return;
       }
 
       selected = await tauri.dialog.open({
         directory: true,
-        title: 'Select Git Repository',
+        title: 'Git Deposu Seç',
       });
     }
 
@@ -867,21 +880,21 @@ async function openRepo(repoPath = null) {
     if (Array.isArray(selected)) [selected] = selected;
     if (!selected) return;
 
-    setStatus('Checking repository...');
+    setStatus('Depo kontrol ediliyor...');
     const isGit = await invoke('is_git_repository', { path: selected });
     let repoInfo = null;
 
     if (!isGit) {
       const shouldInit = await promptGitInit(selected);
       if (!shouldInit) {
-        setStatus('Repository open cancelled (Not a Git repository)');
+        setStatus('Depo açma iptal edildi (Git deposu değil)');
         return;
       }
-      setStatus('Initializing Git repository...');
+      setStatus('Git deposu başlatılıyor...');
       repoInfo = await invoke('init_repository', { path: selected });
-      setStatus('Git repository initialized successfully!');
+      setStatus('Git deposu başarıyla başlatıldı!');
     } else {
-      setStatus('Reading repository...');
+      setStatus('Depo okunuyor...');
       repoInfo = await invoke('open_repo', { path: selected });
     }
 
@@ -922,17 +935,17 @@ async function openRepo(repoPath = null) {
     // Detect installed editors (VS Code, Code OSS, Zed, Cursor, VSCodium)
     checkAndRenderInstalledEditors();
 
-    setStatus(`${repoInfo.name} loaded: ${state.commits.length} commits`);
+    setStatus(`${repoInfo.name} yüklendi: ${state.commits.length} commit`);
   } catch (err) {
     console.error(err);
-    setStatus('Repository could not be opened');
-    alert(`Error: ${err}`);
+    setStatus('Depo açılamadı');
+    alert(`Hata: ${err}`);
   }
 }
 
 async function loadCommits(branch = null) {
   try {
-    setStatus(branch ? `Reading ${branch} branch history...` : 'Reading commit history...');
+    setStatus(branch ? `${branch} dalının geçmişi okunuyor...` : 'Commit geçmişi okunuyor...');
     const commits = await invoke('get_commits', { limit: 500, branch, targetRemote: state.activeRemote });
     state.commits = commits;
     state.selectedBranch = branch;
@@ -955,11 +968,11 @@ async function loadCommits(branch = null) {
       await selectCommit(commits[0].id);
     }
 
-    setStatus(`${commits.length} commits listed`);
+    setStatus(`${commits.length} commit listelendi`);
   } catch (err) {
     console.error(err);
-    setStatus('Commits could not be loaded');
-    alert(`Commits could not be loaded: ${err}`);
+    setStatus('Commit\'ler yüklenemedi');
+    alert(`Commit\'ler yüklenemedi: ${err}`);
   }
 }
 
@@ -990,18 +1003,18 @@ function renderSyncStatus() {
   const activeRemote = state.activeRemote || 'origin';
 
   if (!sync) {
-    if (els.topSyncPillText) els.topSyncPillText.textContent = 'no origin';
-    if (els.originLabel) els.originLabel.textContent = 'no origin';
-    if (els.pushLabel) els.pushLabel.textContent = 'waiting for remote connection';
+    if (els.topSyncPillText) els.topSyncPillText.textContent = 'uzak depo yok';
+    if (els.originLabel) els.originLabel.textContent = 'uzak depo yok';
+    if (els.pushLabel) els.pushLabel.textContent = 'uzak bağlantı bekleniyor';
     if (els.btnPushOrigin) els.btnPushOrigin.disabled = true;
     if (els.topPushBtn) els.topPushBtn.style.display = 'none';
     return;
   }
 
   if (!sync.has_origin) {
-    if (els.topSyncPillText) els.topSyncPillText.textContent = 'no origin';
-    if (els.originLabel) els.originLabel.textContent = 'no origin';
-    if (els.pushLabel) els.pushLabel.textContent = 'no remote connection';
+    if (els.topSyncPillText) els.topSyncPillText.textContent = 'uzak depo yok';
+    if (els.originLabel) els.originLabel.textContent = 'uzak depo yok';
+    if (els.pushLabel) els.pushLabel.textContent = 'uzak bağlantı yok';
     if (els.btnPushOrigin) {
       els.btnPushOrigin.textContent = 'Push';
       els.btnPushOrigin.disabled = true;
@@ -1011,11 +1024,11 @@ function renderSyncStatus() {
   }
 
   const syncText = sync.unpushed_count > 0
-    ? `${activeRemote} · ${sync.unpushed_count} unpushed`
-    : `${activeRemote} · up to date`;
+    ? `${activeRemote} · ${sync.unpushed_count} gönderilmedi`
+    : `${activeRemote} · güncel`;
 
   if (els.topSyncPillText) els.topSyncPillText.textContent = syncText;
-  if (els.originLabel) els.originLabel.textContent = sync.origin_url || `${activeRemote} connected`;
+  if (els.originLabel) els.originLabel.textContent = sync.origin_url || `${activeRemote} bağlı`;
 
   if (sync.unpushed_count > 0 && sync.can_push) {
     if (els.topPushBtn) els.topPushBtn.style.display = 'inline-flex';
@@ -1029,7 +1042,7 @@ function renderSyncStatus() {
       els.btnPushOrigin.textContent = 'Push';
       els.btnPushOrigin.disabled = true;
     } else if (!sync.upstream) {
-      els.btnPushOrigin.textContent = `Publish (${activeRemote})`;
+      els.btnPushOrigin.textContent = `Yayınla (${activeRemote})`;
       els.btnPushOrigin.disabled = false;
     } else {
       els.btnPushOrigin.textContent = sync.unpushed_count > 0 ? `Push (${sync.unpushed_count})` : 'Push';
@@ -1039,13 +1052,13 @@ function renderSyncStatus() {
 
   if (els.pushLabel) {
     if (!sync.can_push) {
-      els.pushLabel.textContent = 'active branch cannot be pushed';
+      els.pushLabel.textContent = 'etkin dal push yapılamaz';
     } else if (!sync.upstream) {
-      els.pushLabel.textContent = `${sync.current_branch} will be published to ${activeRemote}`;
+      els.pushLabel.textContent = `${sync.current_branch}, ${activeRemote} uzak deposuna yayınlanacak`;
     } else {
       els.pushLabel.textContent = sync.unpushed_count > 0
-        ? `${sync.unpushed_count} commit(s) ahead of ${activeRemote}`
-        : `up to date with ${activeRemote}`;
+        ? `${activeRemote} deposundan ${sync.unpushed_count} commit ileride`
+        : `${activeRemote} ile güncel`;
     }
   }
 }
@@ -1067,7 +1080,7 @@ function listUnmergedCandidates() {
   // Targets must be local branches (merge/cherry-pick checks the target out).
   const source = unmergedSourceBranch();
   return state.branches.filter((b) => (
-    b.name && !b.is_remote && b.name !== 'detached' && b.name !== source
+    b.name && !b.is_remote && !b.is_tag && b.name !== 'detached' && b.name !== source
   ));
 }
 
@@ -1150,7 +1163,7 @@ function renderUnmergedBanner() {
   if (commits.length === 0) {
     els.unmergedCommitList.innerHTML = `
       <div class="muted-row" style="padding: 8px 10px; font-size: 11px; color: var(--text-dim);">
-        ${escapeHtml(source)} is fully merged into ${escapeHtml(target)}.
+        ${escapeHtml(source)} dalı ${escapeHtml(target)} dalına tamamen birleştirildi.
       </div>`;
     if (els.btnUnmergedMergeAll) els.btnUnmergedMergeAll.disabled = true;
     return;
@@ -1165,10 +1178,10 @@ function renderUnmergedBanner() {
         <span class="unpushed-msg" title="${escapeHtml(firstLine(c.message))}">${escapeHtml(firstLine(c.message))}</span>
       </div>
       <div class="unpushed-meta">
-        <span>${escapeHtml(c.author_name || 'Unknown')}</span>
+        <span>${escapeHtml(c.author_name || 'Bilinmiyor')}</span>
         <span>&bull; ${formatDate(c.timestamp)}</span>
-        <span class="commit-state-label unmerged-badge">UNMERGED</span>
-        <button class="cherry-pick-btn" type="button" data-commit-id="${c.id}" title="Cherry-pick this commit into ${escapeHtml(target)}">
+        <span class="commit-state-label unmerged-badge">BİRLEŞTİRİLMEDİ</span>
+        <button class="cherry-pick-btn" type="button" data-commit-id="${c.id}" title="Bu commit'i ${escapeHtml(target)} dalına cherry-pick yap">
           <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="18" cy="18" r="3"></circle>
             <circle cx="6" cy="6" r="3"></circle>
@@ -1209,7 +1222,7 @@ async function followMergedBranch(target) {
 async function offerPush(target) {
   const remoteName = state.activeRemote || 'origin';
   const canPush = state.syncStatus?.can_push && state.syncStatus?.has_origin;
-  if (canPush && confirm(`Push ${target} to ${remoteName} now?`)) {
+  if (canPush && confirm(`${target} dalını şimdi ${remoteName} uzak deposuna göndermek (push) ister misiniz?`)) {
     await pushOrigin();
   }
 }
@@ -1223,27 +1236,27 @@ async function cherryPickCommit(commitId, btn) {
   const commit = state.unmergedCommits.find((c) => c.id === commitId);
   const label = commit ? `${commit.short_id} — ${firstLine(commit.message)}` : commitId;
 
-  if (!confirm(`Cherry-pick this commit into ${target}?\n\n${label}`)) return;
+  if (!confirm(`Bu commit ${target} dalına cherry-pick yapılsın mı?\n\n${label}`)) return;
 
   try {
     if (btn) {
       btn.disabled = true;
       btn.classList.add('is-loading');
     }
-    setStatus(`Cherry-picking ${commitId.substring(0, 7)} into ${target}...`);
+    setStatus(`${commitId.substring(0, 7)} commit'i ${target} dalına cherry-pick ediliyor...`);
 
     const res = await invoke('cherry_pick_commit', { commitId, targetBranch: target });
 
     if (typeof res === 'string' && res.includes('already applied')) {
       setStatus(res);
     } else {
-      setStatus(`Cherry-picked ${commitId.substring(0, 7)} into ${target}`);
+      setStatus(`${commitId.substring(0, 7)} commit'i ${target} dalına başarıyla cherry-pick edildi`);
     }
     await followMergedBranch(target);
     await offerPush(target);
   } catch (err) {
     console.error(err);
-    setStatus('Cherry-pick failed');
+    setStatus('Cherry-pick başarısız oldu');
     if (btn) {
       btn.disabled = false;
       btn.classList.remove('is-loading');
@@ -1276,10 +1289,10 @@ async function refreshBranchesFromOrigin() {
     state.branches = await invoke('get_branches');
     renderBranches();
     await loadUnmergedCommits();
-    setStatus(fetched ? `Branches fetched from ${remoteName}` : 'Branches refreshed');
+    setStatus(fetched ? `Dallar ${remoteName} uzak deposundan getirildi` : 'Dallar yenilendi');
   } catch (err) {
     console.error(err);
-    setStatus('Branches could not be refreshed');
+    setStatus('Dallar yenilenemedi');
   } finally {
     if (btn) {
       btn.disabled = false;
@@ -1302,18 +1315,18 @@ function updateCommitAction() {
     els.btnCommitSelected.classList.add('is-editing');
     if (count > 0 && hasMessage) {
       els.btnCommitSelected.disabled = false;
-      els.btnCommitSelected.textContent = `Amend ${count} file(s)`;
+      els.btnCommitSelected.textContent = `${count} dosyayı commit'e ekle (amend)`;
     } else if (hasMessage) {
       els.btnCommitSelected.disabled = false;
-      els.btnCommitSelected.textContent = 'Amend Commit';
+      els.btnCommitSelected.textContent = 'Commit\'i Düzenle (Amend)';
     } else {
       els.btnCommitSelected.disabled = true;
-      els.btnCommitSelected.textContent = 'Amend Commit';
+      els.btnCommitSelected.textContent = 'Commit\'i Düzenle (Amend)';
     }
   } else {
     els.btnCommitSelected.classList.remove('is-editing');
     els.btnCommitSelected.disabled = count === 0 || !hasMessage;
-    els.btnCommitSelected.textContent = count > 0 ? `Commit ${count} files` : 'Commit selected files';
+    els.btnCommitSelected.textContent = count > 0 ? `${count} dosyayı commit'le` : 'Seçilen dosyaları commit\'le';
   }
 }
 
@@ -1323,7 +1336,7 @@ function cancelCommitEdit() {
   state.selectedCoauthors = [];
   renderCoauthors();
   updateCommitAction();
-  setStatus('Commit editing cancelled.');
+  setStatus('Commit düzenleme iptal edildi.');
 }
 
 function renderWorktreeStatus() {
@@ -1333,7 +1346,7 @@ function renderWorktreeStatus() {
   });
 
   if (state.worktreeFiles.length === 0) {
-    els.worktreeList.innerHTML = '<div class="muted-row">No pending changes to commit</div>';
+    els.worktreeList.innerHTML = '<div class="muted-row">Commit\'lenecek bekleyen değişiklik yok</div>';
     updateCommitAction();
     return;
   }
@@ -1342,7 +1355,7 @@ function renderWorktreeStatus() {
     const config = worktreeStatusConfig[file.status] || { label: '?', text: file.status };
     const { name, dir } = splitPath(file.path);
     const checked = state.selectedWorktreePaths.has(file.path) ? 'checked' : '';
-    const stagedText = file.conflicted ? 'conflict' : file.staged && file.unstaged ? 'staged + unstaged' : file.staged ? 'staged' : 'unstaged';
+    const stagedText = file.conflicted ? 'çakışma' : file.staged && file.unstaged ? 'hazırlandı + hazırlanmadı' : file.staged ? 'hazırlandı' : 'hazırlanmadı';
 
     return `
       <label class="worktree-file ${file.conflicted ? 'conflicted' : ''}">
@@ -1414,7 +1427,7 @@ async function commitSelectedChanges() {
 
   try {
     els.btnCommitSelected.disabled = true;
-    setStatus(isAmend ? 'Amending commit...' : 'Creating commit...');
+    setStatus(isAmend ? 'Commit düzenleniyor (amend)...' : 'Commit oluşturuluyor...');
     await invoke('commit_changes_with_options', {
       paths,
       message: finalMessage,
@@ -1431,22 +1444,22 @@ async function commitSelectedChanges() {
     els.commitMessageInput.value = '';
     renderCoauthors();
     await refreshRepositoryData({ selectLatest: true });
-    setStatus(isAmend ? 'Commit amended successfully' : 'Commit created');
+    setStatus(isAmend ? 'Commit başarıyla düzenlendi (amended)' : 'Commit oluşturuldu');
 
     if (appSettings.smtpEnabled) {
       try {
-        setStatus('Sending patch email...');
+        setStatus('Yama e-postası gönderiliyor...');
         const emailResult = await invoke('send_patch_email');
         setStatus(emailResult);
       } catch (emailErr) {
         console.error('Patch email error:', emailErr);
-        setStatus(`Commit created but email failed: ${emailErr}`);
+        setStatus(`Commit oluşturuldu fakat e-posta gönderilemedi: ${emailErr}`);
       }
     }
   } catch (err) {
     console.error(err);
-    setStatus('Commit could not be created');
-    alert(`Commit could not be created: ${err}`);
+    setStatus('Commit oluşturulamadı');
+    alert(`Commit oluşturulamadı: ${err}`);
   } finally {
     updateCommitAction();
   }
@@ -1457,14 +1470,14 @@ async function pushOrigin() {
     els.btnPushOrigin.disabled = true;
     els.topPushBtn.disabled = true;
     const rName = state.activeRemote || 'origin';
-    setStatus(`Pushing to ${rName}...`);
+    setStatus(`${rName} deposuna gönderiliyor (push)...`);
     await invoke('push_origin', { targetRemote: rName });
     await refreshRepositoryData();
-    setStatus(`Pushed to ${rName} successfully`);
+    setStatus(`${rName} deposuna başarıyla gönderildi`);
   } catch (err) {
     console.error(err);
-    setStatus('Push failed');
-    alert(`Push failed: ${err}`);
+    setStatus('Gönderim (push) başarısız oldu');
+    alert(`Gönderim (push) başarısız oldu: ${err}`);
   } finally {
     els.topPushBtn.disabled = false;
     renderSyncStatus();
@@ -1486,30 +1499,30 @@ function hideAddOriginForm() {
 async function saveRemoteOrigin() {
   const url = els.remoteUrlInput.value.trim();
   if (!url) {
-    alert('Please enter a valid remote URL.');
+    alert('Lütfen geçerli bir uzak depo URL\'si girin.');
     els.remoteUrlInput.focus();
     return;
   }
 
   try {
     els.btnSaveOrigin.disabled = true;
-    els.btnSaveOrigin.textContent = 'Saving...';
-    setStatus('Adding remote origin...');
+    els.btnSaveOrigin.textContent = 'Kaydediliyor...';
+    setStatus('origin uzak deposu ekleniyor...');
 
     await invoke('add_origin', { url });
 
     els.remoteUrlInput.value = '';
     els.addOriginForm.style.display = 'none';
-    setStatus('Remote origin added successfully');
+    setStatus('origin uzak deposu başarıyla eklendi');
 
     await loadSyncStatus();
   } catch (err) {
     console.error(err);
-    setStatus('Failed to add remote origin');
-    alert(`Failed to add remote origin: ${err}`);
+    setStatus('origin uzak deposu eklenemedi');
+    alert(`origin uzak deposu eklenemedi: ${err}`);
   } finally {
     els.btnSaveOrigin.disabled = false;
-    els.btnSaveOrigin.textContent = 'Save Remote';
+    els.btnSaveOrigin.textContent = 'Uzak Depoyu Kaydet';
   }
 }
 
@@ -1518,14 +1531,14 @@ state.activeMergeSource = null;
 function openMergeModal(sourceBranch, preferredTarget = null) {
   state.activeMergeSource = sourceBranch;
 
-  const localBranches = state.branches.filter((b) => !b.is_remote && b.name !== 'detached');
+  const localBranches = state.branches.filter((b) => !b.is_remote && !b.is_tag && b.name !== 'detached');
   const activeBranch = state.branches.find((b) => b.is_head);
   const activeBranchName = activeBranch ? activeBranch.name : '';
 
   const targetBranches = localBranches.filter((b) => b.name !== sourceBranch);
 
   if (targetBranches.length === 0) {
-    alert('No other local branches available to merge into.');
+    alert('Birleştirme yapılabilecek başka bir yerel dal bulunamadı.');
     return;
   }
 
@@ -1562,24 +1575,24 @@ async function confirmMerge() {
 
   try {
     els.btnConfirmMerge.disabled = true;
-    els.btnConfirmMerge.textContent = 'Merging...';
-    setStatus(`Merging ${source} into ${target}...`);
+    els.btnConfirmMerge.textContent = 'Birleştiriliyor...';
+    setStatus(`${source} dalı ${target} dalına birleştiriliyor...`);
 
     await invoke('merge_branches', { source, target });
 
-    setStatus(`Merged ${source} into ${target} successfully`);
+    setStatus(`${source} dalı ${target} dalına başarıyla birleştirildi`);
     closeMergeModal();
 
     await followMergedBranch(target);
     await offerPush(target);
   } catch (err) {
     console.error(err);
-    setStatus('Merge failed');
+    setStatus('Birleştirme başarısız oldu');
     closeMergeModal();
     await handleOpFailure('merge', target, target, source, err);
   } finally {
     els.btnConfirmMerge.disabled = false;
-    els.btnConfirmMerge.textContent = 'Confirm Merge';
+    els.btnConfirmMerge.textContent = 'Birleştirmeyi Onayla';
   }
 }
 
@@ -1591,11 +1604,11 @@ function closeConflictModal() {
 function openConflictModal(op, target, oursLabel, theirsLabel, files) {
   state.activeConflict = { op, target, oursLabel, theirsLabel };
 
-  const opName = op === 'cherry-pick' ? 'Cherry-pick' : 'Merge';
-  if (els.conflictKicker) els.conflictKicker.textContent = `${opName} Conflicts`;
-  if (els.conflictTitle) els.conflictTitle.textContent = `Resolve ${opName} Conflicts`;
+  const opName = op === 'cherry-pick' ? 'Cherry-pick' : 'Birleştirme';
+  if (els.conflictKicker) els.conflictKicker.textContent = `${opName} Çakışmaları`;
+  if (els.conflictTitle) els.conflictTitle.textContent = `${opName} Çakışmalarını Çöz`;
   if (els.conflictSubtitle) {
-    els.conflictSubtitle.textContent = `${files.length} file(s) have conflicts. Choose which version to keep for all of them:`;
+    els.conflictSubtitle.textContent = `${files.length} dosyada çakışma var. Tüm dosyalar için hangi sürümün korunacağını seçin:`;
   }
   if (els.conflictFileList) {
     els.conflictFileList.innerHTML = files.map((f) => `<span>${escapeHtml(f)}</span>`).join('');
@@ -1606,10 +1619,10 @@ function openConflictModal(op, target, oursLabel, theirsLabel, files) {
   if (els.conflictLegendTheirs) els.conflictLegendTheirs.textContent = theirsLabel;
   if (els.btnKeepOurs) els.btnKeepOurs.disabled = false;
   if (els.btnKeepTheirs) els.btnKeepTheirs.disabled = false;
-  if (els.btnAbortConflict) els.btnAbortConflict.textContent = `Abort ${op} instead`;
+  if (els.btnAbortConflict) els.btnAbortConflict.textContent = `İşlemi (${op}) İptal Et`;
 
   if (els.conflictDiffList) {
-    els.conflictDiffList.innerHTML = '<div class="muted-row" style="padding: 8px 10px; font-size: 11px; color: var(--text-dim);">Loading diffs...</div>';
+    els.conflictDiffList.innerHTML = '<div class="muted-row" style="padding: 8px 10px; font-size: 11px; color: var(--text-dim);">Diff yükleniyor...</div>';
     loadConflictDiffs(files);
   }
 
@@ -1638,9 +1651,9 @@ async function loadConflictDiffs(files) {
         <section class="diff-file-block">
           <div class="diff-file-header">
             <span>${escapeHtml(filePath)}</span>
-            <small>diff unavailable</small>
+            <small>diff yok</small>
           </div>
-          <div class="diff-placeholder" style="padding: 8px 12px; font-size: 11px; color: var(--text-dim);">Could not load diff: ${escapeHtml(error)}</div>
+          <div class="diff-placeholder" style="padding: 8px 12px; font-size: 11px; color: var(--text-dim);">Diff yüklenemedi: ${escapeHtml(error)}</div>
         </section>`;
     }
     if (!diff || !diff.hunks || diff.hunks.length === 0) {
@@ -1648,7 +1661,7 @@ async function loadConflictDiffs(files) {
         <section class="diff-file-block">
           <div class="diff-file-header">
             <span>${escapeHtml(filePath)}</span>
-            <small>binary or no text diff available</small>
+            <small>ikili dosya veya metin diff'i yok</small>
           </div>
         </section>`;
     }
@@ -1670,7 +1683,7 @@ async function loadConflictDiffs(files) {
       <section class="diff-file-block">
         <div class="diff-file-header">
           <span>${escapeHtml(filePath)}</span>
-          <small>target vs incoming</small>
+          <small>hedef ve gelen karşılaştırması</small>
         </div>
         ${hunks}
       </section>`;
@@ -1690,8 +1703,8 @@ async function handleOpFailure(op, target, oursLabel, theirsLabel, err) {
   if (files && files.length > 0) {
     openConflictModal(op, target, oursLabel, theirsLabel, files);
   } else {
-    const opName = op === 'cherry-pick' ? 'Cherry-pick' : 'Merge';
-    alert(`${opName} failed: ${err}`);
+    const opName = op === 'cherry-pick' ? 'Cherry-pick' : 'Birleştirme';
+    alert(`${opName} başarısız oldu: ${err}`);
   }
 }
 
@@ -1699,26 +1712,26 @@ async function resolveConflictChoice(side) {
   const ctx = state.activeConflict;
   if (!ctx) return;
 
-  if (!confirm(`Keep the ${side === 'ours' ? ctx.oursLabel : ctx.theirsLabel} version for all conflicted files and complete the ${ctx.op}?`)) {
+  if (!confirm(`Çakışan tüm dosyalar için ${side === 'ours' ? ctx.oursLabel : ctx.theirsLabel} sürümü korunsun ve ${ctx.op} tamamlansın mı?`)) {
     return;
   }
 
   try {
     if (els.btnKeepOurs) els.btnKeepOurs.disabled = true;
     if (els.btnKeepTheirs) els.btnKeepTheirs.disabled = true;
-    setStatus(`Resolving conflicts (keeping ${side})...`);
+    setStatus(`Çakışmalar çözülüyor (${side} sürümü korunuyor)...`);
 
     const res = await invoke('resolve_conflicts', { side });
 
-    setStatus(typeof res === 'string' && res ? res : 'Conflicts resolved');
+    setStatus(typeof res === 'string' && res ? res : 'Çakışmalar çözüldü');
     closeConflictModal();
 
     await followMergedBranch(ctx.target);
     await offerPush(ctx.target);
   } catch (err) {
     console.error(err);
-    setStatus('Conflict resolution failed');
-    alert(`Could not resolve conflicts: ${err}`);
+    setStatus('Çakışma çözümü başarısız oldu');
+    alert(`Çakışmalar çözülemedi: ${err}`);
     if (els.btnKeepOurs) els.btnKeepOurs.disabled = false;
     if (els.btnKeepTheirs) els.btnKeepTheirs.disabled = false;
   }
@@ -1729,17 +1742,17 @@ async function abortConflictOp() {
 
   try {
     const res = await invoke('abort_in_progress');
-    setStatus(typeof res === 'string' && res ? res : 'Operation aborted');
+    setStatus(typeof res === 'string' && res ? res : 'İşlem iptal edildi');
   } catch (err) {
     console.error(err);
-    alert(`Abort failed: ${err}`);
+    alert(`İptal başarısız oldu: ${err}`);
   }
 
   closeConflictModal();
   await refreshRepositoryData({ selectLatest: true });
 }
 function renderBranches() {
-  const currentBranchName = state.selectedBranch || state.repoInfo?.current_branch || 'All History';
+  const currentBranchName = state.selectedBranch || state.repoInfo?.current_branch || 'Tüm Geçmiş';
   if (els.activeBranch) els.activeBranch.textContent = currentBranchName;
   if (els.branchCount) els.branchCount.textContent = state.branches.length;
 
@@ -1748,33 +1761,53 @@ function renderBranches() {
   const branchRows = [
     `<button class="dropdown-menu-item ${!state.selectedBranch ? 'active' : ''}" type="button" data-branch="">
       <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12h16"></path><path d="M4 6h16"></path><path d="M4 18h16"></path></svg>
-      <span class="item-title">All History</span>
-      <span class="item-badge local">all</span>
+      <span class="item-title">Tüm Geçmiş</span>
+      <span class="item-badge local">tümü</span>
     </button>`,
   ];
 
   for (const branch of state.branches) {
     const active = state.selectedBranch === branch.name || (!state.selectedBranch && branch.is_head);
     let badgeClass = 'local';
-    let badgeLabel = 'local';
+    let badgeLabel = 'yerel';
+    let itemIcon = `
+      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M6 3v12"></path>
+        <circle cx="6" cy="18" r="3"></circle>
+        <circle cx="18" cy="6" r="3"></circle>
+        <path d="M18 9a9 9 0 0 1-9 9"></path>
+      </svg>
+    `;
+
     if (branch.is_head) {
       badgeClass = 'head';
       badgeLabel = 'HEAD';
+    } else if (branch.is_tag) {
+      badgeClass = 'tag';
+      badgeLabel = 'etiket';
+      itemIcon = `
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path>
+          <line x1="7" y1="7" x2="7.01" y2="7"></line>
+        </svg>
+      `;
     } else if (branch.is_remote) {
       badgeClass = 'remote';
-      badgeLabel = 'remote';
+      badgeLabel = 'uzak';
+      itemIcon = `
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="2" y1="12" x2="22" y2="12"></line>
+          <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+        </svg>
+      `;
     }
 
     const branchDisplayName = escapeHtml(branch.name);
 
     branchRows.push(`
       <button class="dropdown-menu-item ${active ? 'active' : ''}" type="button" data-branch="${escapeHtml(branch.name)}">
-        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M6 3v12"></path>
-          <circle cx="6" cy="18" r="3"></circle>
-          <circle cx="18" cy="6" r="3"></circle>
-          <path d="M18 9a9 9 0 0 1-9 9"></path>
-        </svg>
+        ${itemIcon}
         <span class="item-title">${branchDisplayName}</span>
         <span class="item-badge ${badgeClass}">${badgeLabel}</span>
       </button>
@@ -1796,7 +1829,7 @@ function renderTeam() {
   const authors = getAuthorStats();
 
   if (authors.length === 0) {
-    els.teamList.innerHTML = '<div class="muted-row">No commits yet</div>';
+    els.teamList.innerHTML = '<div class="muted-row">Henüz commit yok</div>';
     return;
   }
 
@@ -1837,7 +1870,7 @@ function openContributorsModal() {
   const topAuthors = authors.slice(0, 3);
 
   if (topAuthors.length === 0) {
-    els.contributorsPodium.innerHTML = '<div class="muted-row">No contributors yet</div>';
+    els.contributorsPodium.innerHTML = '<div class="muted-row">Henüz katkıda bulunan yok</div>';
     els.contributorsRanking.innerHTML = '';
   } else {
     els.contributorsPodium.innerHTML = topAuthors.map((author, index) => {
@@ -1874,42 +1907,244 @@ function closeContributorsModal() {
   els.contributorsModal.hidden = true;
 }
 
+const GRAPH_CONFIG = {
+  rowHeight: 46,
+  cy: 23,
+  laneWidth: 20,
+  laneOffset: 16,
+  strokeWidth: 2.5,
+  dotRadius: 5,
+  mergeDotRadius: 6,
+};
+
 function assignLanes(commits) {
+  const commitCount = commits.length;
+  const commitIndexMap = new Map();
+  commits.forEach((c, i) => commitIndexMap.set(c.id, i));
+
   const laneMap = new Map();
   const activeLanes = [];
   let maxLane = 0;
 
-  commits.forEach((commit) => {
-    let lane = activeLanes.findIndex((id) => id === commit.id);
+  for (let i = 0; i < commitCount; i++) {
+    const commit = commits[i];
+    let lane = activeLanes.indexOf(commit.id);
 
     if (lane === -1) {
-      const freeLane = activeLanes.findIndex((id) => id === null);
-      lane = freeLane === -1 ? activeLanes.length : freeLane;
-      activeLanes[lane] = commit.id;
+      if (i === 0 || activeLanes[0] === null || activeLanes[0] === undefined) {
+        lane = 0;
+      } else {
+        let freeIdx = -1;
+        for (let l = 1; l < activeLanes.length; l++) {
+          if (activeLanes[l] === null) {
+            freeIdx = l;
+            break;
+          }
+        }
+        lane = freeIdx !== -1 ? freeIdx : Math.max(1, activeLanes.length);
+      }
     }
 
+    activeLanes[lane] = null;
     laneMap.set(commit.id, lane);
     maxLane = Math.max(maxLane, lane);
 
-    if (commit.parent_ids.length > 0) {
-      activeLanes[lane] = commit.parent_ids[0];
+    const validParents = (commit.parent_ids || []).filter((pid) => commitIndexMap.has(pid));
+    if (validParents.length > 0) {
+      const p0 = validParents[0];
+      if (activeLanes.indexOf(p0) === -1) {
+        activeLanes[lane] = p0;
+      }
 
-      for (let i = 1; i < commit.parent_ids.length; i += 1) {
-        if (!activeLanes.includes(commit.parent_ids[i])) {
-          const freeLane = activeLanes.findIndex((id) => id === null);
-          if (freeLane === -1) {
-            activeLanes.push(commit.parent_ids[i]);
+      for (let p = 1; p < validParents.length; p++) {
+        const pOther = validParents[p];
+        if (activeLanes.indexOf(pOther) === -1) {
+          let freeL = -1;
+          for (let l = 1; l < activeLanes.length; l++) {
+            if (activeLanes[l] === null) {
+              freeL = l;
+              break;
+            }
+          }
+          if (freeL === -1) {
+            freeL = Math.max(1, activeLanes.length);
+          }
+          activeLanes[freeL] = pOther;
+          maxLane = Math.max(maxLane, freeL);
+        }
+      }
+    }
+  }
+
+  return { laneMap, laneCount: Math.max(maxLane + 1, 1), maxLane };
+}
+
+function buildCommitGraph(commits) {
+  const count = commits.length;
+  if (count === 0) {
+    return {
+      laneMap: new Map(),
+      laneCount: 1,
+      graphWidth: 50,
+      rowSvgs: [],
+    };
+  }
+
+  const commitIndexMap = new Map();
+  commits.forEach((c, i) => commitIndexMap.set(c.id, i));
+
+  const { laneMap, laneCount, maxLane } = assignLanes(commits);
+
+  // Distinct branch color assignment:
+  // Lane 0 is always GRAPH_PALETTE[0] (#eab308 golden trunk).
+  // Each branch chain gets a distinct vibrant color from GRAPH_PALETTE[1..7].
+  const commitColorMap = new Map();
+  let branchColorSeq = 1;
+
+  for (let i = 0; i < count; i++) {
+    const commit = commits[i];
+    const lane = laneMap.get(commit.id) || 0;
+    if (lane === 0) {
+      commitColorMap.set(commit.id, GRAPH_PALETTE[0]);
+    } else if (!commitColorMap.has(commit.id)) {
+      const color = GRAPH_PALETTE[1 + ((branchColorSeq - 1) % (GRAPH_PALETTE.length - 1))];
+      commitColorMap.set(commit.id, color);
+      branchColorSeq++;
+    }
+
+    if ((commit.parent_ids || []).length > 1) {
+      for (let p = 1; p < commit.parent_ids.length; p++) {
+        const pId = commit.parent_ids[p];
+        if (!commitColorMap.has(pId)) {
+          const color = GRAPH_PALETTE[1 + ((branchColorSeq - 1) % (GRAPH_PALETTE.length - 1))];
+          commitColorMap.set(pId, color);
+          branchColorSeq++;
+        }
+      }
+    }
+
+    if (lane > 0 && (commit.parent_ids || []).length > 0) {
+      const myColor = commitColorMap.get(commit.id);
+      const p0 = commit.parent_ids[0];
+      const p0Lane = laneMap.get(p0) || 0;
+      if (p0Lane > 0 && !commitColorMap.has(p0)) {
+        commitColorMap.set(p0, myColor);
+      }
+    }
+  }
+
+  // Construct edges
+  const edges = [];
+  for (let i = 0; i < count; i++) {
+    const commit = commits[i];
+    const cLane = laneMap.get(commit.id) || 0;
+    (commit.parent_ids || []).forEach((pid) => {
+      if (commitIndexMap.has(pid)) {
+        const pIdx = commitIndexMap.get(pid);
+        const pLane = laneMap.get(pid) || 0;
+        let edgeColor = GRAPH_PALETTE[0];
+        if (cLane > 0) {
+          edgeColor = commitColorMap.get(commit.id) || GRAPH_PALETTE[1];
+        } else if (pLane > 0) {
+          edgeColor = commitColorMap.get(pid) || GRAPH_PALETTE[1];
+        }
+        edges.push({
+          from: i,
+          to: pIdx,
+          fromLane: cLane,
+          toLane: pLane,
+          color: edgeColor,
+        });
+      }
+    });
+  }
+
+  const graphWidth = Math.max(50, laneCount * GRAPH_CONFIG.laneWidth + 24);
+  const getX = (lane) => GRAPH_CONFIG.laneOffset + lane * GRAPH_CONFIG.laneWidth;
+
+  const rowSvgs = commits.map((commit, r) => {
+    const cLane = laneMap.get(commit.id) || 0;
+    const cColor = commitColorMap.get(commit.id) || GRAPH_PALETTE[0];
+    const cx = getX(cLane);
+    const cy = GRAPH_CONFIG.cy;
+    const sw = GRAPH_CONFIG.strokeWidth;
+
+    const paths = [];
+    const drawnKeys = new Set();
+
+    const addPath = (key, svgStr) => {
+      if (!drawnKeys.has(key)) {
+        drawnKeys.add(key);
+        paths.push(svgStr);
+      }
+    };
+
+    edges.forEach((e) => {
+      if (r < e.from || r > e.to) return;
+      const xFrom = getX(e.fromLane);
+      const xTo = getX(e.toLane);
+
+      if (e.fromLane === e.toLane) {
+        if (r === e.from) {
+          addPath(`down_${xFrom}`, `<line x1="${xFrom}" y1="${cy}" x2="${xFrom}" y2="46" stroke="${e.color}" stroke-width="${sw}" stroke-linecap="round" style="stroke:${e.color}!important;" />`);
+        } else if (r === e.to) {
+          addPath(`up_${xFrom}`, `<line x1="${xFrom}" y1="0" x2="${xFrom}" y2="${cy}" stroke="${e.color}" stroke-width="${sw}" stroke-linecap="round" style="stroke:${e.color}!important;" />`);
+        } else {
+          addPath(`pass_${xFrom}`, `<line x1="${xFrom}" y1="0" x2="${xFrom}" y2="46" stroke="${e.color}" stroke-width="${sw}" style="stroke:${e.color}!important;" />`);
+        }
+      } else {
+        if (e.to === e.from + 1) {
+          if (r === e.from) {
+            addPath(`curve_${xFrom}_${xTo}_${e.color}`, `<path d="M ${xFrom} ${cy} C ${xFrom} 35.65, ${xTo} 33.35, ${xTo} 46" fill="none" stroke="${e.color}" stroke-width="${sw}" stroke-linecap="round" style="stroke:${e.color}!important;fill:none!important;" />`);
+          } else if (r === e.to) {
+            addPath(`up_${xTo}`, `<line x1="${xTo}" y1="0" x2="${xTo}" y2="${cy}" stroke="${e.color}" stroke-width="${sw}" stroke-linecap="round" style="stroke:${e.color}!important;" />`);
+          }
+        } else {
+          if (e.fromLane < e.toLane) {
+            if (r === e.from) {
+              addPath(`curve_${xFrom}_${xTo}_${e.color}`, `<path d="M ${xFrom} ${cy} C ${xFrom} 35.65, ${xTo} 33.35, ${xTo} 46" fill="none" stroke="${e.color}" stroke-width="${sw}" stroke-linecap="round" style="stroke:${e.color}!important;fill:none!important;" />`);
+            } else if (r === e.to) {
+              addPath(`up_${xTo}`, `<line x1="${xTo}" y1="0" x2="${xTo}" y2="${cy}" stroke="${e.color}" stroke-width="${sw}" stroke-linecap="round" style="stroke:${e.color}!important;" />`);
+            } else {
+              addPath(`pass_${xTo}`, `<line x1="${xTo}" y1="0" x2="${xTo}" y2="46" stroke="${e.color}" stroke-width="${sw}" style="stroke:${e.color}!important;" />`);
+            }
           } else {
-            activeLanes[freeLane] = commit.parent_ids[i];
+            if (r === e.from) {
+              addPath(`down_${xFrom}`, `<line x1="${xFrom}" y1="${cy}" x2="${xFrom}" y2="46" stroke="${e.color}" stroke-width="${sw}" stroke-linecap="round" style="stroke:${e.color}!important;" />`);
+            } else if (r === e.to - 1) {
+              addPath(`curve_in_${xFrom}_${xTo}_${e.color}`, `<path d="M ${xFrom} 0 C ${xFrom} 23, ${xTo} 23, ${xTo} 46" fill="none" stroke="${e.color}" stroke-width="${sw}" stroke-linecap="round" style="stroke:${e.color}!important;fill:none!important;" />`);
+            } else if (r === e.to) {
+              addPath(`up_${xTo}`, `<line x1="${xTo}" y1="0" x2="${xTo}" y2="${cy}" stroke="${e.color}" stroke-width="${sw}" stroke-linecap="round" style="stroke:${e.color}!important;" />`);
+            } else {
+              addPath(`pass_${xFrom}`, `<line x1="${xFrom}" y1="0" x2="${xFrom}" y2="46" stroke="${e.color}" stroke-width="${sw}" style="stroke:${e.color}!important;" />`);
+            }
           }
         }
       }
-    } else {
-      activeLanes[lane] = null;
+    });
+
+    const hasUnresolvedParent = (commit.parent_ids || []).some((pid) => !commitIndexMap.has(pid));
+    if (hasUnresolvedParent) {
+      addPath(`missing_stem_${cx}`, `<line x1="${cx}" y1="${cy}" x2="${cx}" y2="46" stroke="${cColor}" stroke-width="${sw}" stroke-dasharray="3 3" opacity="0.6" stroke-linecap="round" style="stroke:${cColor}!important;" />`);
     }
+
+    const isMerge = (commit.parent_ids || []).length > 1;
+    if (isMerge) {
+      paths.push(`<circle cx="${cx}" cy="${cy}" r="${GRAPH_CONFIG.mergeDotRadius}" fill="${cColor}" stroke="#141416" stroke-width="2.5" style="fill:${cColor}!important;stroke:#141416!important;" />`);
+      paths.push(`<circle cx="${cx}" cy="${cy}" r="2.2" fill="#141416" stroke="#141416" style="fill:#141416!important;stroke:#141416!important;" />`);
+    } else {
+      paths.push(`<circle cx="${cx}" cy="${cy}" r="${GRAPH_CONFIG.dotRadius}" fill="${cColor}" stroke="#141416" stroke-width="2" style="fill:${cColor}!important;stroke:#141416!important;" />`);
+    }
+
+    return paths.join('');
   });
 
-  return { laneMap, laneCount: Math.max(maxLane + 1, 1) };
+  return {
+    laneMap,
+    laneCount,
+    graphWidth,
+    rowSvgs,
+  };
 }
 
 function renderCommits() {
@@ -1925,14 +2160,14 @@ function renderCommits() {
             <circle cx="12" cy="12" r="9"></circle>
             <path d="M12 8v4l3 3"></path>
           </svg>
-          <strong style="font-size: 14px; display: block; margin-bottom: 6px;">No commits in repository</strong>
-          <span style="font-size: 12px; color: var(--text-dim);">This Git repository has no commits yet. Stage files on the left and create your initial commit!</span>
+          <strong style="font-size: 14px; display: block; margin-bottom: 6px;">Depoda henüz commit yok</strong>
+          <span style="font-size: 12px; color: var(--text-dim);">Bu Git deposunda henüz commit bulunmuyor. Soldan dosyaları hazırlayıp ilk commit'inizi oluşturun!</span>
         </div>
       `
       : `
         <div class="empty-state compact">
-          <strong>No results</strong>
-          <span>No commits match the current search or branch filter.</span>
+          <strong>Sonuç bulunamadı</strong>
+          <span>Arama kriterine veya seçili dala uygun commit bulunamadı.</span>
         </div>
       `;
     return;
@@ -1953,9 +2188,9 @@ function renderCommits() {
             <span class="unpushed-msg">${escapeHtml(firstLine(c.message))}</span>
           </div>
           <div class="unpushed-meta">
-            <span>${escapeHtml(c.author_name || 'Unknown')}</span>
+            <span>${escapeHtml(c.author_name || 'Bilinmiyor')}</span>
             <span>&bull; ${formatDate(c.timestamp)}</span>
-            <span class="commit-state-label unpushed-badge">UNPUSHED</span>
+            <span class="commit-state-label unpushed-badge">GÖNDERİLMEDİ</span>
           </div>
         </div>
       `).join('');
@@ -1970,26 +2205,35 @@ function renderCommits() {
 
   const branchLabels = new Map();
   state.branches.forEach((branch) => {
+    if (!branch.commit_id) return;
     if (!branchLabels.has(branch.commit_id)) branchLabels.set(branch.commit_id, []);
     branchLabels.get(branch.commit_id).push(branch);
   });
 
-  const { laneMap, laneCount } = assignLanes(commits);
+  const { laneMap, laneCount, graphWidth, rowSvgs } = buildCommitGraph(commits);
+
+  if (els.commitList) {
+    els.commitList.style.setProperty('--graph-col-width', `${graphWidth}px`);
+  }
+  if (els.commitListHeader) {
+    els.commitListHeader.style.setProperty('--graph-col-width', `${graphWidth}px`);
+  }
 
   els.commitList.innerHTML = commits.map((commit, index) => {
     const lane = laneMap.get(commit.id) || 0;
     const color = getGraphColor(lane);
+    const rowSvg = rowSvgs[index] || '';
     const labels = (branchLabels.get(commit.id) || []).slice(0, 3).map((branch) => (
       `<span class="branch-label ${branch.is_remote ? 'remote' : 'local'}">${escapeHtml(branch.name)}</span>`
     )).join('');
     const selected = state.selectedCommit === commit.id ? 'selected' : '';
     const localOnly = commit.is_unpushed ? 'local-only' : '';
-    const syncLabel = commit.is_unpushed ? '<span class="commit-state-label unpushed-badge">unpushed</span>' : '';
+    const syncLabel = commit.is_unpushed ? '<span class="commit-state-label unpushed-badge">gönderilmedi</span>' : '';
 
     const coauthors = parseCoauthorsFromMessage(commit.message);
-    const coauthorsTitle = coauthors.length > 0 ? ` + Co-authored by: ${coauthors.map(c => c.name).join(', ')}` : '';
+    const coauthorsTitle = coauthors.length > 0 ? ` + Ortak yazar: ${coauthors.map(c => c.name).join(', ')}` : '';
     const avatarHtml = coauthors.length > 0
-      ? `<span class="avatar-stack" title="${escapeHtml(commit.author_name || 'Unknown')}${escapeHtml(coauthorsTitle)}">
+      ? `<span class="avatar-stack" title="${escapeHtml(commit.author_name || 'Bilinmiyor')}${escapeHtml(coauthorsTitle)}">
            ${renderAuthorAvatar(commit)}
            ${coauthors.map(co => renderAuthorAvatar(co, 'mini')).join('')}
          </span>`
@@ -1998,12 +2242,13 @@ function renderCommits() {
     return `
       <div class="commit-row ${selected} ${localOnly}" role="button" tabindex="0" data-commit-id="${commit.id}" style="--row-delay:${Math.min(index * 12, 220)}ms">
         <span class="commit-graph-cell" style="--lane:${lane};--lane-count:${laneCount};--graph-color:${color};">
-          <span class="graph-track" aria-hidden="true"></span>
-          <span class="commit-dot" aria-hidden="true"></span>
+          <svg class="graph-svg" style="width:${graphWidth}px;height:46px;display:block;" width="${graphWidth}" height="46" viewBox="0 0 ${graphWidth} 46" aria-hidden="true">
+            ${rowSvg}
+          </svg>
         </span>
         <span class="commit-message-cell">
           <span class="commit-hash" title="${escapeHtml(commit.id || '')}">${escapeHtml(commit.short_id || (commit.id || '').substring(0, 7))}</span>
-          <button class="btn-edit-commit-pencil" type="button" data-commit-id="${commit.id}" title="Load into commit form">
+          <button class="btn-edit-commit-pencil" type="button" data-commit-id="${commit.id}" title="Commit formuna yükle">
             <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
               <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
@@ -2015,7 +2260,7 @@ function renderCommits() {
         </span>
         <span class="commit-author-cell">
           ${avatarHtml}
-          <span class="author-name" title="${escapeHtml(commit.author_name || 'Unknown')}${escapeHtml(coauthorsTitle)}">${escapeHtml(commit.author_name || 'Unknown')}</span>
+          <span class="author-name" title="${escapeHtml(commit.author_name || 'Bilinmiyor')}${escapeHtml(coauthorsTitle)}">${escapeHtml(commit.author_name || 'Bilinmiyor')}</span>
         </span>
         <span class="commit-date-cell">${formatDate(commit.timestamp)}</span>
       </div>
@@ -2080,7 +2325,7 @@ function loadCommitIntoForm(commitId) {
   els.commitMessageInput.focus();
   els.commitMessageInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
 
-  setStatus(`Loaded commit ${commit.short_id} into commit form.`);
+  setStatus(`${commit.short_id} commit'i düzenleme formuna yüklendi.`);
 }
 
 async function selectCommit(commitId) {
@@ -2088,7 +2333,7 @@ async function selectCommit(commitId) {
   if (!commit) return;
 
   state.selectedCommit = commitId;
-  setStatus(`Reading diff for ${commit.short_id}...`);
+  setStatus(`${commit.short_id} için diff okunuyor...`);
   renderCommits();
 
   els.detailEmpty.style.display = 'none';
@@ -2096,7 +2341,7 @@ async function selectCommit(commitId) {
 
   els.detailAvatar.innerHTML = renderAuthorAvatar(commit, 'large');
   els.detailMessage.textContent = firstLine(commit.message);
-  els.detailAuthor.textContent = `${commit.author_name || 'Unknown'}${commit.author_email ? ` <${commit.author_email}>` : ''}`;
+  els.detailAuthor.textContent = `${commit.author_name || 'Bilinmiyor'}${commit.author_email ? ` <${commit.author_email}>` : ''}`;
   els.detailDate.textContent = formatFullDate(commit.timestamp);
   els.detailHash.textContent = commit.id;
   hydrateAvatarFallbacks(els.detailAvatar);
@@ -2110,10 +2355,10 @@ async function selectCommit(commitId) {
       loadCommitDiff(commitId),
       loadFileTree(commitId),
     ]);
-    setStatus(`${commit.short_id}: ${state.diffData.length} files changed`);
+    setStatus(`${commit.short_id}: ${state.diffData.length} dosya değişti`);
   } catch (err) {
     console.error(err);
-    setStatus('Commit details could not be loaded');
+    setStatus('Commit ayrıntıları yüklenemedi');
   }
 }
 
@@ -2144,7 +2389,7 @@ function getDiffStats(files) {
 function renderDiff() {
   const stats = getDiffStats(state.diffData);
   els.changedSummary.innerHTML = `
-    <span>${stats.files} files</span>
+    <span>${stats.files} dosya</span>
     <span class="positive">+${stats.additions}</span>
     <span class="negative">-${stats.deletions}</span>
   `;
@@ -2153,8 +2398,8 @@ function renderDiff() {
     els.changedFiles.innerHTML = '';
     els.diffContainer.innerHTML = `
       <div class="empty-state compact">
-        <strong>No changes</strong>
-        <span>No diff content was found for this commit.</span>
+        <strong>Değişiklik yok</strong>
+        <span>Bu commit için diff içeriği bulunamadı.</span>
       </div>
     `;
     return;
@@ -2211,7 +2456,7 @@ function renderDiff() {
           <span>${escapeHtml(displayPath)}</span>
           <small>${config.text}</small>
         </div>
-        ${hunks || '<div class="diff-placeholder">File changed, but there are no lines to show.</div>'}
+        ${hunks || '<div class="diff-placeholder">Dosya değişti fakat gösterilecek satır yok.</div>'}
       </section>
     `;
   }).join('');
@@ -2246,7 +2491,7 @@ function renderFileTree() {
 
   els.fileTree.innerHTML = state.fileTree.length
     ? renderNode(state.fileTree)
-    : '<div class="muted-row">File tree is empty</div>';
+    : '<div class="muted-row">Dosya ağacı boş</div>';
 }
 
 function activateDetailTab(tabName) {
@@ -2289,7 +2534,7 @@ function renderCommitDescription(commit) {
       const avatarHtml = renderAuthorAvatar(co, 'large');
 
       const githubLink = co.githubUsername
-        ? `<a class="description-coauthor-github-link" href="https://github.com/${encodeURIComponent(co.githubUsername)}" target="_blank" rel="noopener noreferrer" title="View on GitHub">
+        ? `<a class="description-coauthor-github-link" href="https://github.com/${encodeURIComponent(co.githubUsername)}" target="_blank" rel="noopener noreferrer" title="GitHub'da İncele">
              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path>
              </svg>
@@ -2317,7 +2562,7 @@ function renderCommitDescription(commit) {
             <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
             <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
           </svg>
-          Co-authors
+          Ortak Yazarlar
         </h3>
         <div class="description-coauthors-list">
           ${coauthorCards}
@@ -2328,7 +2573,7 @@ function renderCommitDescription(commit) {
 
   els.commitDescriptionView.innerHTML = `
     <div class="description-header">${escapeHtml(subject)}</div>
-    ${cleanBody ? `<div class="description-body">${escapeHtml(cleanBody)}</div>` : '<div class="description-body italic text-dim">No commit description body.</div>'}
+    ${cleanBody ? `<div class="description-body">${escapeHtml(cleanBody)}</div>` : '<div class="description-body italic text-dim">Commit açıklaması bulunmuyor.</div>'}
     ${coauthorsHtml}
   `;
 
@@ -2589,14 +2834,14 @@ function stopAiLoadingAnimation() {
 async function generateAiCommitMessage() {
   const provider = appSettings.aiProvider || 'ollama';
   if (provider === 'gemini' && !appSettings.geminiApiKey) {
-    alert('Gemini API key is not set. Please add your API key in Settings.');
+    alert('Gemini API anahtarı ayarlanmamış. Lütfen Ayarlar bölümünden API anahtarınızı girin.');
     openSettingsModal();
     return;
   }
 
   const selectedPaths = [...state.selectedWorktreePaths];
   if (selectedPaths.length === 0) {
-    alert('Please select at least one modified file to generate a commit message.');
+    alert('Commit mesajı oluşturmak için lütfen en az bir değiştirilmiş dosya seçin.');
     return;
   }
 
@@ -2619,14 +2864,14 @@ async function generateAiCommitMessage() {
     els.btnAiGenerateCommit.classList.add('is-loading');
     els.btnAiGenerateCommit.innerHTML = `
       <span class="spinner-icon"></span>
-      <span>AI Writing...</span>
+      <span>Yapay Zeka Yazıyor...</span>
       <span class="ai-model-tag">${escapeHtml(displayTag)}</span>
     `;
     if (els.commitBox) {
       els.commitBox.classList.add('is-loading');
     }
     startAiLoadingAnimation(displayTag);
-    setStatus('AI is generating commit message...');
+    setStatus('Yapay zeka commit mesajı oluşturuyor...');
 
     let generatedMessage;
     if (provider === 'gemini') {
@@ -2653,12 +2898,12 @@ async function generateAiCommitMessage() {
     if (generatedMessage) {
       els.commitMessageInput.value = generatedMessage;
       updateCommitAction();
-      setStatus('AI commit message generated!');
+      setStatus('Yapay zeka commit mesajı oluşturuldu!');
     }
   } catch (err) {
     console.error(err);
-    setStatus('Failed to generate AI commit message');
-    alert(`AI Commit Error: ${err}\n\nNote: Ensure ${provider === 'gemini' ? 'your Gemini API key is valid' : `Ollama is running and model (${currentModel}) is pulled`}.`);
+    setStatus('Yapay zeka commit mesajı oluşturulamadı');
+    alert(`Yapay Zeka Commit Hatası: ${err}\n\nNot: ${provider === 'gemini' ? 'Gemini API anahtarınızın geçerli olduğundan' : `Ollama\'nın çalıştığından ve (${currentModel}) modelinin indirildiğinden`} emin olun.`);
   } finally {
     stopAiLoadingAnimation();
     els.btnAiGenerateCommit.disabled = false;
@@ -2667,7 +2912,7 @@ async function generateAiCommitMessage() {
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"></path>
       </svg>
-      <span>AI Write Commit</span>
+      <span>Yapay Zeka ile Commit Yaz</span>
       <span class="ai-model-tag" id="commit-ai-model-tag">${escapeHtml(displayTag)}</span>
     `;
     if (els.commitBox) {
@@ -2678,7 +2923,7 @@ async function generateAiCommitMessage() {
 
 async function openSettingsModal() {
   try {
-    setStatus('Loading settings...');
+    setStatus('Ayarlar yükleniyor...');
 
     let gitSettings = null;
     try {
@@ -2719,7 +2964,7 @@ async function openSettingsModal() {
       fetchGeminiModels();
     }
 
-    els.settingGpgKey.innerHTML = '<option value="none">None / Git Default</option>';
+    els.settingGpgKey.innerHTML = '<option value="none">Yok / Git Varsayılanı</option>';
     if (gitSettings && gitSettings.gpg_keys.length > 0) {
       gitSettings.gpg_keys.forEach((key) => {
         const sel = (appSettings.gpgKey === key.key_id || key.is_default) ? 'selected' : '';
@@ -2735,10 +2980,10 @@ async function openSettingsModal() {
     await loadSmtpSettings();
 
     els.settingsModal.removeAttribute('hidden');
-    setStatus('Settings opened');
+    setStatus('Ayarlar açıldı');
   } catch (err) {
     console.error('Error opening settings:', err);
-    alert(`Error loading settings: ${err}`);
+    alert(`Ayarlar yüklenirken hata oluştu: ${err}`);
   }
 }
 
@@ -2761,10 +3006,10 @@ async function checkLmStudioStatus() {
 
     if (specStatus) {
       if (res.running) {
-        specStatus.textContent = `Server Running (${res.models.length} model(s) loaded)`;
+        specStatus.textContent = `Sunucu Çalışıyor (${res.models.length} model yüklü)`;
         specStatus.style.color = '#3fb950';
       } else {
-        specStatus.textContent = 'Server Not Running (127.0.0.1:1234)';
+        specStatus.textContent = 'Sunucu Çalışmıyor (127.0.0.1:1234)';
         specStatus.style.color = '#ff7b72';
       }
     }
@@ -2778,14 +3023,14 @@ async function checkLmStudioStatus() {
           selectLmStudio.innerHTML += `<option value="${escapeHtml(m)}" ${isSel}>${escapeHtml(m)}</option>`;
         });
       } else {
-        selectLmStudio.innerHTML = `<option value="">${res.running ? 'No model loaded in LM Studio' : 'LM Studio Server Off'}</option>`;
+        selectLmStudio.innerHTML = `<option value="">${res.running ? 'LM Studio\'da yüklü model yok' : 'LM Studio Sunucusu Kapalı'}</option>`;
       }
     }
     updateAiModelSelectOptions();
     return res;
   } catch (err) {
     if (specStatus) {
-      specStatus.textContent = 'Error checking LM Studio status';
+      specStatus.textContent = 'LM Studio durumu kontrol edilirken hata oluştu';
       specStatus.style.color = '#ff7b72';
     }
     return { running: false, models: [] };
@@ -2800,7 +3045,7 @@ function updateAiModelSelectOptions() {
   let html = '';
 
   // 1. Ollama (Local)
-  html += '<optgroup label="Ollama (Local)">';
+  html += '<optgroup label="Ollama (Yerel)">';
   const ollamaModels = currentSystemInfo?.installed_models || ['gemma4:12b', 'gemma2:9b', 'gemma:2b'];
   const curOllama = appSettings.selectedModel || 'gemma4:12b';
   ollamaModels.forEach((m) => {
@@ -2809,7 +3054,7 @@ function updateAiModelSelectOptions() {
   html += '</optgroup>';
 
   // 2. Gemini (Cloud)
-  html += '<optgroup label="Gemini (Cloud)">';
+  html += '<optgroup label="Gemini (Bulut)">';
   const geminiList = (state.geminiModels && state.geminiModels.length > 0)
     ? state.geminiModels
     : ['gemini-2.5-flash', 'gemini-2.5-pro', 'gemini-1.5-flash', 'gemini-1.5-pro'];
@@ -2822,7 +3067,7 @@ function updateAiModelSelectOptions() {
   html += '</optgroup>';
 
   // 3. LM Studio (Local)
-  html += '<optgroup label="LM Studio (Local)">';
+  html += '<optgroup label="LM Studio (Yerel)">';
   const lmList = (state.lmStudioModels && state.lmStudioModels.length > 0)
     ? state.lmStudioModels
     : ['local-model'];
@@ -2859,7 +3104,7 @@ async function fetchGeminiModels() {
 
   if (!apiKey) {
     if (statusEl) {
-      statusEl.textContent = 'Enter an API key first.';
+      statusEl.textContent = 'Önce bir API anahtarı girin.';
       statusEl.className = 'gemini-model-status error';
     }
     return;
@@ -2867,21 +3112,21 @@ async function fetchGeminiModels() {
 
   const savedModel = appSettings.geminiModel || '';
   if (statusEl) {
-    statusEl.textContent = 'Fetching models...';
+    statusEl.textContent = 'Modeller getiriliyor...';
     statusEl.className = 'gemini-model-status';
   }
 
   try {
     if (els.btnFetchGeminiModels) {
       els.btnFetchGeminiModels.disabled = true;
-      els.btnFetchGeminiModels.textContent = 'Loading...';
+      els.btnFetchGeminiModels.textContent = 'Yükleniyor...';
     }
 
     const models = await invoke('list_gemini_models', { apiKey });
 
     if (!models || models.length === 0) {
       if (statusEl) {
-        statusEl.textContent = 'No generateContent models found for this key.';
+        statusEl.textContent = 'Bu anahtar için generateContent modelleri bulunamadı.';
         statusEl.className = 'gemini-model-status error';
       }
       return;
@@ -2904,7 +3149,7 @@ async function fetchGeminiModels() {
     }
 
     if (statusEl) {
-      statusEl.textContent = `${models.length} model(s) loaded.`;
+      statusEl.textContent = `${models.length} model yüklendi.`;
       statusEl.className = 'gemini-model-status ok';
     }
 
@@ -2912,13 +3157,13 @@ async function fetchGeminiModels() {
   } catch (err) {
     console.error('fetchGeminiModels error:', err);
     if (statusEl) {
-      statusEl.textContent = `Error: ${err}`;
+      statusEl.textContent = `Hata: ${err}`;
       statusEl.className = 'gemini-model-status error';
     }
   } finally {
     if (els.btnFetchGeminiModels) {
       els.btnFetchGeminiModels.disabled = false;
-      els.btnFetchGeminiModels.textContent = 'Refresh';
+      els.btnFetchGeminiModels.textContent = 'Yenile';
     }
   }
 }
@@ -2978,16 +3223,16 @@ function updateCommitOptionDropdowns(gitSettings) {
   
   if (appSettings.gitName && appSettings.gitEmail) {
     const customVal = `${appSettings.gitName} <${appSettings.gitEmail}>`;
-    identityHtml += `<option value="${escapeHtml(customVal)}">${escapeHtml(appSettings.gitName)} &lt;${escapeHtml(appSettings.gitEmail)}&gt; (Configured)</option>`;
+    identityHtml += `<option value="${escapeHtml(customVal)}">${escapeHtml(appSettings.gitName)} &lt;${escapeHtml(appSettings.gitEmail)}&gt; (Yapılandırılmış)</option>`;
   }
   
   if (gitSettings && gitSettings.current_name && gitSettings.current_email) {
     const currVal = `${gitSettings.current_name} <${gitSettings.current_email}>`;
     if (!identityHtml.includes(escapeHtml(currVal))) {
-      identityHtml += `<option value="${escapeHtml(currVal)}" selected>${escapeHtml(gitSettings.current_name)} &lt;${escapeHtml(gitSettings.current_email)}&gt; (Git Default)</option>`;
+      identityHtml += `<option value="${escapeHtml(currVal)}" selected>${escapeHtml(gitSettings.current_name)} &lt;${escapeHtml(gitSettings.current_email)}&gt; (Git Varsayılanı)</option>`;
     }
   } else if (!identityHtml) {
-    identityHtml += `<option value="">Default Identity</option>`;
+    identityHtml += `<option value="">Varsayılan Kimlik</option>`;
   }
 
   if (gitSettings && gitSettings.identities && gitSettings.identities.length > 0) {
@@ -2999,22 +3244,22 @@ function updateCommitOptionDropdowns(gitSettings) {
     });
   }
   
-  identityHtml += `<option value="__manage__">+ Manage in Settings...</option>`;
+  identityHtml += `<option value="__manage__">+ Ayarlar'dan Yönet...</option>`;
   els.commitIdentitySelect.innerHTML = identityHtml;
 
   let gpgHtml = `
-    <option value="none" ${!gitSettings?.gpg_sign_enabled ? 'selected' : ''}>No Signing (--no-gpg-sign)</option>
-    <option value="default" ${gitSettings?.gpg_sign_enabled ? 'selected' : ''}>Default Key (-S)</option>
+    <option value="none" ${!gitSettings?.gpg_sign_enabled ? 'selected' : ''}>İmzalama Yok (--no-gpg-sign)</option>
+    <option value="default" ${gitSettings?.gpg_sign_enabled ? 'selected' : ''}>Varsayılan Anahtar (-S)</option>
   `;
 
   if (gitSettings && gitSettings.gpg_keys && gitSettings.gpg_keys.length > 0) {
     gitSettings.gpg_keys.forEach((key) => {
       const sel = (appSettings.gpgKey === key.key_id || key.is_default) ? 'selected' : '';
-      gpgHtml += `<option value="${escapeHtml(key.key_id)}" ${sel}>Key: ${escapeHtml(key.key_id)} (${escapeHtml(key.uid)})</option>`;
+      gpgHtml += `<option value="${escapeHtml(key.key_id)}" ${sel}>Anahtar: ${escapeHtml(key.key_id)} (${escapeHtml(key.uid)})</option>`;
     });
   }
 
-  gpgHtml += `<option value="__manage__">+ Manage Keys in Settings...</option>`;
+  gpgHtml += `<option value="__manage__">+ Ayarlar'da Anahtarları Yönet...</option>`;
   els.commitGpgSelect.innerHTML = gpgHtml;
 }
 
@@ -3026,20 +3271,20 @@ function renderSystemInfo(sys) {
   els.specGpu.textContent = `${sys.gpu_name} (${sys.vram_gb} GB VRAM)`;
 
   if (sys.ollama_installed && sys.ollama_running) {
-    els.specOllamaStatus.textContent = 'Installed & Running';
+    els.specOllamaStatus.textContent = 'Kurulu ve Çalışıyor';
     els.specOllamaStatus.style.color = '#3fb950';
     els.ollamaInstallBox.style.display = 'none';
   } else if (sys.ollama_installed) {
-    els.specOllamaStatus.textContent = 'Installed (Service Offline)';
+    els.specOllamaStatus.textContent = 'Kurulu (Servis Kapalı)';
     els.specOllamaStatus.style.color = '#d29922';
     els.ollamaInstallBox.style.display = 'none';
   } else {
-    els.specOllamaStatus.textContent = 'Not Installed';
+    els.specOllamaStatus.textContent = 'Kurulu Değil';
     els.specOllamaStatus.style.color = '#f85149';
     els.ollamaInstallBox.style.display = 'flex';
   }
 
-  els.recommendedModelTitle.textContent = `${sys.recommended_model} (Top Recommended)`;
+  els.recommendedModelTitle.textContent = `${sys.recommended_model} (En Çok Önerilen)`;
   const currentSel = appSettings.selectedModel || sys.recommended_model || 'gemma4:12b';
   if (els.commitAiModelTag) els.commitAiModelTag.textContent = currentSel;
 
@@ -3048,21 +3293,21 @@ function renderSystemInfo(sys) {
     const installedList = sys.installed_models || [];
 
     if (installedList.length > 0) {
-      html += '<optgroup label="Installed Local Models">';
+      html += '<optgroup label="Yüklü Yerel Modeller">';
       installedList.forEach((m) => {
         const isSel = m === currentSel ? 'selected' : '';
-        html += `<option value="${escapeHtml(m)}" ${isSel}>${escapeHtml(m)} (Installed)</option>`;
+        html += `<option value="${escapeHtml(m)}" ${isSel}>${escapeHtml(m)} (Yüklü)</option>`;
       });
       html += '</optgroup>';
     }
 
     const defaultModels = ['gemma4:12b', 'gemma2:9b', 'gemma2:27b', 'gemma:7b', 'gemma:2b'];
-    html += '<optgroup label="Available Models to Pull">';
+    html += '<optgroup label="İndirilebilir Modeller">';
     defaultModels.forEach((m) => {
       const isInst = installedList.some((inst) => inst.includes(m));
       if (!isInst) {
         const isSel = m === currentSel ? 'selected' : '';
-        const rec = m === sys.recommended_model ? ' - Top Recommended' : '';
+        const rec = m === sys.recommended_model ? ' - En Çok Önerilen' : '';
         html += `<option value="${escapeHtml(m)}" ${isSel}>${escapeHtml(m)}${rec}</option>`;
       }
     });
@@ -3081,13 +3326,13 @@ function updateModelPullStatus(sys, selectedModel) {
 
   const isPulled = sys?.installed_models?.some((m) => m.includes(selectedModel));
   if (isPulled) {
-    els.modelStatusText.textContent = `Status: Model (${selectedModel}) Ready`;
+    els.modelStatusText.textContent = `Durum: Model (${selectedModel}) Hazır`;
     els.btnPullModel.disabled = true;
-    els.btnPullModel.textContent = 'Ready';
+    els.btnPullModel.textContent = 'Hazır';
   } else {
-    els.modelStatusText.textContent = `Status: Model (${selectedModel}) is not pulled yet`;
+    els.modelStatusText.textContent = `Durum: Model (${selectedModel}) henüz indirilmedi`;
     els.btnPullModel.disabled = false;
-    els.btnPullModel.textContent = `Pull Model (${selectedModel})`;
+    els.btnPullModel.textContent = `Modeli İndir (${selectedModel})`;
   }
 }
 
@@ -3167,30 +3412,30 @@ async function saveSettings() {
     }
 
     closeSettingsModal();
-    setStatus('Settings saved successfully');
+    setStatus('Ayarlar başarıyla kaydedildi');
   } catch (err) {
     console.error('Error saving settings:', err);
-    alert(`Error saving settings: ${err}`);
+    alert(`Ayarlar kaydedilirken hata oluştu: ${err}`);
   }
 }
 
 async function installOllama() {
   try {
     els.btnInstallOllama.disabled = true;
-    els.btnInstallOllama.textContent = 'Installing...';
-    setStatus('Installing Ollama automatically...');
+    els.btnInstallOllama.textContent = 'Kuruluyor...';
+    setStatus('Ollama otomatik olarak kuruluyor...');
 
     const res = await invoke('install_ollama');
-    alert(`Ollama Installation Result: ${res}`);
+    alert(`Ollama Kurulum Sonucu: ${res}`);
 
     currentSystemInfo = await invoke('get_system_info');
     renderSystemInfo(currentSystemInfo);
   } catch (err) {
     console.error(err);
-    alert(`Ollama Installation Error: ${err}`);
+    alert(`Ollama Kurulum Hatası: ${err}`);
   } finally {
     els.btnInstallOllama.disabled = false;
-    els.btnInstallOllama.textContent = 'Auto-Install Ollama';
+    els.btnInstallOllama.textContent = 'Ollama\'yı Otomatik Kur';
   }
 }
 
@@ -3198,20 +3443,20 @@ async function pullModel() {
   const model = appSettings.selectedModel || 'gemma4:12b';
   try {
     els.btnPullModel.disabled = true;
-    els.btnPullModel.textContent = 'Downloading...';
-    setStatus(`Downloading model (${model})... This may take a few minutes.`);
+    els.btnPullModel.textContent = 'İndiriliyor...';
+    setStatus(`Model (${model}) indiriliyor... Bu işlem birkaç dakika sürebilir.`);
 
     const res = await invoke('pull_ollama_model', { modelName: model });
-    alert(`Model Pull Result: ${res}`);
+    alert(`Model İndirme Sonucu: ${res}`);
 
     currentSystemInfo = await invoke('get_system_info');
     renderSystemInfo(currentSystemInfo);
   } catch (err) {
     console.error(err);
-    alert(`Model Pull Error: ${err}`);
+    alert(`Model İndirme Hatası: ${err}`);
   } finally {
     els.btnPullModel.disabled = false;
-    els.btnPullModel.textContent = 'Pull / Download Model';
+    els.btnPullModel.textContent = 'Modeli İndir (Pull)';
   }
 }
 
@@ -3224,10 +3469,10 @@ function initDetailToggle() {
     if (toggleBtn) {
       if (isHidden) {
         toggleBtn.classList.add('is-closed');
-        toggleBtn.title = 'Commit Detail Panelini Aç';
+        toggleBtn.title = 'Commit Detay Panelini Aç';
       } else {
         toggleBtn.classList.remove('is-closed');
-        toggleBtn.title = 'Commit Detail Panelini Kapat';
+        toggleBtn.title = 'Commit Detay Panelini Kapat';
       }
     }
   }
@@ -3332,7 +3577,7 @@ function initEventHandlers() {
       if (provider === 'lmstudio') appSettings.lmStudioModel = modelName;
 
       saveAppSettings(appSettings);
-      setStatus(`Default AI model set to ${provider.toUpperCase()}: ${modelName}`);
+      setStatus(`Varsayılan yapay zeka modeli ${provider.toUpperCase()}: ${modelName} olarak ayarlandı`);
     });
   }
 
@@ -3343,8 +3588,8 @@ function initEventHandlers() {
       appSettings.selectedModel = els.settingAiModel?.value || 'gemma4:12b';
       saveAppSettings(appSettings);
       updateAiModelSelectOptions();
-      setStatus(`Ollama (${appSettings.selectedModel}) set as default AI model`);
-      alert(`Ollama (${appSettings.selectedModel}) saved as default AI model.`);
+      setStatus(`Ollama (${appSettings.selectedModel}) varsayılan yapay zeka modeli olarak ayarlandı`);
+      alert(`Ollama (${appSettings.selectedModel}) varsayılan yapay zeka modeli olarak kaydedildi.`);
     });
   }
 
@@ -3356,8 +3601,8 @@ function initEventHandlers() {
       appSettings.geminiModel = m;
       saveAppSettings(appSettings);
       updateAiModelSelectOptions();
-      setStatus(`Gemini (${m}) set as default AI model`);
-      alert(`Gemini (${m}) saved as default AI model.`);
+      setStatus(`Gemini (${m}) varsayılan yapay zeka modeli olarak ayarlandı`);
+      alert(`Gemini (${m}) varsayılan yapay zeka modeli olarak kaydedildi.`);
     });
   }
 
@@ -3369,8 +3614,8 @@ function initEventHandlers() {
       appSettings.lmStudioModel = m;
       saveAppSettings(appSettings);
       updateAiModelSelectOptions();
-      setStatus(`LM Studio (${m}) set as default AI model`);
-      alert(`LM Studio (${m}) saved as default AI model.`);
+      setStatus(`LM Studio (${m}) varsayılan yapay zeka modeli olarak ayarlandı`);
+      alert(`LM Studio (${m}) varsayılan yapay zeka modeli olarak kaydedildi.`);
     });
   }
 
@@ -3413,15 +3658,15 @@ function initEventHandlers() {
     btnToggleKey.addEventListener('click', () => {
       const isPassword = geminiKeyInput.type === 'password';
       geminiKeyInput.type = isPassword ? 'text' : 'password';
-      btnToggleKey.textContent = isPassword ? 'Hide' : 'Show';
+      btnToggleKey.textContent = isPassword ? 'Gizle' : 'Göster';
     });
   }
   if (btnCopyKey && geminiKeyInput) {
     btnCopyKey.addEventListener('click', () => {
       if (geminiKeyInput.value) {
         navigator.clipboard.writeText(geminiKeyInput.value);
-        btnCopyKey.textContent = 'Copied!';
-        setTimeout(() => { btnCopyKey.textContent = 'Copy'; }, 1500);
+        btnCopyKey.textContent = 'Kopyalandı!';
+        setTimeout(() => { btnCopyKey.textContent = 'Kopyala'; }, 1500);
       }
     });
   }
@@ -3436,12 +3681,12 @@ function initEventHandlers() {
 
   els.btnRefreshStatus.addEventListener('click', async () => {
     try {
-      setStatus('Refreshing status...');
+      setStatus('Durum yenileniyor...');
       await Promise.all([loadWorktreeStatus(), loadSyncStatus()]);
-      setStatus('Status refreshed');
+      setStatus('Durum yenilendi');
     } catch (err) {
       console.error(err);
-      setStatus('Status could not be refreshed');
+      setStatus('Durum yenilenemedi');
     }
   });
   els.btnCommitSelected?.addEventListener('click', commitSelectedChanges);
@@ -3515,7 +3760,7 @@ function initEventHandlers() {
   els.btnCloseConflict?.addEventListener('click', () => {
     // Closing leaves the repo mid-merge; offer to abort so it is not stuck.
     if (state.activeConflict?.op
-        && confirm(`Close without resolving? The ${state.activeConflict.op} will stay in progress.\n\nAbort the ${state.activeConflict.op} instead?`)) {
+        && confirm(`Çözmeden kapatılsın mı? ${state.activeConflict.op} işlemi devam edecek.\n\nİşlemi (${state.activeConflict.op}) iptal etmek ister misiniz?`)) {
       abortConflictOp();
     } else {
       closeConflictModal();
@@ -3673,6 +3918,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   updateAiModelSelectOptions();
   renderRecentRepos();
 
+  const recent = readRecentRepos();
+  if (recent.length > 0) {
+    openRepo(recent[0]);
+  }
+
   // Auto-fetch Gemini models if Gemini API key exists
   if (appSettings.geminiApiKey) {
     fetchGeminiModels();
@@ -3688,11 +3938,11 @@ function formatRelativeDate(isoStr) {
   const d = new Date(isoStr);
   const now = new Date();
   const diff = Math.floor((now - d) / 1000);
-  if (diff < 60) return 'just now';
-  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
-  if (diff < 86400 * 30) return `${Math.floor(diff / 86400)}d ago`;
-  return d.toLocaleDateString();
+  if (diff < 60) return 'az önce';
+  if (diff < 3600) return `${Math.floor(diff / 60)} dk önce`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)} sa önce`;
+  if (diff < 86400 * 30) return `${Math.floor(diff / 86400)} gün önce`;
+  return d.toLocaleDateString('tr-TR');
 }
 
 async function checkGhAuth() {
@@ -3755,7 +4005,7 @@ async function loadGhIssues(filter = null) {
     btn.classList.toggle('active', btn.dataset.filter === f);
   });
 
-  els.issuesList.innerHTML = '<div class="gh-empty-state"><div class="action-log-loading"><div class="spinner"></div><span>Loading issues...</span></div></div>';
+  els.issuesList.innerHTML = '<div class="gh-empty-state"><div class="action-log-loading"><div class="spinner"></div><span>Sorunlar yükleniyor...</span></div></div>';
 
   if (!state.ghAuthenticated) {
     const authed = await checkGhAuth();
@@ -3766,7 +4016,7 @@ async function loadGhIssues(filter = null) {
   }
 
   try {
-    setStatus('Loading GitHub Issues...');
+    setStatus('GitHub Sorunları yükleniyor...');
     const issues = await invoke('get_github_issues', { filter: f, limit: 50 });
     state.ghIssues = issues;
     renderIssues(issues);
@@ -3776,10 +4026,10 @@ async function loadGhIssues(filter = null) {
       els.ghIssuesCount.textContent = openCount;
       els.ghIssuesCount.style.display = 'inline-flex';
     }
-    setStatus(`${issues.length} issue(s) loaded`);
+    setStatus(`${issues.length} sorun yüklendi`);
   } catch (err) {
-    els.issuesList.innerHTML = `<div class="gh-not-auth"><p>Failed to load issues: ${escapeHtml(String(err))}</p></div>`;
-    setStatus('Issues could not be loaded');
+    els.issuesList.innerHTML = `<div class="gh-not-auth"><p>Sorunlar yüklenemedi: ${escapeHtml(String(err))}</p></div>`;
+    setStatus('Sorunlar yüklenemedi');
   }
 }
 
@@ -3788,8 +4038,8 @@ function renderIssues(issues) {
     els.issuesList.innerHTML = `
       <div class="gh-empty-state">
         <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="7"></circle><path d="M12 8v4"></path><circle cx="12" cy="16" r="0.5" fill="currentColor"></circle></svg>
-        <strong>No issues found</strong>
-        <span>Try a different filter or check back later.</span>
+        <strong>Sorun bulunamadı</strong>
+        <span>Farklı bir filtre deneyin veya daha sonra tekrar kontrol edin.</span>
       </div>`;
     return;
   }
@@ -3806,7 +4056,7 @@ function renderIssues(issues) {
           ${labels ? `<div class="gh-item-labels">${labels}</div>` : ''}
         </div>
         <div class="gh-item-meta">
-          <span>by @${escapeHtml(issue.author)}</span>
+          <span>@${escapeHtml(issue.author)}</span>
           <span>${formatRelativeDate(issue.updatedAt || issue.updated_at)}</span>
           ${issue.comments > 0 ? `<span>💬 ${issue.comments}</span>` : ''}
           ${issue.body ? `<span style="max-width:400px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(issue.body)}</span>` : ''}
@@ -3814,7 +4064,7 @@ function renderIssues(issues) {
         <div class="gh-item-actions">
           <button class="gh-view-btn" type="button" data-url="${escapeHtml(issue.url)}">
             <svg viewBox="0 0 24 24" width="12" height="12"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
-            Open
+            Aç
           </button>
         </div>
       </div>`;
@@ -3835,7 +4085,7 @@ async function loadGhPrs(filter = null) {
     btn.classList.toggle('active', btn.dataset.filter === f);
   });
 
-  els.prsList.innerHTML = '<div class="gh-empty-state"><div class="action-log-loading"><div class="spinner"></div><span>Loading pull requests...</span></div></div>';
+  els.prsList.innerHTML = '<div class="gh-empty-state"><div class="action-log-loading"><div class="spinner"></div><span>Pull Request\'ler yükleniyor...</span></div></div>';
 
   if (!state.ghAuthenticated) {
     const authed = await checkGhAuth();
@@ -3846,7 +4096,7 @@ async function loadGhPrs(filter = null) {
   }
 
   try {
-    setStatus('Loading GitHub PRs...');
+    setStatus('GitHub PR\'ları yükleniyor...');
     const prs = await invoke('get_github_prs', { filter: f, limit: 50 });
     state.ghPrs = prs;
     renderPrs(prs);
@@ -3855,10 +4105,10 @@ async function loadGhPrs(filter = null) {
       els.ghPrsCount.textContent = openCount;
       els.ghPrsCount.style.display = 'inline-flex';
     }
-    setStatus(`${prs.length} PR(s) loaded`);
+    setStatus(`${prs.length} PR yüklendi`);
   } catch (err) {
-    els.prsList.innerHTML = `<div class="gh-not-auth"><p>Failed to load PRs: ${escapeHtml(String(err))}</p></div>`;
-    setStatus('PRs could not be loaded');
+    els.prsList.innerHTML = `<div class="gh-not-auth"><p>PR'lar yüklenemedi: ${escapeHtml(String(err))}</p></div>`;
+    setStatus('PR\'lar yüklenemedi');
   }
 }
 
@@ -3867,8 +4117,8 @@ function renderPrs(prs) {
     els.prsList.innerHTML = `
       <div class="gh-empty-state">
         <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="6" r="3"></circle><path d="M6 15V6"></path><path d="M18 9a9 9 0 0 1-9 9"></path></svg>
-        <strong>No pull requests found</strong>
-        <span>Try a different filter.</span>
+        <strong>Pull Request bulunamadı</strong>
+        <span>Farklı bir filtre deneyin.</span>
       </div>`;
     return;
   }
@@ -3888,28 +4138,28 @@ function renderPrs(prs) {
           <span class="gh-status-dot ${stateClass}"></span>
           <span class="gh-item-number">#${pr.number}</span>
           <span class="gh-item-title" title="${escapeHtml(pr.title)}">${escapeHtml(pr.title)}</span>
-          ${pr.isDraft || pr.is_draft ? '<span class="gh-label">Draft</span>' : ''}
+          ${pr.isDraft || pr.is_draft ? '<span class="gh-label">Taslak</span>' : ''}
           ${labels ? `<div class="gh-item-labels">${labels}</div>` : ''}
         </div>
         <div class="gh-item-meta">
-          <span>by @${escapeHtml(pr.author)}</span>
+          <span>@${escapeHtml(pr.author)}</span>
           ${branchFlow}
           <span>${formatRelativeDate(pr.updatedAt || pr.updated_at)}</span>
-          ${pr.reviews > 0 ? `<span>🔍 ${pr.reviews} review${pr.reviews !== 1 ? 's' : ''}</span>` : ''}
+          ${pr.reviews > 0 ? `<span>🔍 ${pr.reviews} inceleme</span>` : ''}
         </div>
         <div class="gh-item-actions">
           <button class="gh-log-btn gh-pr-detail-btn" type="button" data-pr-number="${pr.number}">
             <svg viewBox="0 0 24 24" width="12" height="12"><path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7z"></path><polyline points="14 2 14 7 19 7"></polyline></svg>
-            View Diff & Commits
+            Diff & Commit'leri İncele
           </button>
           ${isOpen ? `
           <button class="gh-view-btn gh-pr-quick-merge-btn" type="button" data-pr-number="${pr.number}" style="border-color:rgba(46,160,67,0.4);color:#3fb950;background:rgba(46,160,67,0.1);">
             <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="6" r="3"></circle><path d="M6 15V6"></path><path d="M18 9a9 9 0 0 1-9 9"></path></svg>
-            Merge
+            Birleştir
           </button>` : ''}
           <button class="gh-view-btn" type="button" data-url="${escapeHtml(pr.url)}">
             <svg viewBox="0 0 24 24" width="12" height="12"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
-            Open
+            Aç
           </button>
         </div>
       </div>`;
@@ -3940,7 +4190,7 @@ function renderPrs(prs) {
 }
 
 async function loadGhActions() {
-  els.actionsList.innerHTML = '<div class="gh-empty-state"><div class="action-log-loading"><div class="spinner"></div><span>Loading Actions...</span></div></div>';
+  els.actionsList.innerHTML = '<div class="gh-empty-state"><div class="action-log-loading"><div class="spinner"></div><span>İşlemler yükleniyor...</span></div></div>';
 
   if (!state.ghAuthenticated) {
     const authed = await checkGhAuth();
@@ -3951,7 +4201,7 @@ async function loadGhActions() {
   }
 
   try {
-    setStatus('Loading GitHub Actions...');
+    setStatus('GitHub İşlemleri (Actions) yükleniyor...');
     const actions = await invoke('get_github_actions', { limit: 30 });
     state.ghActions = actions;
     renderActions(actions);
@@ -3959,10 +4209,10 @@ async function loadGhActions() {
       els.ghActionsCount.textContent = actions.length;
       els.ghActionsCount.style.display = 'inline-flex';
     }
-    setStatus(`${actions.length} action run(s) loaded`);
+    setStatus(`${actions.length} işlem çalıştırması yüklendi`);
   } catch (err) {
-    els.actionsList.innerHTML = `<div class="gh-not-auth"><p>Failed to load Actions: ${escapeHtml(String(err))}</p></div>`;
-    setStatus('Actions could not be loaded');
+    els.actionsList.innerHTML = `<div class="gh-not-auth"><p>İşlemler yüklenemedi: ${escapeHtml(String(err))}</p></div>`;
+    setStatus('İşlemler yüklenemedi');
   }
 }
 
@@ -3975,13 +4225,13 @@ function getActionStatusClass(action) {
 }
 
 function getActionConclusion(action) {
-  if (action.status === 'in_progress') return 'Running';
-  if (action.status === 'queued') return 'Queued';
+  if (action.status === 'in_progress') return 'Çalışıyor';
+  if (action.status === 'queued') return 'Sırada';
   const c = (action.conclusion || '').toLowerCase();
-  if (c === 'success') return 'Success';
-  if (c === 'failure') return 'Failed';
-  if (c === 'cancelled') return 'Cancelled';
-  if (c === 'skipped') return 'Skipped';
+  if (c === 'success') return 'Başarılı';
+  if (c === 'failure') return 'Başarısız';
+  if (c === 'cancelled') return 'İptal Edildi';
+  if (c === 'skipped') return 'Atlandı';
   return c || action.status || '';
 }
 
@@ -3990,8 +4240,8 @@ function renderActions(actions) {
     els.actionsList.innerHTML = `
       <div class="gh-empty-state">
         <svg viewBox="0 0 24 24" aria-hidden="true"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
-        <strong>No action runs found</strong>
-        <span>No workflow runs for this repository.</span>
+        <strong>İşlem çalıştırması bulunamadı</strong>
+        <span>Bu depo için herhangi bir iş akışı çalıştırması yok.</span>
       </div>`;
     return;
   }
@@ -4017,7 +4267,7 @@ function renderActions(actions) {
         <div class="gh-item-actions">
           <button class="gh-log-btn" type="button" data-run-id="${action.id}" data-run-name="${escapeHtml(action.name)}" data-run-status="${escapeHtml(conclusionLabel)}">
             <svg viewBox="0 0 24 24" width="12" height="12"><polyline points="4 17 10 11 4 5"></polyline><line x1="12" y1="19" x2="20" y2="19"></line></svg>
-            View Log
+            Günlüğü İncele
           </button>
           <button class="gh-view-btn" type="button" data-url="${escapeHtml(action.url)}">
             <svg viewBox="0 0 24 24" width="12" height="12"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
@@ -4059,7 +4309,7 @@ async function openActionLog(runId, runName, runStatus) {
     els.actionLogLoading.style.display = 'none';
     els.actionLogPre.style.display = 'block';
   } catch (err) {
-    els.actionLogPre.textContent = `Error loading log:\n${err}`;
+    els.actionLogPre.textContent = `Çalıştırma günlüğü yüklenirken hata oluştu:\n${err}`;
     els.actionLogLoading.style.display = 'none';
     els.actionLogPre.style.display = 'block';
   }
@@ -4074,9 +4324,9 @@ function renderGhNotAuth(container) {
   container.innerHTML = `
     <div class="gh-not-auth">
       <svg viewBox="0 0 24 24" width="40" height="40" opacity="0.4"><path d="M12 1C6.477 1 2 5.477 2 11c0 4.418 2.865 8.166 6.839 9.489.5.092.682-.217.682-.482 0-.237-.009-.868-.014-1.703-2.782.605-3.369-1.342-3.369-1.342-.454-1.155-1.11-1.462-1.11-1.462-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0 1 12 6.844a9.59 9.59 0 0 1 2.504.337c1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0 0 22 11C22 5.477 17.523 1 12 1z"></path></svg>
-      <strong>GitHub CLI not authenticated</strong>
-      <p>Run <code>gh auth login</code> in your terminal to connect to GitHub.</p>
-      <p style="font-size:11px;">Issues, Pull Requests and Actions require the <strong>gh</strong> CLI.</p>
+      <strong>GitHub CLI ile kimlik doğrulanmadı</strong>
+      <p>GitHub'a bağlanmak için terminalde <code>gh auth login</code> komutunu çalıştırın.</p>
+      <p style="font-size:11px;">Sorunlar, Pull Request'ler ve İşlemler <strong>gh</strong> CLI gerektirir.</p>
     </div>`;
 }
 
@@ -4142,7 +4392,7 @@ async function checkAndRenderInstalledEditors() {
       };
 
       return `
-        <button class="editor-btn icon-only ${cfg.className}" type="button" data-editor-id="${escapeHtml(editor.id)}" title="Open in ${escapeHtml(editor.name)}" aria-label="Open in ${escapeHtml(editor.name)}">
+        <button class="editor-btn icon-only ${cfg.className}" type="button" data-editor-id="${escapeHtml(editor.id)}" title="${escapeHtml(editor.name)} içinde aç" aria-label="${escapeHtml(editor.name)} içinde aç">
           ${cfg.icon}
         </button>
       `;
@@ -4152,12 +4402,12 @@ async function checkAndRenderInstalledEditors() {
       btn.addEventListener('click', async () => {
         const id = btn.dataset.editorId;
         try {
-          setStatus(`Opening in ${id}...`);
+          setStatus(`${id} ile açılıyor...`);
           await invoke('open_in_editor', { editorId: id });
-          setStatus(`Opened repository in ${id}`);
+          setStatus(`Depo ${id} ile açıldı`);
         } catch (err) {
-          setStatus(`Failed to open editor: ${err}`);
-          alert(`Error launching ${id}: ${err}`);
+          setStatus(`Düzenleyici açılamadı: ${err}`);
+          alert(`${id} başlatılırken hata: ${err}`);
         }
       });
     });
@@ -4224,7 +4474,7 @@ async function saveTopRemote() {
   const url = (els.topRemoteUrlInput?.value || '').trim();
 
   if (!url) {
-    alert('Please enter a valid remote URL.');
+    alert('Lütfen geçerli bir uzak depo URL\'si girin.');
     els.topRemoteUrlInput?.focus();
     return;
   }
@@ -4232,24 +4482,24 @@ async function saveTopRemote() {
   try {
     if (els.btnSaveTopRemote) {
       els.btnSaveTopRemote.disabled = true;
-      els.btnSaveTopRemote.textContent = 'Saving...';
+      els.btnSaveTopRemote.textContent = 'Kaydediliyor...';
     }
-    setStatus(`Adding remote ${name}...`);
+    setStatus(`${name} uzak deposu ekleniyor...`);
 
     await invoke('add_git_remote', { name, url });
 
     hideTopAddRemoteForm();
-    setStatus(`Remote '${name}' added successfully!`);
+    setStatus(`'${name}' uzak deposu başarıyla eklendi!`);
     await loadGitRemotes();
     await switchActiveRemote(name);
   } catch (err) {
     console.error(err);
-    setStatus('Failed to add remote');
-    alert(`Failed to add remote: ${err}`);
+    setStatus('Uzak depo eklenemedi');
+    alert(`Uzak depo eklenemedi: ${err}`);
   } finally {
     if (els.btnSaveTopRemote) {
       els.btnSaveTopRemote.disabled = false;
-      els.btnSaveTopRemote.textContent = 'Save';
+      els.btnSaveTopRemote.textContent = 'Kaydet';
     }
   }
 }
@@ -4278,7 +4528,7 @@ function renderTopRemoteDropdown() {
   if (!els.topRemoteList) return;
 
   if (!state.remotes || state.remotes.length === 0) {
-    els.topRemoteList.innerHTML = '<div class="muted-row" style="padding: 8px 10px; font-size: 11px; color: var(--text-dim);">No remotes configured</div>';
+    els.topRemoteList.innerHTML = '<div class="muted-row" style="padding: 8px 10px; font-size: 11px; color: var(--text-dim);">Yapılandırılmış uzak depo yok</div>';
     return;
   }
 
@@ -4317,7 +4567,7 @@ function updateActiveRemoteContext() {
 async function switchActiveRemote(remoteName) {
   state.activeRemote = remoteName;
   updateActiveRemoteContext();
-  setStatus(`Switched remote to ${remoteName}`);
+  setStatus(`Uzak depo ${remoteName} olarak değiştirildi`);
   await refreshRepositoryData();
   if (state.ghPanel === 'issues') loadGhIssues();
   if (state.ghPanel === 'prs') loadGhPrs();
@@ -4327,14 +4577,14 @@ async function switchActiveRemote(remoteName) {
 async function fetchActiveRemote() {
   const remoteName = state.activeRemote || 'origin';
   try {
-    setStatus(`Fetching from remote ${remoteName}...`);
+    setStatus(`${remoteName} uzak deposundan getiriliyor (fetch)...`);
     const res = await invoke('fetch_remote', { remoteName });
-    setStatus(`Fetched from ${remoteName} successfully!`);
+    setStatus(`${remoteName} uzak deposundan başarıyla getirildi!`);
     await refreshRepositoryData();
     await loadGitRemotes();
   } catch (err) {
-    setStatus(`Fetch from ${remoteName} failed`);
-    alert(`Fetch error: ${err}`);
+    setStatus(`${remoteName} uzak deposundan getirme başarısız oldu`);
+    alert(`Getirme (fetch) hatası: ${err}`);
   }
 }
 
@@ -4354,10 +4604,10 @@ async function checkAppUpdate() {
   els.btnCheckUpdate.disabled = true;
   els.btnCheckUpdate.innerHTML = `
     <div class="spinner" style="width:12px;height:12px;border:2px solid var(--line);border-top-color:#fff;border-radius:50%;animation:spin 0.8s linear infinite;display:inline-block;margin-right:6px;"></div>
-    <span>Checking...</span>`;
+    <span>Kontrol ediliyor...</span>`;
 
   els.updateStatusBox.style.display = 'block';
-  els.updateStatusInfo.innerHTML = '<span style="color:var(--text-dim);"><div class="action-log-loading" style="padding:10px;"><div class="spinner"></div> Checking github.com/noirlang/differ releases...</div></span>';
+  els.updateStatusInfo.innerHTML = '<span style="color:var(--text-dim);"><div class="action-log-loading" style="padding:10px;"><div class="spinner"></div> github.com/noirlang/differ sürümleri kontrol ediliyor...</div></span>';
   els.updateNotesBox.style.display = 'none';
   els.updateAssetsBox.style.display = 'none';
 
@@ -4371,7 +4621,7 @@ async function checkAppUpdate() {
         <path d="M3 12A9 9 0 0 1 18.5 5.7L21 8"></path>
         <path d="M21 3v5h-5"></path>
       </svg>
-      <span>Check for Updates</span>`;
+      <span>Güncellemeleri Kontrol Et</span>`;
 
     if (els.settingsAppVersion) {
       els.settingsAppVersion.textContent = `v${update.currentVersion}`;
@@ -4381,14 +4631,14 @@ async function checkAppUpdate() {
       els.updateStatusInfo.innerHTML = `
         <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
           <div>
-            <span class="update-badge available">🎉 New Update Available!</span>
+            <span class="update-badge available">🎉 Yeni Güncelleme Mevcut!</span>
             <div style="margin-top:6px;font-size:13px;font-weight:600;color:var(--text);">
               ${escapeHtml(update.releaseName || update.tagName)} (<span style="color:#3fb950;">v${escapeHtml(update.latestVersion)}</span>)
             </div>
-            <small style="color:var(--text-dim);">Published: ${formatRelativeDate(update.publishedAt)}</small>
+            <small style="color:var(--text-dim);">Yayınlanma: ${formatRelativeDate(update.publishedAt)}</small>
           </div>
           <button class="mini-btn primary" type="button" data-url="${escapeHtml(update.htmlUrl)}">
-            Open Release on GitHub
+            Sürümü GitHub'da Aç
           </button>
         </div>`;
 
@@ -4411,7 +4661,7 @@ async function checkAppUpdate() {
             <div style="display:flex;align-items:center;gap:10px;">
               <span class="update-asset-size">${formatBytes(asset.size)}</span>
               <button class="mini-btn primary" type="button" data-url="${escapeHtml(asset.downloadUrl)}">
-                Download Package
+                Paketi İndir
               </button>
             </div>
           </div>
@@ -4426,18 +4676,18 @@ async function checkAppUpdate() {
     } else {
       els.updateStatusInfo.innerHTML = `
         <div style="display:flex;align-items:center;gap:10px;">
-          <span class="update-badge latest">✓ Up to Date</span>
+          <span class="update-badge latest">✓ Güncel</span>
           <span style="font-size:12px;color:var(--text-muted);">
-            You are running the latest version (<strong>v${escapeHtml(update.currentVersion)}</strong>).
+            En son sürümü kullanıyorsunuz (<strong>v${escapeHtml(update.currentVersion)}</strong>).
           </span>
         </div>`;
     }
   } catch (err) {
     els.btnCheckUpdate.disabled = false;
-    els.btnCheckUpdate.innerHTML = `<span>Check for Updates</span>`;
+    els.btnCheckUpdate.innerHTML = `<span>Güncellemeleri Kontrol Et</span>`;
     els.updateStatusInfo.innerHTML = `
       <div style="color:#f85149;font-size:12px;">
-        Failed to check updates: ${escapeHtml(String(err))}
+        Güncellemeler kontrol edilemedi: ${escapeHtml(String(err))}
       </div>`;
   }
 }
@@ -4472,7 +4722,7 @@ async function openPrModal(pr) {
   if (pr.state === 'merged') stateClass = 'merged';
   if (els.prModalStatusDot) els.prModalStatusDot.className = `gh-status-dot ${stateClass}`;
 
-  if (els.prBodyContent) els.prBodyContent.textContent = pr.body || 'No description provided.';
+  if (els.prBodyContent) els.prBodyContent.textContent = pr.body || 'Açıklama girilmedi.';
   if (els.btnOpenPrBrowser) els.btnOpenPrBrowser.onclick = () => openUrl(pr.url);
 
   // Show/hide merge button
@@ -4488,9 +4738,9 @@ async function openPrModal(pr) {
   if (els.prDiffContent) els.prDiffContent.textContent = '';
   try {
     const diff = await invoke('get_pr_diff', { prNumber: pr.number });
-    if (els.prDiffContent) els.prDiffContent.textContent = diff || 'No diff available.';
+    if (els.prDiffContent) els.prDiffContent.textContent = diff || 'Diff bulunamadı.';
   } catch (err) {
-    if (els.prDiffContent) els.prDiffContent.textContent = `Error loading PR diff: ${err}`;
+    if (els.prDiffContent) els.prDiffContent.textContent = `PR diff yüklenirken hata oluştu: ${err}`;
   } finally {
     if (els.prDiffLoading) els.prDiffLoading.style.display = 'none';
   }
@@ -4503,13 +4753,13 @@ async function openPrModal(pr) {
     if (els.prCommitsCount) els.prCommitsCount.textContent = commits.length;
     if (els.prCommitsList) {
       if (commits.length === 0) {
-        els.prCommitsList.innerHTML = '<div class="gh-empty-state">No commits found in PR.</div>';
+        els.prCommitsList.innerHTML = '<div class="gh-empty-state">PR içinde commit bulunamadı.</div>';
       } else {
         els.prCommitsList.innerHTML = commits.map((c) => `
           <div class="pr-commit-item">
             <div>
               <div class="pr-commit-msg">${escapeHtml(c.messageHeadline)}</div>
-              <small style="color:var(--text-dim);">by ${escapeHtml(c.authorName || c.authors?.join(', ') || 'Unknown')}</small>
+              <small style="color:var(--text-dim);">${escapeHtml(c.authorName || c.authors?.join(', ') || 'Bilinmeyen')} tarafından</small>
             </div>
             <span class="pr-commit-hash">${escapeHtml((c.oid || '').slice(0, 7))}</span>
           </div>
@@ -4517,7 +4767,7 @@ async function openPrModal(pr) {
       }
     }
   } catch (err) {
-    if (els.prCommitsList) els.prCommitsList.innerHTML = `<div class="gh-not-auth">Failed to load PR commits: ${escapeHtml(String(err))}</div>`;
+    if (els.prCommitsList) els.prCommitsList.innerHTML = `<div class="gh-not-auth">PR commit'leri yüklenemedi: ${escapeHtml(String(err))}</div>`;
   } finally {
     if (els.prCommitsLoading) els.prCommitsLoading.style.display = 'none';
   }
@@ -4533,32 +4783,32 @@ async function confirmPrMerge() {
   const prNumber = currentModalPr.number;
   const method = els.prMergeMethod?.value || 'merge';
 
-  if (!confirm(`Are you sure you want to merge PR #${prNumber} using ${method} method?`)) return;
+  if (!confirm(`#${prNumber} numaralı PR'ı ${method} yöntemiyle birleştirmek istediğinizden emin misiniz?`)) return;
 
   if (els.btnConfirmPrMerge) {
     els.btnConfirmPrMerge.disabled = true;
-    els.btnConfirmPrMerge.textContent = 'Merging...';
+    els.btnConfirmPrMerge.textContent = 'Birleştiriliyor...';
   }
 
   try {
-    setStatus(`Merging PR #${prNumber}...`);
+    setStatus(`PR #${prNumber} birleştiriliyor...`);
     await invoke('merge_github_pr', { prNumber, mergeMethod: method });
-    setStatus(`PR #${prNumber} merged successfully!`);
+    setStatus(`PR #${prNumber} başarıyla birleştirildi!`);
     closePrModal();
     loadGhPrs();
 
     // PR was merged on GitHub — offer to update local branches from origin.
     const baseBranch = currentModalPr.baseRef || currentModalPr.base_ref || 'main';
-    if (confirm(`PR #${prNumber} merged into ${baseBranch} on GitHub.\n\nFetch from ${state.activeRemote || 'origin'} to update local branches?`)) {
+    if (confirm(`PR #${prNumber} GitHub üzerinde ${baseBranch} dalına birleştirildi.\n\nYerel dalları güncellemek için ${state.activeRemote || 'origin'} deposundan getirilsin mi (fetch)?`)) {
       await fetchActiveRemote();
     }
   } catch (err) {
-    setStatus(`Failed to merge PR #${prNumber}`);
-    alert(`Merge failed: ${err}`);
+    setStatus(`PR #${prNumber} birleştirilemedi`);
+    alert(`Birleştirme başarısız oldu: ${err}`);
   } finally {
     if (els.btnConfirmPrMerge) {
       els.btnConfirmPrMerge.disabled = false;
-      els.btnConfirmPrMerge.textContent = 'Merge Pull Request';
+      els.btnConfirmPrMerge.textContent = 'Pull Request\'i Birleştir';
     }
   }
 }
