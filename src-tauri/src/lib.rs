@@ -391,42 +391,158 @@ fn origin_url(repo: &Repository) -> Option<String> {
     None
 }
 
-fn unpushed_oids(repo: &Repository, target_remote: Option<&str>) -> HashSet<Oid> {
-    let Some(branch_name) = current_branch_name(repo) else {
-        return HashSet::new();
-    };
-    let Ok(branch) = repo.find_branch(&branch_name, BranchType::Local) else {
-        return HashSet::new();
-    };
-    let Some(head_oid) = branch.get().target() else {
+fn resolve_target_remote(repo: &Repository, target: Option<&str>) -> Option<String> {
+    if let Some(t) = target {
+        let trimmed = t.trim();
+        if !trimmed.is_empty() && repo.find_remote(trimmed).is_ok() {
+            return Some(trimmed.to_string());
+        }
+    }
+    if repo.find_remote("origin").is_ok() {
+        return Some("origin".to_string());
+    }
+    if let Ok(remotes) = repo.remotes() {
+        if let Some(first) = remotes.get(0) {
+            return Some(first.to_string());
+        }
+    }
+    None
+}
+
+fn unpushed_oids(
+    repo: &Repository,
+    branch_name: Option<&str>,
+    target_remote: Option<&str>,
+) -> HashSet<Oid> {
+    let Some(r_name) = resolve_target_remote(repo, target_remote) else {
         return HashSet::new();
     };
 
-    let r_name = target_remote
+    let target_branch = branch_name
         .filter(|s| !s.trim().is_empty())
-        .unwrap_or("origin");
-    let remote_ref_name = format!("refs/remotes/{}/{}", r_name, branch_name);
+        .map(str::to_string)
+        .or_else(|| current_branch_name(repo));
 
-    let remote_oid = if let Ok(remote_ref) = repo.find_reference(&remote_ref_name) {
-        remote_ref.target()
-    } else if let Ok(upstream_branch) = branch.upstream() {
-        upstream_branch.get().target()
+    if let Some(ref b) = target_branch {
+        if b == "detached" || b.starts_with("refs/remotes/") {
+            return HashSet::new();
+        }
+        if repo.find_branch(b, BranchType::Remote).is_ok()
+            && repo.find_branch(b, BranchType::Local).is_err()
+        {
+            return HashSet::new();
+        }
+
+        // Try git CLI first:
+        // 1. Upstream rev-list
+        if let Ok(revs) = run_git(repo, &["rev-list", &format!("{}@{{u}}..{}", b, b)]) {
+            let mut set = HashSet::new();
+            for line in revs.lines() {
+                let line = line.trim();
+                if let Ok(oid) = Oid::from_str(line) {
+                    set.insert(oid);
+                }
+            }
+            return set;
+        }
+
+        // 2. Direct remote tracking ref rev-list
+        let remote_ref = format!("refs/remotes/{}/{}", r_name, b);
+        if let Ok(revs) = run_git(repo, &["rev-list", &format!("{}..{}", remote_ref, b)]) {
+            let mut set = HashSet::new();
+            for line in revs.lines() {
+                let line = line.trim();
+                if let Ok(oid) = Oid::from_str(line) {
+                    set.insert(oid);
+                }
+            }
+            return set;
+        }
+
+        // 3. Commits on b not reachable from any ref on this remote
+        let not_remote = format!("--remotes={}", r_name);
+        if let Ok(revs) = run_git(repo, &["rev-list", b, "--not", &not_remote]) {
+            let mut set = HashSet::new();
+            for line in revs.lines() {
+                let line = line.trim();
+                if let Ok(oid) = Oid::from_str(line) {
+                    set.insert(oid);
+                }
+            }
+            return set;
+        }
     } else {
-        None
-    };
+        // No branch specified: all unpushed local commits
+        let not_remote = format!("--remotes={}", r_name);
+        if let Ok(revs) = run_git(repo, &["rev-list", "--branches", "--not", &not_remote]) {
+            let mut set = HashSet::new();
+            for line in revs.lines() {
+                let line = line.trim();
+                if let Ok(oid) = Oid::from_str(line) {
+                    set.insert(oid);
+                }
+            }
+            return set;
+        }
+    }
 
+    // Libgit2 fallback:
     let Ok(mut revwalk) = repo.revwalk() else {
         return HashSet::new();
     };
-
     let _ = revwalk.set_sorting(Sort::TIME | Sort::TOPOLOGICAL);
-    if revwalk.push(head_oid).is_err() {
-        return HashSet::new();
+
+    if let Some(ref b) = target_branch {
+        if let Ok(local_branch) = repo.find_branch(b, BranchType::Local) {
+            if let Some(head_oid) = local_branch.get().target() {
+                if revwalk.push(head_oid).is_err() {
+                    return HashSet::new();
+                }
+            } else {
+                return HashSet::new();
+            }
+        } else if let Ok(r) = repo.revparse_single(b) {
+            if revwalk.push(r.id()).is_err() {
+                return HashSet::new();
+            }
+        } else {
+            return HashSet::new();
+        }
+    } else if let Ok(branches) = repo.branches(Some(BranchType::Local)) {
+        for (branch, _) in branches.flatten() {
+            if let Some(target) = branch.get().target() {
+                let _ = revwalk.push(target);
+            }
+        }
     }
 
-    if let Some(r_oid) = remote_oid {
-        if revwalk.hide(r_oid).is_err() {
-            return HashSet::new();
+    let glob_pattern = format!("refs/remotes/{}/*", r_name);
+    if let Ok(references) = repo.references_glob(&glob_pattern) {
+        for r in references.flatten() {
+            if let Some(target) = r
+                .peel_to_commit()
+                .map(|c| c.id())
+                .ok()
+                .or_else(|| r.target())
+            {
+                let _ = revwalk.hide(target);
+            }
+        }
+    }
+
+    if let Some(ref b) = target_branch {
+        if let Ok(local_branch) = repo.find_branch(b, BranchType::Local) {
+            if let Ok(upstream) = local_branch.upstream() {
+                if let Some(target) = upstream
+                    .get()
+                    .peel_to_commit()
+                    .map(|c| c.id())
+                    .ok()
+                    .or_else(|| upstream.get().target())
+                {
+                    let _ = revwalk.hide(target);
+                }
+            }
         }
     }
 
@@ -667,7 +783,7 @@ async fn get_commits(
     }
 
     let max = limit.unwrap_or(500);
-    let unpushed = unpushed_oids(repo, target_remote.as_deref());
+    let unpushed = unpushed_oids(repo, branch.as_deref(), target_remote.as_deref());
     let mut commits = Vec::new();
 
     for (i, oid) in revwalk.enumerate() {
@@ -1162,10 +1278,18 @@ async fn get_sync_status(
     let repo = app_state.repo.as_ref().ok_or("Repository is not open")?;
 
     let current_branch = current_branch_name(repo).unwrap_or_else(|| "detached".to_string());
+    let resolved_remote = resolve_target_remote(repo, target_remote.as_deref());
 
-    let r_name = target_remote
-        .filter(|s| !s.trim().is_empty())
-        .unwrap_or_else(|| "origin".to_string());
+    let Some(r_name) = resolved_remote else {
+        return Ok(SyncStatus {
+            has_origin: false,
+            origin_url: None,
+            current_branch,
+            upstream: None,
+            unpushed_count: 0,
+            can_push: false,
+        });
+    };
 
     let remote_url_val = repo
         .find_remote(&r_name)
@@ -1174,45 +1298,44 @@ async fn get_sync_status(
         .or_else(|| origin_url(repo));
 
     let has_remote = remote_url_val.is_some();
-    let remote_branch_ref = format!("refs/remotes/{}/{}", r_name, current_branch);
-    let mut unpushed_count = 0;
-    let mut upstream_name = None;
 
+    if current_branch == "detached" {
+        return Ok(SyncStatus {
+            has_origin: has_remote,
+            origin_url: remote_url_val,
+            current_branch,
+            upstream: None,
+            unpushed_count: 0,
+            can_push: false,
+        });
+    }
+
+    let mut upstream_name = None;
     if let Ok(local_branch) = repo.find_branch(&current_branch, BranchType::Local) {
-        if let Ok(head_oid) = local_branch.get().target().ok_or("No head target") {
-            if let Ok(remote_ref) = repo.find_reference(&remote_branch_ref) {
-                if let Some(remote_oid) = remote_ref.target() {
-                    if let Ok((ahead, _)) = repo.graph_ahead_behind(head_oid, remote_oid) {
-                        unpushed_count = ahead;
-                        upstream_name = Some(format!("{}/{}", r_name, current_branch));
-                    }
-                }
-            } else if let Ok(upstream_branch) = local_branch.upstream() {
-                if let Some(up_name) = upstream_branch.name().ok().flatten() {
-                    upstream_name = Some(up_name.to_string());
-                }
-                if let Some(up_oid) = upstream_branch.get().target() {
-                    if let Ok((ahead, _)) = repo.graph_ahead_behind(head_oid, up_oid) {
-                        unpushed_count = ahead;
-                    }
-                }
-            } else {
-                if let Ok(mut revwalk) = repo.revwalk() {
-                    if revwalk.push_head().is_ok() {
-                        unpushed_count = revwalk.count();
-                    }
-                }
+        if let Ok(upstream_branch) = local_branch.upstream() {
+            if let Some(up_name) = upstream_branch.name().ok().flatten() {
+                upstream_name = Some(up_name.to_string());
             }
         }
     }
 
+    if upstream_name.is_none() {
+        let remote_branch_ref = format!("refs/remotes/{}/{}", r_name, current_branch);
+        if repo.find_reference(&remote_branch_ref).is_ok() {
+            upstream_name = Some(format!("{}/{}", r_name, current_branch));
+        }
+    }
+
+    let unpushed_set = unpushed_oids(repo, Some(&current_branch), Some(&r_name));
+    let unpushed_count = unpushed_set.len();
+
     Ok(SyncStatus {
         has_origin: has_remote,
         origin_url: remote_url_val,
-        current_branch: current_branch.clone(),
+        current_branch,
         upstream: upstream_name,
         unpushed_count,
-        can_push: has_remote && current_branch != "detached",
+        can_push: has_remote,
     })
 }
 
@@ -1224,8 +1347,7 @@ async fn push_origin(
     let app_state = state.lock().map_err(|e| e.to_string())?;
     let repo = app_state.repo.as_ref().ok_or("Repository is not open")?;
 
-    let r_name = target_remote
-        .filter(|s| !s.trim().is_empty())
+    let r_name = resolve_target_remote(repo, target_remote.as_deref())
         .unwrap_or_else(|| "origin".to_string());
 
     let branch_name = current_branch_name(repo).ok_or("Active branch was not found")?;
@@ -1575,7 +1697,7 @@ async fn get_unmerged_commits(
         }
     }
 
-    let unpushed = unpushed_oids(repo, None);
+    let unpushed = unpushed_oids(repo, None, None);
     let mut commits = Vec::new();
 
     for oid in unmerged_ids {
@@ -2040,6 +2162,160 @@ mod tests {
 
         assert_eq!(response.status_code, 200);
         assert_eq!(response.body, "{\"ok\":true}xxxx");
+    }
+
+    #[test]
+    fn test_repo_without_remotes_has_zero_unpushed() {
+        let dir = std::env::temp_dir().join("differ-no-remotes-test");
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).expect("temp dir");
+
+        test_git(&["init", "-b", "main"], &dir);
+        test_git(&["config", "user.email", "t@t.co"], &dir);
+        test_git(&["config", "user.name", "t"], &dir);
+        test_git(&["config", "commit.gpgsign", "false"], &dir);
+
+        std::fs::write(dir.join("file.txt"), "hello").expect("write");
+        test_git(&["add", "."], &dir);
+        test_git(&["commit", "-m", "first commit"], &dir);
+
+        let repo = Repository::open(&dir).expect("repo should open");
+        assert_eq!(resolve_target_remote(&repo, None), None);
+        assert_eq!(unpushed_oids(&repo, Some("main"), None).len(), 0);
+        assert_eq!(unpushed_oids(&repo, None, None).len(), 0);
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn test_pushed_commits_and_branching_behavior() {
+        let dir = std::env::temp_dir().join("differ-unpushed-test");
+        let remote_dir = std::env::temp_dir().join("differ-unpushed-remote");
+        let _ = std::fs::remove_dir_all(&dir);
+        let _ = std::fs::remove_dir_all(&remote_dir);
+        std::fs::create_dir_all(&dir).expect("temp dir");
+        std::fs::create_dir_all(&remote_dir).expect("remote dir");
+
+        test_git(&["init", "--bare", "-b", "main"], &remote_dir);
+        test_git(&["init", "-b", "main"], &dir);
+        test_git(&["config", "user.email", "t@t.co"], &dir);
+        test_git(&["config", "user.name", "t"], &dir);
+        test_git(&["config", "commit.gpgsign", "false"], &dir);
+        test_git(
+            &["remote", "add", "origin", remote_dir.to_str().unwrap()],
+            &dir,
+        );
+
+        std::fs::write(dir.join("file.txt"), "hello").expect("write");
+        test_git(&["add", "."], &dir);
+        test_git(&["commit", "-m", "first commit"], &dir);
+        test_git(&["push", "-u", "origin", "main"], &dir);
+
+        let repo = Repository::open(&dir).expect("repo should open");
+
+        // 1. After pushing main, 0 unpushed commits
+        let unpushed = unpushed_oids(&repo, Some("main"), Some("origin"));
+        assert_eq!(unpushed.len(), 0, "Pushed commit must not be unpushed");
+        assert_eq!(unpushed_oids(&repo, None, Some("origin")).len(), 0);
+
+        // 2. Remote branch reference should never report unpushed
+        assert_eq!(
+            unpushed_oids(&repo, Some("origin/main"), Some("origin")).len(),
+            0
+        );
+
+        // 3. Add a commit to main
+        std::fs::write(dir.join("file.txt"), "hello 2").expect("write");
+        test_git(&["commit", "-am", "second commit"], &dir);
+        let unpushed_after_commit = unpushed_oids(&repo, Some("main"), Some("origin"));
+        assert_eq!(
+            unpushed_after_commit.len(),
+            1,
+            "New commit on main should be unpushed"
+        );
+
+        // 4. Push with external git
+        test_git(&["push", "origin", "main"], &dir);
+        assert_eq!(
+            unpushed_oids(&repo, Some("main"), Some("origin")).len(),
+            0,
+            "After push unpushed must be 0"
+        );
+
+        // 5. Checkout new branch 'feature' from main (0 new commits)
+        test_git(&["checkout", "-b", "feature"], &dir);
+        let unpushed_feature = unpushed_oids(&repo, Some("feature"), Some("origin"));
+        assert_eq!(
+            unpushed_feature.len(),
+            0,
+            "New branch branched from pushed commit must have 0 unpushed"
+        );
+
+        // 6. Commit on feature branch
+        std::fs::write(dir.join("feature.txt"), "feat").expect("write");
+        test_git(&["add", "."], &dir);
+        test_git(&["commit", "-m", "feature commit"], &dir);
+        assert_eq!(
+            unpushed_oids(&repo, Some("feature"), Some("origin")).len(),
+            1,
+            "Feature commit should be unpushed"
+        );
+        assert_eq!(
+            unpushed_oids(&repo, Some("main"), Some("origin")).len(),
+            0,
+            "Main should still have 0 unpushed"
+        );
+
+        // 7. Push feature without -u (git push origin feature)
+        test_git(&["push", "origin", "feature"], &dir);
+        assert_eq!(
+            unpushed_oids(&repo, Some("feature"), Some("origin")).len(),
+            0,
+            "Feature pushed without -u must have 0 unpushed"
+        );
+
+        let _ = std::fs::remove_dir_all(&dir);
+        let _ = std::fs::remove_dir_all(&remote_dir);
+    }
+
+    #[test]
+    fn test_custom_remote_name_resolution() {
+        let dir = std::env::temp_dir().join("differ-custom-remote-test");
+        let remote_dir = std::env::temp_dir().join("differ-custom-remote-target");
+        let _ = std::fs::remove_dir_all(&dir);
+        let _ = std::fs::remove_dir_all(&remote_dir);
+        std::fs::create_dir_all(&dir).expect("temp dir");
+        std::fs::create_dir_all(&remote_dir).expect("remote dir");
+
+        test_git(&["init", "--bare", "-b", "main"], &remote_dir);
+        test_git(&["init", "-b", "main"], &dir);
+        test_git(&["config", "user.email", "t@t.co"], &dir);
+        test_git(&["config", "user.name", "t"], &dir);
+        test_git(&["config", "commit.gpgsign", "false"], &dir);
+        test_git(
+            &["remote", "add", "amelenext", remote_dir.to_str().unwrap()],
+            &dir,
+        );
+
+        std::fs::write(dir.join("file.txt"), "hello").expect("write");
+        test_git(&["add", "."], &dir);
+        test_git(&["commit", "-m", "first commit"], &dir);
+        test_git(&["push", "-u", "amelenext", "main"], &dir);
+
+        let repo = Repository::open(&dir).expect("repo should open");
+        assert_eq!(
+            resolve_target_remote(&repo, None),
+            Some("amelenext".to_string())
+        );
+        assert_eq!(
+            resolve_target_remote(&repo, Some("origin")),
+            Some("amelenext".to_string())
+        );
+        assert_eq!(unpushed_oids(&repo, Some("main"), None).len(), 0);
+        assert_eq!(unpushed_oids(&repo, Some("main"), Some("origin")).len(), 0);
+
+        let _ = std::fs::remove_dir_all(&dir);
+        let _ = std::fs::remove_dir_all(&remote_dir);
     }
 
     fn test_git(args: &[&str], dir: &std::path::Path) {

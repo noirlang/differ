@@ -922,12 +922,12 @@ async function openRepo(repoPath = null) {
     els.detailEmpty.style.display = 'flex';
     els.detailContent.style.display = 'none';
 
+    // Load all git remotes (origin, upstream, fork, etc.)
+    await loadGitRemotes();
     await refreshRepositoryData({ selectLatest: true });
     rememberRecentRepo(repoInfo.path || selected);
     startAutoRefresh();
 
-    // Load all git remotes (origin, upstream, fork, etc.)
-    await loadGitRemotes();
     // Show GitHub nav if repo has GitHub remote
     showGhNavIfGitHub();
     // Check gh CLI auth in background
