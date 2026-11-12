@@ -22,3 +22,10 @@ Sürüm numarası şu dosyalarda birlikte güncellenir:
 - `src-tauri/Cargo.toml`
 - `src-tauri/Cargo.lock` (`name = "differ"` paketi)
 - `src-tauri/tauri.conf.json`
+
+## Uygulama içi güncelleme
+
+- `tauri-plugin-updater`, `releases/latest/download/latest.json` adresini okur. Sadece AppImage ve Windows MSI kendini günceller; deb/rpm/Arch kurulumlarında indirme bağlantısı gösterilir (`update.rs` → `can_self_update`).
+- CI'daki `release` job'ı, `TAURI_SIGNING_PRIVATE_KEY` ve `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` secret'ları varsa AppImage ve MSI'ı imzalar ve `latest.json` üretir (`scripts/make-updater-manifest.sh`).
+- Bir commit prerelease'ini `vX.Y.Z` "Latest" release'ine çevirirken `latest.json` ve `.sig` dosyalarını **aynı build'in** paketleriyle birlikte taşı, yoksa imza doğrulaması başarısız olur.
+- Public key `tauri.conf.json` içinde; private key repoda değil. Anahtar değişirse eski sürümler yeni güncellemeleri kabul etmez.

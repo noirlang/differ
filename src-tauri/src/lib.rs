@@ -61,6 +61,7 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(Mutex::new(AppState {
             repo: None,
             repo_path: None,
@@ -119,6 +120,8 @@ pub fn run() {
             rename_branch,
             delete_branch,
             search_commits,
+            install_update,
+            restart_app,
             detect_installed_editors,
             open_in_editor,
             get_git_remotes,

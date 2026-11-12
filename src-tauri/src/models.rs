@@ -248,6 +248,9 @@ pub struct AppUpdateInfo {
     pub has_update: bool,
     pub published_at: String,
     pub assets: Vec<ReleaseAsset>,
+    /// True when this build can download and install updates itself
+    /// (AppImage on Linux, MSI on Windows). Distro packages can't.
+    pub can_self_update: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone)]

@@ -216,12 +216,40 @@ jobs:
     runs-on: ubuntu-24.04
     permissions:
       contents: write
+    env:
+      TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+      TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
     steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install Tauri CLI
+        run: npm ci
+
       - name: Download packages
         uses: actions/download-artifact@v5
         with:
           path: release-assets
           merge-multiple: true
+
+      # In-app updates: sign the AppImage and MSI and publish latest.json.
+      # Skipped (with a warning) when the signing key secret is not configured.
+      - name: Sign updater bundles and write latest.json
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${TAURI_SIGNING_PRIVATE_KEY}" ]; then
+            echo "::warning::TAURI_SIGNING_PRIVATE_KEY is not set; in-app updates will not be published."
+            exit 0
+          fi
+          scripts/make-updater-manifest.sh release-assets "$(git log -1 --format=%s)"
+          ls -lh release-assets/
 
       - name: Create release notes
         env:
@@ -241,7 +269,8 @@ jobs:
           - Arch Linux package
           - Windows x64 MSI
 
-          This is an unsigned prerelease generated from a development commit.
+          This is a prerelease generated from a development commit.
+          AppImage and MSI are signed for in-app updates (latest.json).
           EOF
 
       - name: Create or update commit release

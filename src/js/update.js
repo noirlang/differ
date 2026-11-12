@@ -44,10 +44,20 @@ async function checkAppUpdate() {
             </div>
             <small style="color:var(--text-dim);">Yayınlanma: ${formatRelativeDate(update.publishedAt)}</small>
           </div>
-          <button class="mini-btn primary" type="button" data-url="${escapeHtml(update.htmlUrl)}">
-            Sürümü GitHub'da Aç
-          </button>
-        </div>`;
+          <div class="update-actions">
+            ${update.canSelfUpdate ? '<button class="mini-btn primary" type="button" id="btn-install-update">Şimdi Güncelle</button>' : ''}
+            <button class="mini-btn" type="button" data-url="${escapeHtml(update.htmlUrl)}">
+              GitHub'da Aç
+            </button>
+          </div>
+        </div>
+        <div class="update-progress" id="update-progress" hidden>
+          <div class="update-progress-bar"><span id="update-progress-fill"></span></div>
+          <small id="update-progress-text">İndiriliyor...</small>
+        </div>
+        ${update.canSelfUpdate ? '' : '<small class="update-hint">Bu kurulum sistem paket yöneticisiyle yapılmış (deb/rpm/Arch). Aşağıdaki paketi indirip kurabilir ya da paket yöneticinizle güncelleyebilirsiniz.</small>'}`;
+
+      $('btn-install-update')?.addEventListener('click', installAppUpdate);
 
       els.updateStatusInfo.querySelector('button[data-url]')?.addEventListener('click', (e) => {
         openUrl(e.target.closest('button').dataset.url);
@@ -96,6 +106,46 @@ async function checkAppUpdate() {
       <div style="color:#f85149;font-size:12px;">
         Güncellemeler kontrol edilemedi: ${escapeHtml(String(err))}
       </div>`;
+  }
+}
+
+async function installAppUpdate() {
+  const btn = $('btn-install-update');
+  const progress = $('update-progress');
+  const fill = $('update-progress-fill');
+  const text = $('update-progress-text');
+  if (btn) btn.disabled = true;
+  if (progress) progress.hidden = false;
+
+  let unlisten = null;
+  try {
+    unlisten = await tauri?.event?.listen('update-progress', ({ payload }) => {
+      const { downloaded, total } = payload;
+      if (total) {
+        const pct = Math.min(100, Math.round((downloaded / total) * 100));
+        fill.style.width = `${pct}%`;
+        text.textContent = `İndiriliyor... ${formatBytes(downloaded)} / ${formatBytes(total)} (%${pct})`;
+      } else {
+        text.textContent = `İndiriliyor... ${formatBytes(downloaded)}`;
+      }
+    });
+
+    setStatus('Güncelleme indiriliyor...');
+    const version = await invoke('install_update');
+    fill.style.width = '100%';
+    text.textContent = `v${version} kuruldu.`;
+    setStatus(`v${version} kuruldu`);
+    if (confirm(`Differ v${version} kuruldu. Uygulama şimdi yeniden başlatılsın mı?`)) {
+      await invoke('restart_app');
+    } else if (btn) {
+      btn.textContent = 'Yeniden başlatınca etkinleşecek';
+    }
+  } catch (err) {
+    text.textContent = `Güncelleme başarısız: ${err}`;
+    setStatus('Güncelleme başarısız');
+    if (btn) btn.disabled = false;
+  } finally {
+    if (typeof unlisten === 'function') unlisten();
   }
 }
 
