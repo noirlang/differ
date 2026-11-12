@@ -151,6 +151,9 @@ pub struct SmtpSettings {
     pub port: u16,
     pub username: String,
     pub password: String,
+    /// Only set in responses to the frontend; the password itself is never sent.
+    #[serde(default)]
+    pub has_password: bool,
     pub from_email: String,
     pub to_email: String,
     pub use_tls: bool,
@@ -263,6 +266,7 @@ impl Default for SmtpSettings {
             port: 587,
             username: String::new(),
             password: String::new(),
+            has_password: false,
             from_email: String::new(),
             to_email: String::new(),
             use_tls: true,

@@ -1021,9 +1021,10 @@ pub async fn generate_ai_commit_message_gemini(
     diff: Option<String>,
     paths: Option<Vec<String>>,
     model: Option<String>,
-    api_key: String,
+    api_key: Option<String>,
     state: State<'_, Mutex<AppState>>,
 ) -> Result<String, String> {
+    let api_key = resolve_gemini_api_key(api_key)?;
     let mut actual_diff = diff.unwrap_or_default();
 
     if actual_diff.trim().is_empty() {
@@ -1575,10 +1576,8 @@ Diff:
 }
 
 #[tauri::command]
-pub async fn list_gemini_models(api_key: String) -> Result<Vec<String>, String> {
-    if api_key.trim().is_empty() {
-        return Err("API key is empty".to_string());
-    }
+pub async fn list_gemini_models(api_key: Option<String>) -> Result<Vec<String>, String> {
+    let api_key = resolve_gemini_api_key(api_key)?;
 
     let api_key_header = google_api_key_header(&api_key)?;
 

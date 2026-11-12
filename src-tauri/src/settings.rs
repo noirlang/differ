@@ -9,6 +9,9 @@ pub fn smtp_config_path() -> Result<std::path::PathBuf, String> {
     Ok(app_dir.join("smtp.json"))
 }
 
+/// Loads SMTP settings with the password filled in from secret storage.
+/// A plaintext password left in smtp.json by older versions is moved into
+/// secret storage and removed from the file.
 pub fn load_smtp_settings() -> SmtpSettings {
     let path = match smtp_config_path() {
         Ok(p) => p,
@@ -18,12 +21,25 @@ pub fn load_smtp_settings() -> SmtpSettings {
         Ok(d) => d,
         Err(_) => return SmtpSettings::default(),
     };
-    serde_json::from_str(&data).unwrap_or_default()
+    let mut settings: SmtpSettings = serde_json::from_str(&data).unwrap_or_default();
+
+    if !settings.password.is_empty() {
+        if set_secret(SMTP_PASSWORD, &settings.password).is_ok() {
+            let _ = save_smtp_settings_to_file(&settings);
+        }
+    } else {
+        settings.password = get_secret(SMTP_PASSWORD).unwrap_or_default();
+    }
+    settings
 }
 
+/// Writes smtp.json without the password (it is kept in secret storage).
 pub fn save_smtp_settings_to_file(settings: &SmtpSettings) -> Result<(), String> {
     let path = smtp_config_path()?;
-    let json = serde_json::to_string_pretty(settings).map_err(|e| e.to_string())?;
+    let mut on_disk = settings.clone();
+    on_disk.password = String::new();
+    on_disk.has_password = false;
+    let json = serde_json::to_string_pretty(&on_disk).map_err(|e| e.to_string())?;
     std::fs::write(&path, json).map_err(|e| format!("Could not write SMTP config: {}", e))
 }
 
@@ -194,11 +210,23 @@ pub async fn save_git_settings(
 
 #[tauri::command]
 pub async fn get_smtp_settings() -> Result<SmtpSettings, String> {
-    Ok(load_smtp_settings())
+    let mut settings = load_smtp_settings();
+    settings.has_password = !settings.password.is_empty();
+    settings.password = String::new();
+    Ok(settings)
 }
 
+/// An empty password keeps the stored one; `clear_password` removes it.
 #[tauri::command]
-pub async fn save_smtp_settings(settings: SmtpSettings) -> Result<String, String> {
+pub async fn save_smtp_settings(
+    settings: SmtpSettings,
+    clear_password: Option<bool>,
+) -> Result<String, String> {
+    if clear_password.unwrap_or(false) {
+        set_secret(SMTP_PASSWORD, "")?;
+    } else if !settings.password.is_empty() {
+        set_secret(SMTP_PASSWORD, &settings.password)?;
+    }
     save_smtp_settings_to_file(&settings)?;
     Ok("SMTP settings saved successfully".to_string())
 }

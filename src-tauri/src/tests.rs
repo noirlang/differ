@@ -295,3 +295,15 @@ fn parses_chunked_response() {
     assert_eq!(response.status_code, 200);
     assert_eq!(response.body, "{\"ok\":true}");
 }
+
+#[test]
+#[ignore = "touches the real OS keychain"]
+fn secret_roundtrip() {
+    let name = "differ-selftest";
+    set_secret(name, "s3cret").unwrap();
+    assert_eq!(get_secret(name).as_deref(), Some("s3cret"));
+    let in_keyring = keyring::Entry::new("differ", name).unwrap().get_password().is_ok();
+    println!("stored in OS keychain: {}", in_keyring);
+    set_secret(name, "").unwrap();
+    assert_eq!(get_secret(name), None);
+}

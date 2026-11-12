@@ -191,7 +191,6 @@ function initEventHandlers() {
 
   const geminiKeyInput = document.getElementById('setting-gemini-api-key');
   const btnToggleKey = document.getElementById('btn-toggle-gemini-key');
-  const btnCopyKey = document.getElementById('btn-copy-gemini-key');
   if (btnToggleKey && geminiKeyInput) {
     btnToggleKey.addEventListener('click', () => {
       const isPassword = geminiKeyInput.type === 'password';
@@ -199,15 +198,7 @@ function initEventHandlers() {
       btnToggleKey.textContent = isPassword ? 'Gizle' : 'Göster';
     });
   }
-  if (btnCopyKey && geminiKeyInput) {
-    btnCopyKey.addEventListener('click', () => {
-      if (geminiKeyInput.value) {
-        navigator.clipboard.writeText(geminiKeyInput.value);
-        btnCopyKey.textContent = 'Kopyalandı!';
-        setTimeout(() => { btnCopyKey.textContent = 'Kopyala'; }, 1500);
-      }
-    });
-  }
+  document.getElementById('btn-remove-gemini-key')?.addEventListener('click', removeGeminiApiKey);
   if (els.btnFetchGeminiModels) {
     els.btnFetchGeminiModels.addEventListener('click', fetchGeminiModels);
   }
@@ -475,8 +466,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     openRepo(recent[0]);
   }
 
-  // Auto-fetch Gemini models if Gemini API key exists
-  if (appSettings.geminiApiKey) {
+  // Move any legacy plaintext secrets into the OS keychain, then
+  // auto-fetch Gemini models if a key is stored.
+  await migrateLegacySecrets();
+  if (secretStatus.geminiApiKey) {
     fetchGeminiModels();
   }
   // Auto-fetch LM Studio models

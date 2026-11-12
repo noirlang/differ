@@ -33,6 +33,7 @@ mod settings;
 mod github;
 mod update;
 mod editor;
+mod secrets;
 #[cfg(test)]
 mod tests;
 
@@ -49,6 +50,7 @@ use settings::*;
 use github::*;
 use update::*;
 use editor::*;
+use secrets::*;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -106,6 +108,8 @@ pub fn run() {
             merge_github_pr,
             get_pr_create_context,
             create_github_pr,
+            get_secret_status,
+            save_gemini_api_key,
             detect_installed_editors,
             open_in_editor,
             get_git_remotes,

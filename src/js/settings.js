@@ -29,7 +29,7 @@ function stopAiLoadingAnimation() {
 
 async function generateAiCommitMessage() {
   const provider = appSettings.aiProvider || 'ollama';
-  if (provider === 'gemini' && !appSettings.geminiApiKey) {
+  if (provider === 'gemini' && !secretStatus.geminiApiKey) {
     alert('Gemini API anahtarı ayarlanmamış. Lütfen Ayarlar bölümünden API anahtarınızı girin.');
     openSettingsModal();
     return;
@@ -75,7 +75,7 @@ async function generateAiCommitMessage() {
         diff: null,
         paths: selectedPaths,
         model: appSettings.geminiModel || 'gemini-2.5-flash',
-        apiKey: appSettings.geminiApiKey,
+        apiKey: null, // backend reads the key from the OS keychain
       });
     } else if (provider === 'lmstudio') {
       generatedMessage = await invoke('generate_ai_commit_message_lm_studio', {
@@ -154,9 +154,15 @@ async function openSettingsModal() {
     checkLmStudioStatus();
 
     const geminiKeyInput = document.getElementById('setting-gemini-api-key');
-    if (geminiKeyInput) geminiKeyInput.value = appSettings.geminiApiKey || '';
+    if (geminiKeyInput) {
+      geminiKeyInput.value = '';
+      geminiKeyInput.placeholder = secretStatus.geminiApiKey
+        ? '•••••••• kayıtlı (değiştirmek için yeni anahtar girin)'
+        : 'AIza...';
+    }
+    updateGeminiKeyRemoveButton();
 
-    if (provider === 'gemini' && appSettings.geminiApiKey) {
+    if (provider === 'gemini' && secretStatus.geminiApiKey) {
       fetchGeminiModels();
     }
 
@@ -294,11 +300,11 @@ function updateAiModelSelectOptions() {
 }
 
 async function fetchGeminiModels() {
-  const apiKey = document.getElementById('setting-gemini-api-key')?.value?.trim();
+  const apiKey = document.getElementById('setting-gemini-api-key')?.value?.trim() || null;
   const select = els.settingGeminiModel;
   const statusEl = els.geminiModelStatus;
 
-  if (!apiKey) {
+  if (!apiKey && !secretStatus.geminiApiKey) {
     if (statusEl) {
       statusEl.textContent = 'Önce bir API anahtarı girin.';
       statusEl.className = 'gemini-model-status error';
@@ -387,7 +393,12 @@ async function loadSmtpSettings() {
     if (smtpPort) smtpPort.value = smtp.port || 587;
     if (smtpTls) smtpTls.checked = smtp.useTls !== false;
     if (smtpUsername) smtpUsername.value = smtp.username || '';
-    if (smtpPassword) smtpPassword.value = smtp.password || '';
+    if (smtpPassword) {
+      smtpPassword.value = '';
+      smtpPassword.placeholder = smtp.hasPassword
+        ? '•••••••• kayıtlı (değiştirmek için yeni parola girin)'
+        : 'Uygulama parolası';
+    }
     if (smtpFrom) smtpFrom.value = smtp.fromEmail || '';
     if (smtpTo) smtpTo.value = smtp.toEmail || '';
 
@@ -564,9 +575,14 @@ async function saveSettings() {
       useTls: document.getElementById('setting-smtp-tls')?.checked ?? true,
     };
 
+    if (geminiApiKey) {
+      await invoke('save_gemini_api_key', { apiKey: geminiApiKey });
+    }
+    await refreshSecretStatus();
+
     appSettings = {
+      ...appSettings,
       aiProvider,
-      geminiApiKey,
       geminiModel,
       selectedModel,
       gitName: name,
@@ -588,7 +604,7 @@ async function saveSettings() {
     }
 
     try {
-      await invoke('save_smtp_settings', { settings: smtpSettings });
+      await invoke('save_smtp_settings', { settings: { ...smtpSettings, hasPassword: false }, clearPassword: false });
     } catch (e) {
       console.log('SMTP save error:', e);
     }
@@ -653,5 +669,49 @@ async function pullModel() {
   } finally {
     els.btnPullModel.disabled = false;
     els.btnPullModel.textContent = 'Modeli İndir (Pull)';
+  }
+}
+
+// ─── Secret storage ─────────────────────────────────────────────────────────
+
+async function refreshSecretStatus() {
+  try {
+    secretStatus = await invoke('get_secret_status');
+  } catch (err) {
+    console.error('Secret status error:', err);
+  }
+  updateGeminiKeyRemoveButton();
+}
+
+// Older versions kept the Gemini key in localStorage as plain text.
+// Move it into the OS keychain once and drop the local copy.
+async function migrateLegacySecrets() {
+  if (appSettings.geminiApiKey) {
+    try {
+      await invoke('save_gemini_api_key', { apiKey: appSettings.geminiApiKey });
+      delete appSettings.geminiApiKey;
+      saveAppSettings(appSettings);
+    } catch (err) {
+      console.error('Gemini key migration failed:', err);
+    }
+  }
+  await refreshSecretStatus();
+}
+
+function updateGeminiKeyRemoveButton() {
+  const btn = document.getElementById('btn-remove-gemini-key');
+  if (btn) btn.style.display = secretStatus.geminiApiKey ? '' : 'none';
+}
+
+async function removeGeminiApiKey() {
+  if (!confirm('Kayıtlı Gemini API anahtarı silinsin mi?')) return;
+  try {
+    await invoke('save_gemini_api_key', { apiKey: '' });
+    await refreshSecretStatus();
+    const input = document.getElementById('setting-gemini-api-key');
+    if (input) input.placeholder = 'AIza...';
+    setStatus('Gemini API anahtarı silindi');
+  } catch (err) {
+    alert(`Anahtar silinemedi: ${err}`);
   }
 }

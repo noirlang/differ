@@ -95,10 +95,15 @@ function loadAppSettings() {
 }
 
 function saveAppSettings(settings) {
-  localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+  // Secrets never go to localStorage; a legacy key stays in memory only
+  // until migrateLegacySecrets() moves it into the OS keychain.
+  const { geminiApiKey, ...rest } = settings;
+  localStorage.setItem(SETTINGS_KEY, JSON.stringify(rest));
 }
 
 let appSettings = loadAppSettings();
+// Which secrets are stored in the OS keychain (values never reach the frontend).
+let secretStatus = { geminiApiKey: false, smtpPassword: false };
 applyUiScale(appSettings.uiScale);
 
 const els = {
