@@ -4662,7 +4662,7 @@ async fn get_action_log(state: State<'_, Mutex<AppState>>, run_id: u64) -> Resul
     run_gh(&["run", "view", &id_str, "--log"], cwd)
 }
 
-const CURRENT_APP_VERSION: &str = "0.0.5";
+const CURRENT_APP_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[tauri::command]
 fn get_app_version() -> String {
