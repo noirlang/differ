@@ -81,7 +81,7 @@ jobs:
         working-directory: src-tauri
 
       - name: Check UI JavaScript
-        run: node --check src/main.js
+        run: for f in src/js/*.js; do node --check "$f"; done
 
       - name: Run Rust tests
         run: cargo test --locked

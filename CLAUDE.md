@@ -8,8 +8,8 @@
 
 Differ — Tauri 2 tabanlı masaüstü Git değişiklik gezgini.
 
-- Frontend: `src/` (vanilla JS — `main.js`, `index.html`, `styles.css`)
-- Backend: `src-tauri/src/lib.rs` (Rust, Tauri komutları)
+- Frontend: `src/` — vanilla JS, `src/js/*.js` klasik script'ler olarak `index.html` içinde sırayla yüklenir ve global kapsamı paylaşır (`core.js` ilk, `init.js` son). Yeni dosya eklersen `index.html`'deki sıraya ekle.
+- Backend: `src-tauri/src/` — `lib.rs` sadece modülleri ve `run()`'ı içerir; her özellik kendi modülünde (`repo.rs`, `sync.rs`, `github.rs`, `ai.rs`, ...). Modüller `use crate::*;` ile ortak tipleri alır. Yeni Tauri komutunu `lib.rs`'teki `generate_handler!` listesine ekle.
 - Geliştirme: `npm run dev` (Linux'ta `npm run dev:linux` / `dev:wayland`)
 - Test: `cd src-tauri && cargo test`
 

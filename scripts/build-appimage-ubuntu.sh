@@ -62,7 +62,7 @@ host_gid="$(id -g)"
       curl https://sh.rustup.rs -sSf | sh -s -- -y --profile minimal
       . \"\${HOME}/.cargo/env\"
       npm ci
-      node --check src/main.js
+      for f in src/js/*.js; do node --check "$f"; done
       cargo check --manifest-path src-tauri/Cargo.toml --locked
       npm run tauri -- build --ci --bundles appimage
     "
