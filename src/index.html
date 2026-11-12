@@ -8,6 +8,7 @@
   <script src="js/core.js" defer></script>
   <script src="js/utils.js" defer></script>
   <script src="js/repo.js" defer></script>
+  <script src="js/search.js" defer></script>
   <script src="js/timeline.js" defer></script>
   <script src="js/diff.js" defer></script>
   <script src="js/branches.js" defer></script>
@@ -58,7 +59,8 @@
           <circle cx="11" cy="11" r="7"></circle>
           <path d="m20 20-3.5-3.5"></path>
         </svg>
-        <input id="search-input" type="search" placeholder="commit, hash veya yazar ara..." autocomplete="off" />
+        <input id="search-input" type="search" placeholder="ara…  yazar:  dosya:  tarih>  hash:" autocomplete="off" spellcheck="false"
+          title="Commit ara (Ctrl+F)&#10;&#10;metin — mesaj, yazar veya hash&#10;yazar:ali — yazara göre&#10;dosya:src/app.js — o dosyaya dokunan commit'ler&#10;hash:abc123 — belirli bir commit&#10;tarih&gt;2026-01-01  tarih&lt;2026-02-01 — tarih aralığı&#10;Boşluklu değerler için tırnak: yazar:&quot;Ali Veli&quot;&#10;Esc — aramayı temizle" />
       </label>
 
       <div class="repo-info" id="repo-info" style="display:none;">

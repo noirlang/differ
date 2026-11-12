@@ -4814,3 +4814,12 @@ textarea.create-pr-input {
 .branch-modal .modal-head {
   margin: 0 -20px;
 }
+
+/* ─── Commit search ───────────────────────────────────────────────────────── */
+
+mark.search-hit {
+  background: rgba(210, 153, 34, 0.35);
+  color: inherit;
+  border-radius: 2px;
+  padding: 0 1px;
+}

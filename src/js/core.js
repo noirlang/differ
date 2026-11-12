@@ -17,6 +17,8 @@ const state = {
   selectedWorktreePaths: new Set(),
   syncStatus: null,
   searchQuery: '',
+  searchResults: null, // { query, branch, commits } from the backend full-history search
+  searchPending: false,
   detailTab: 'diff',
   avatarCache: new Map(),
   pendingAvatarFetches: new Set(),

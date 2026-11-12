@@ -35,6 +35,7 @@ mod update;
 mod editor;
 mod secrets;
 mod branches;
+mod search;
 #[cfg(test)]
 mod tests;
 
@@ -53,6 +54,7 @@ use update::*;
 use editor::*;
 use secrets::*;
 use branches::*;
+use search::*;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -116,6 +118,7 @@ pub fn run() {
             checkout_branch,
             rename_branch,
             delete_branch,
+            search_commits,
             detect_installed_editors,
             open_in_editor,
             get_git_remotes,

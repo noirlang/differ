@@ -3,7 +3,8 @@ function getGraphColor(index) {
 }
 
 function getFilteredCommits() {
-  let commits = state.commits;
+  const { commits: base, fromBackend } = searchBaseCommits();
+  let commits = base;
 
   if (state.selectedAuthorKey) {
     const knownGithubUsernames = getKnownGithubUsernames();
@@ -12,16 +13,13 @@ function getFilteredCommits() {
     ));
   }
 
-  if (!state.searchQuery) return commits;
+  if (!state.searchQuery || fromBackend) return commits;
 
-  const q = state.searchQuery.toLowerCase();
-  return commits.filter((commit) => (
-    commit.message.toLowerCase().includes(q)
-    || commit.author_name.toLowerCase().includes(q)
-    || commit.author_email.toLowerCase().includes(q)
-    || commit.short_id.toLowerCase().includes(q)
-    || commit.id.toLowerCase().includes(q)
-  ));
+  const q = parseSearchQuery(state.searchQuery);
+  if (isSearchEmpty(q)) return commits;
+  // A file filter can only be answered by the backend; show nothing until it does.
+  if (q.path) return [];
+  return commits.filter((commit) => matchesLocalSearch(commit, q));
 }
 
 function getAuthorStats() {
@@ -327,6 +325,7 @@ async function loadCommits(branch = null) {
     renderBranches();
     renderTeam();
     renderCommits();
+    if (state.searchQuery) onSearchInput(state.searchQuery); // re-run search for the new branch
     await loadSyncStatus();
     await loadUnmergedCommits();
 

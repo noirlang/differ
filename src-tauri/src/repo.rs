@@ -82,23 +82,26 @@ pub async fn get_commits(
             break;
         }
         let oid = oid.map_err(|e| e.to_string())?;
-        let commit = repo.find_commit(oid).map_err(|e| e.to_string())?;
-
-        let short_id = &commit.id().to_string()[..7];
-
-        commits.push(CommitInfo {
-            id: commit.id().to_string(),
-            short_id: short_id.to_string(),
-            message: commit.message().unwrap_or("").trim().to_string(),
-            author_name: commit.author().name().unwrap_or("Unknown").to_string(),
-            author_email: commit.author().email().unwrap_or("").to_string(),
-            timestamp: commit.time().seconds(),
-            parent_ids: commit.parent_ids().map(|id| id.to_string()).collect(),
-            is_unpushed: unpushed.contains(&commit.id()),
-        });
+        commits.push(commit_info(repo, oid, &unpushed)?);
     }
 
     Ok(commits)
+}
+
+pub fn commit_info(repo: &Repository, oid: Oid, unpushed: &HashSet<Oid>) -> Result<CommitInfo, String> {
+    let commit = repo.find_commit(oid).map_err(|e| e.to_string())?;
+    let id = commit.id().to_string();
+    let author = commit.author();
+    Ok(CommitInfo {
+        short_id: id[..7].to_string(),
+        id,
+        message: commit.message().unwrap_or("").trim().to_string(),
+        author_name: author.name().unwrap_or("Unknown").to_string(),
+        author_email: author.email().unwrap_or("").to_string(),
+        timestamp: commit.time().seconds(),
+        parent_ids: commit.parent_ids().map(|id| id.to_string()).collect(),
+        is_unpushed: unpushed.contains(&commit.id()),
+    })
 }
 
 #[tauri::command]

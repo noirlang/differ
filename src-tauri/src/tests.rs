@@ -336,3 +336,49 @@ fn branch_helpers_validate_names_and_split_remotes() {
 
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn commit_search_finds_by_text_author_path_and_hash() {
+    let dir = std::env::temp_dir().join("differ-search-test");
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).expect("temp dir");
+
+    test_git(&["init", "-b", "main"], &dir);
+    test_git(&["config", "user.email", "ali@t.co"], &dir);
+    test_git(&["config", "user.name", "Ali"], &dir);
+    test_git(&["config", "commit.gpgsign", "false"], &dir);
+    std::fs::write(dir.join("a.txt"), "1").unwrap();
+    test_git(&["add", "."], &dir);
+    test_git(&["commit", "-m", "Add login screen"], &dir);
+    std::fs::create_dir_all(dir.join("docs")).unwrap();
+    std::fs::write(dir.join("docs/b.md"), "2").unwrap();
+    test_git(&["add", "."], &dir);
+    test_git(&["-c", "user.name=Veli", "-c", "user.email=veli@t.co", "commit", "-m", "Write docs"], &dir);
+
+    let repo = Repository::open(&dir).unwrap();
+    let run = |s: CommitSearch| -> Vec<String> {
+        search_commit_ids(&repo, &s, None, 100)
+            .unwrap()
+            .into_iter()
+            .map(|oid| repo.find_commit(oid).unwrap().summary().unwrap().to_string())
+            .collect()
+    };
+
+    // Free text is case-insensitive and also matches the author.
+    assert_eq!(run(CommitSearch { text: "LOGIN".into(), ..Default::default() }), vec!["Add login screen"]);
+    assert_eq!(run(CommitSearch { text: "veli".into(), ..Default::default() }), vec!["Write docs"]);
+    // Text + author must both match.
+    assert!(run(CommitSearch { text: "login".into(), author: "veli".into(), ..Default::default() }).is_empty());
+    assert_eq!(run(CommitSearch { text: "docs".into(), author: "veli".into(), ..Default::default() }), vec!["Write docs"]);
+    // Plain author search returns every matching commit, newest first.
+    assert_eq!(run(CommitSearch { text: "t.co".into(), ..Default::default() }), vec!["Write docs", "Add login screen"]);
+    assert_eq!(run(CommitSearch { path: "docs".into(), ..Default::default() }), vec!["Write docs"]);
+    // Regex characters are taken literally.
+    assert!(run(CommitSearch { text: "log.n".into(), ..Default::default() }).is_empty());
+
+    let head = repo.head().unwrap().target().unwrap().to_string();
+    let found = repo.revparse_single(&head[..7]).unwrap().peel_to_commit().unwrap();
+    assert_eq!(found.summary(), Some("Write docs"));
+
+    let _ = std::fs::remove_dir_all(&dir);
+}

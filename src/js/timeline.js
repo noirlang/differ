@@ -257,8 +257,8 @@ function renderCommits() {
       `
       : `
         <div class="empty-state compact">
-          <strong>Sonuç bulunamadı</strong>
-          <span>Arama kriterine veya seçili dala uygun commit bulunamadı.</span>
+          <strong>${state.searchPending ? 'Tüm geçmişte aranıyor...' : 'Sonuç bulunamadı'}</strong>
+          <span>${state.searchPending ? '' : 'Arama kriterine veya seçili dala uygun commit bulunamadı.'}</span>
         </div>
       `;
     return;
@@ -302,6 +302,7 @@ function renderCommits() {
   });
 
   const { laneMap, laneCount, graphWidth, rowSvgs } = buildCommitGraph(commits);
+  const searchText = activeSearchText();
 
   if (els.commitList) {
     els.commitList.style.setProperty('--graph-col-width', `${graphWidth}px`);
@@ -347,7 +348,7 @@ function renderCommits() {
           </button>
           ${labels ? `<span class="branch-labels">${labels}</span>` : ''}
           ${syncLabel}
-          <span class="commit-message" title="${escapeHtml(firstLine(commit.message))}">${escapeHtml(firstLine(commit.message))}</span>
+          <span class="commit-message" title="${escapeHtml(firstLine(commit.message))}">${highlightMatch(firstLine(commit.message), searchText)}</span>
         </span>
         <span class="commit-author-cell">
           ${avatarHtml}

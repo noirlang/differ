@@ -308,9 +308,12 @@ function initEventHandlers() {
     }
   });
 
-  els.searchInput.addEventListener('input', (event) => {
-    state.searchQuery = event.target.value.trim();
-    renderCommits();
+  els.searchInput.addEventListener('input', (event) => onSearchInput(event.target.value));
+  els.searchInput.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && els.searchInput.value) {
+      event.stopPropagation();
+      clearSearch();
+    }
   });
 
   document.querySelectorAll('.detail-tab').forEach((tab) => {
