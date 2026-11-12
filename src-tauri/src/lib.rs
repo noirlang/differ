@@ -34,6 +34,7 @@ mod github;
 mod update;
 mod editor;
 mod secrets;
+mod branches;
 #[cfg(test)]
 mod tests;
 
@@ -51,6 +52,7 @@ use github::*;
 use update::*;
 use editor::*;
 use secrets::*;
+use branches::*;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -110,6 +112,10 @@ pub fn run() {
             create_github_pr,
             get_secret_status,
             save_gemini_api_key,
+            create_branch,
+            checkout_branch,
+            rename_branch,
+            delete_branch,
             detect_installed_editors,
             open_in_editor,
             get_git_remotes,

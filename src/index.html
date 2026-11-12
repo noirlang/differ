@@ -71,6 +71,10 @@
           <div class="pill-dropdown-menu branch-dropdown" id="branch-dropdown-menu" style="display: none;">
             <div class="dropdown-menu-header">
               <span>Dallar (<span id="branch-count">0</span>)</span>
+              <span class="dropdown-header-actions">
+              <button class="section-icon-btn" id="btn-new-branch" type="button" title="Yeni dal oluştur (Ctrl+Shift+N)" aria-label="Yeni dal">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg>
+              </button>
               <button class="section-icon-btn" id="btn-refresh-branches" type="button" title="Dalları origin'den getir (fetch)" aria-label="Dalları yenile">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M21 12a9 9 0 0 1-15.5 6.3L3 16"></path>
@@ -79,6 +83,7 @@
                   <path d="M21 3v5h-5"></path>
                 </svg>
               </button>
+              </span>
             </div>
             <div class="dropdown-menu-list" id="top-branch-list"></div>
           </div>
@@ -992,6 +997,46 @@
             </button>
           </div>
           <button class="mini-btn cancel" id="btn-close-pr-modal-bottom" type="button">Kapat</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Branch Create / Rename Modal -->
+    <div class="modal-overlay" id="branch-modal" hidden>
+      <div class="merge-modal branch-modal" role="dialog" aria-modal="true" aria-labelledby="branch-modal-title">
+        <div class="modal-head">
+          <div>
+            <span>Dallar</span>
+            <h2 id="branch-modal-title">Yeni Dal</h2>
+          </div>
+          <button class="modal-close" id="btn-close-branch-modal" type="button" aria-label="Kapat">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>
+          </button>
+        </div>
+
+        <div class="merge-form-group">
+          <label for="branch-name-input">Dal adı</label>
+          <input type="text" id="branch-name-input" class="create-pr-input" placeholder="ornek: feature/giris-ekrani" autocomplete="off" spellcheck="false" />
+        </div>
+
+        <div class="merge-form-group" id="branch-start-group">
+          <label for="branch-start-select">Başlangıç noktası</label>
+          <select id="branch-start-select" class="create-pr-input"></select>
+        </div>
+
+        <div class="commit-option-field checkbox-field" id="branch-checkout-group">
+          <label class="toggle-switch small">
+            <input type="checkbox" id="branch-checkout-toggle" checked />
+            <span class="slider"></span>
+          </label>
+          <span>Oluşturduktan sonra bu dala geç</span>
+        </div>
+
+        <p class="create-pr-error" id="branch-modal-error" hidden></p>
+
+        <div class="merge-modal-actions">
+          <button class="mini-btn cancel" id="btn-cancel-branch-modal" type="button">İptal</button>
+          <button class="mini-btn primary" id="btn-confirm-branch-modal" type="button">Oluştur</button>
         </div>
       </div>
     </div>

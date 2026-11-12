@@ -307,3 +307,32 @@ fn secret_roundtrip() {
     set_secret(name, "").unwrap();
     assert_eq!(get_secret(name), None);
 }
+
+#[test]
+fn branch_helpers_validate_names_and_split_remotes() {
+    let dir = std::env::temp_dir().join("differ-branch-helpers-test");
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).expect("temp dir");
+
+    test_git(&["init", "-b", "main"], &dir);
+    test_git(&["remote", "add", "origin", "https://example.com/a.git"], &dir);
+    test_git(&["remote", "add", "team/fork", "https://example.com/b.git"], &dir);
+
+    let repo = Repository::open(&dir).expect("repo should open");
+    assert!(branches::validate_branch_name(&repo, "feature/login").is_ok());
+    assert!(branches::validate_branch_name(&repo, "bad name").is_err());
+    assert!(branches::validate_branch_name(&repo, "two..dots").is_err());
+    assert!(branches::validate_branch_name(&repo, "  ").is_err());
+
+    assert_eq!(
+        branches::split_remote_branch(&repo, "origin/feature/x"),
+        Some(("origin".to_string(), "feature/x".to_string()))
+    );
+    assert_eq!(
+        branches::split_remote_branch(&repo, "team/fork/fix"),
+        Some(("team/fork".to_string(), "fix".to_string()))
+    );
+    assert_eq!(branches::split_remote_branch(&repo, "unknown/x"), None);
+
+    let _ = std::fs::remove_dir_all(&dir);
+}

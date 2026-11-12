@@ -4749,3 +4749,68 @@ textarea.create-pr-input {
   color: var(--text);
   white-space: pre-wrap;
 }
+
+/* ─── Branch management ───────────────────────────────────────────────────── */
+
+.dropdown-header-actions {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.branch-dropdown {
+  max-width: 380px;
+  min-width: 300px;
+}
+
+.branch-row-actions {
+  display: none;
+  gap: 2px;
+  margin-left: 2px;
+}
+
+.dropdown-menu-item:hover .branch-row-actions,
+.dropdown-menu-item:focus-within .branch-row-actions {
+  display: inline-flex;
+}
+
+.dropdown-menu-item:hover .item-badge,
+.dropdown-menu-item:focus-within .item-badge {
+  display: none;
+}
+
+.branch-row-btn {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+
+.branch-row-btn:hover {
+  border-color: var(--line);
+  background: var(--hover);
+  color: var(--text);
+}
+
+.branch-row-btn.danger:hover {
+  color: #f85149;
+}
+
+.branch-row-btn svg {
+  width: 12px;
+  height: 12px;
+}
+
+.branch-modal {
+  width: min(460px, 92vw);
+  padding: 0 20px 20px;
+}
+
+.branch-modal .modal-head {
+  margin: 0 -20px;
+}

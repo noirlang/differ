@@ -382,6 +382,21 @@ function initEventHandlers() {
   });
   els.btnConfirmPrMerge?.addEventListener('click', confirmPrMerge);
 
+  // Branch modal events
+  els.btnNewBranch?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    openBranchModal({ mode: 'create' });
+  });
+  els.btnCloseBranchModal?.addEventListener('click', closeBranchModal);
+  els.btnCancelBranchModal?.addEventListener('click', closeBranchModal);
+  els.btnConfirmBranchModal?.addEventListener('click', submitBranchModal);
+  els.branchNameInput?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') submitBranchModal();
+  });
+  els.branchModal?.addEventListener('click', (e) => {
+    if (e.target === els.branchModal) closeBranchModal();
+  });
+
   // Create PR Modal events
   els.btnNewPr?.addEventListener('click', openCreatePrModal);
   els.btnCloseCreatePr?.addEventListener('click', closeCreatePrModal);
@@ -417,6 +432,10 @@ function initEventHandlers() {
     }
     if (event.key === 'Escape' && !els.prDetailModal.hidden) {
       closePrModal();
+      return;
+    }
+    if (event.key === 'Escape' && els.branchModal && !els.branchModal.hidden) {
+      closeBranchModal();
       return;
     }
     if (event.key === 'Escape' && els.createPrModal && !els.createPrModal.hidden) {

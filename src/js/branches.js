@@ -289,23 +289,209 @@ function renderBranches() {
     }
 
     const branchDisplayName = escapeHtml(branch.name);
+    const isLocal = !branch.is_remote && !branch.is_tag;
+    const actions = [];
+    if (!branch.is_head && !branch.is_tag) {
+      actions.push(branchRowButton('checkout', 'Bu dala geç', BRANCH_ICONS.checkout));
+    }
+    actions.push(branchRowButton('branch-from', 'Buradan yeni dal oluştur', BRANCH_ICONS.plus));
+    if (isLocal) {
+      actions.push(branchRowButton('rename', 'Yeniden adlandır', BRANCH_ICONS.rename));
+    }
+    if (isLocal && !branch.is_head) {
+      actions.push(branchRowButton('delete', 'Dalı sil', BRANCH_ICONS.trash, 'danger'));
+    }
 
     branchRows.push(`
-      <button class="dropdown-menu-item ${active ? 'active' : ''}" type="button" data-branch="${escapeHtml(branch.name)}">
+      <div class="dropdown-menu-item ${active ? 'active' : ''}" role="button" tabindex="0"
+        data-branch="${escapeHtml(branch.name)}" data-remote="${branch.is_remote ? '1' : ''}">
         ${itemIcon}
         <span class="item-title">${branchDisplayName}</span>
         <span class="item-badge ${badgeClass}">${badgeLabel}</span>
-      </button>
+        <span class="branch-row-actions">${actions.join('')}</span>
+      </div>
     `);
   }
 
   els.topBranchList.innerHTML = branchRows.join('');
 
   els.topBranchList.querySelectorAll('.dropdown-menu-item').forEach((item) => {
-    item.addEventListener('click', () => {
-      const branch = item.dataset.branch || null;
+    const branch = item.dataset.branch || null;
+    const isRemote = item.dataset.remote === '1';
+    item.addEventListener('click', (event) => {
+      const actionBtn = event.target.closest('[data-branch-action]');
+      if (actionBtn) {
+        event.stopPropagation();
+        handleBranchAction(actionBtn.dataset.branchAction, branch, isRemote);
+        return;
+      }
       closeAllDropdowns();
       loadCommits(branch);
     });
+    item.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' && event.target === item) item.click();
+    });
   });
+}
+
+// ─── Branch management ───────────────────────────────────────────────────────
+
+const BRANCH_ICONS = {
+  checkout: '<path d="M5 12h14"></path><polyline points="12 5 19 12 12 19"></polyline>',
+  plus: '<path d="M12 5v14"></path><path d="M5 12h14"></path>',
+  rename: '<path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"></path>',
+  trash: '<path d="M3 6h18"></path><path d="M8 6V4h8v2"></path><path d="M19 6l-1 14H6L5 6"></path>',
+};
+
+function branchRowButton(action, title, icon, extraClass = '') {
+  return `<button class="branch-row-btn ${extraClass}" type="button" data-branch-action="${action}" title="${title}" aria-label="${title}">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${icon}</svg>
+  </button>`;
+}
+
+function handleBranchAction(action, branch, isRemote) {
+  if (action === 'checkout') return checkoutBranch(branch, isRemote);
+  if (action === 'branch-from') return openBranchModal({ mode: 'create', startPoint: branch });
+  if (action === 'rename') return openBranchModal({ mode: 'rename', branch });
+  if (action === 'delete') return deleteBranch(branch);
+}
+
+/** Re-reads repo info (current branch) and all repo data after a branch change. */
+async function reloadAfterBranchChange() {
+  state.repoInfo = await invoke('open_repo', { path: state.repoInfo.path });
+  state.selectedBranch = null;
+  await refreshRepositoryData({ selectLatest: true });
+}
+
+async function checkoutBranch(branch, isRemote = false) {
+  if (!branch || !state.repoInfo) return;
+  if (state.worktreeFiles.length > 0) {
+    const ok = confirm(
+      `Commit edilmemiş ${state.worktreeFiles.length} değişiklik var.\n\n`
+      + `Git, bu değişiklikleri "${branch}" dalına taşımayı deneyecek. `
+      + 'Çakışma olursa geçiş iptal edilir ve hiçbir şey kaybolmaz.\n\nDevam edilsin mi?',
+    );
+    if (!ok) return;
+  }
+  closeAllDropdowns();
+  try {
+    setStatus(`${branch} dalına geçiliyor...`);
+    await invoke('checkout_branch', { name: branch, isRemote });
+    await reloadAfterBranchChange();
+    setStatus(`${state.repoInfo.current_branch || branch} dalına geçildi`);
+  } catch (err) {
+    setStatus('Dal değiştirilemedi');
+    alert(`Dala geçilemedi:\n\n${err}`);
+  }
+}
+
+async function deleteBranch(branch) {
+  if (!branch) return;
+  if (!confirm(`"${branch}" dalı silinsin mi?`)) return;
+  try {
+    await invoke('delete_branch', { name: branch, force: false });
+  } catch (err) {
+    const msg = String(err);
+    if (!/not fully merged/i.test(msg)) {
+      alert(`Dal silinemedi:\n\n${msg}`);
+      return;
+    }
+    const force = confirm(
+      `"${branch}" dalında başka hiçbir dala birleştirilmemiş commit'ler var.\n\n`
+      + 'Yine de silinirse bu commit\'ler kaybolabilir. Zorla silinsin mi?',
+    );
+    if (!force) return;
+    try {
+      await invoke('delete_branch', { name: branch, force: true });
+    } catch (forceErr) {
+      alert(`Dal silinemedi:\n\n${forceErr}`);
+      return;
+    }
+  }
+  if (state.selectedBranch === branch) state.selectedBranch = null;
+  await refreshRepositoryData();
+  setStatus(`"${branch}" dalı silindi`);
+}
+
+let branchModalContext = null;
+
+function setBranchModalError(message) {
+  els.branchModalError.textContent = message || '';
+  els.branchModalError.hidden = !message;
+}
+
+function openBranchModal({ mode = 'create', branch = null, startPoint = null } = {}) {
+  if (!state.repoInfo) return;
+  closeAllDropdowns();
+  branchModalContext = { mode, branch };
+  const isRename = mode === 'rename';
+
+  els.branchModalTitle.textContent = isRename ? 'Dalı Yeniden Adlandır' : 'Yeni Dal';
+  els.btnConfirmBranchModal.textContent = isRename ? 'Yeniden Adlandır' : 'Oluştur';
+  els.branchStartGroup.style.display = isRename ? 'none' : '';
+  els.branchCheckoutGroup.style.display = isRename ? 'none' : '';
+  els.branchNameInput.value = isRename ? branch : '';
+  setBranchModalError('');
+
+  if (!isRename) {
+    const head = state.repoInfo.current_branch || 'HEAD';
+    const options = [{ value: 'HEAD', label: `Mevcut dal (${head})` }];
+    const selected = state.commits.find((c) => c.id === state.selectedCommit);
+    if (selected) {
+      options.push({ value: selected.id, label: `Seçili commit: ${selected.short_id} ${firstLine(selected.message).slice(0, 50)}` });
+    }
+    for (const b of state.branches) {
+      if (b.is_tag || b.is_head) continue;
+      options.push({ value: b.name, label: b.is_remote ? `${b.name} (uzak)` : b.name });
+    }
+    els.branchStartSelect.innerHTML = options
+      .map((o) => `<option value="${escapeHtml(o.value)}">${escapeHtml(o.label)}</option>`)
+      .join('');
+    els.branchStartSelect.value = startPoint && options.some((o) => o.value === startPoint) ? startPoint : 'HEAD';
+    els.branchCheckoutToggle.checked = true;
+  }
+
+  els.branchModal.hidden = false;
+  els.branchNameInput.focus();
+  els.branchNameInput.select();
+}
+
+function closeBranchModal() {
+  els.branchModal.hidden = true;
+  branchModalContext = null;
+}
+
+async function submitBranchModal() {
+  if (!branchModalContext) return;
+  const name = els.branchNameInput.value.trim();
+  if (!name) return setBranchModalError('Dal adı boş olamaz.');
+  if (/\s/.test(name)) return setBranchModalError('Dal adında boşluk olamaz. Örnek: feature/yeni-ozellik');
+
+  const { mode, branch } = branchModalContext;
+  els.btnConfirmBranchModal.disabled = true;
+  try {
+    if (mode === 'rename') {
+      if (name === branch) return closeBranchModal();
+      await invoke('rename_branch', { oldName: branch, newName: name });
+      if (state.selectedBranch === branch) state.selectedBranch = name;
+      closeBranchModal();
+      await reloadAfterBranchChange();
+      setStatus(`"${branch}" dalının adı "${name}" olarak değiştirildi`);
+    } else {
+      const checkout = els.branchCheckoutToggle.checked;
+      await invoke('create_branch', { name, startPoint: els.branchStartSelect.value, checkout });
+      closeBranchModal();
+      if (checkout) {
+        await reloadAfterBranchChange();
+        setStatus(`"${name}" dalı oluşturuldu ve bu dala geçildi`);
+      } else {
+        await refreshRepositoryData();
+        setStatus(`"${name}" dalı oluşturuldu`);
+      }
+    }
+  } catch (err) {
+    setBranchModalError(String(err));
+  } finally {
+    els.btnConfirmBranchModal.disabled = false;
+  }
 }
