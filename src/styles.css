@@ -517,6 +517,21 @@ svg:not(.graph-svg) {
   display: none !important;
 }
 
+/* Pin each panel to its column so hiding one (e.g. the sidebar on narrow
+   windows) can't shift the others into the wrong tracks. */
+.main-content > .sidebar {
+  grid-column: 1;
+}
+
+.main-content > .history-panel,
+.main-content > .github-panel {
+  grid-column: 2;
+}
+
+.main-content > .detail-panel {
+  grid-column: 3;
+}
+
 .sidebar,
 .history-panel,
 .github-panel,
@@ -2524,8 +2539,13 @@ svg.graph-svg circle {
 }
 
 @media (max-width: 600px) {
-  .main-content {
-    grid-template-columns: 1fr;
+  .main-content,
+  .main-content.hide-detail-panel {
+    grid-template-columns: 0px minmax(0, 1fr) 0px !important;
+  }
+
+  .main-content:not(.hide-detail-panel) {
+    grid-template-columns: 0px minmax(200px, 1fr) minmax(0, 1.3fr) !important;
   }
 
   .sidebar {
@@ -4694,3 +4714,477 @@ input:checked + .slider:before {
 }
 
 
+
+/* ─── Create PR Modal ─────────────────────────────────────────────────────── */
+
+.create-pr-modal {
+  width: min(560px, 92vw);
+  padding: 0 20px 20px;
+}
+
+.create-pr-modal .modal-head {
+  margin: 0 -20px;
+}
+
+.create-pr-branch {
+  flex: 1;
+  min-width: 0;
+}
+
+.create-pr-branch select,
+.create-pr-input {
+  width: 100%;
+  min-height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #080808;
+  color: var(--text);
+  outline: none;
+  font-size: 12.5px;
+  font-family: inherit;
+}
+
+textarea.create-pr-input {
+  padding: 8px 10px;
+  resize: vertical;
+  line-height: 1.5;
+}
+
+.create-pr-branch select:focus,
+.create-pr-input:focus {
+  border-color: #6a6a6a;
+}
+
+.create-pr-modal .merge-connector {
+  padding: 18px 10px 0;
+}
+
+.create-pr-error {
+  margin: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-size: 12px;
+  color: var(--text);
+  white-space: pre-wrap;
+}
+
+/* ─── Branch management ───────────────────────────────────────────────────── */
+
+.dropdown-header-actions {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.branch-dropdown {
+  max-width: 380px;
+  min-width: 300px;
+}
+
+.branch-row-actions {
+  display: none;
+  gap: 2px;
+  margin-left: 2px;
+}
+
+.dropdown-menu-item:hover .branch-row-actions,
+.dropdown-menu-item:focus-within .branch-row-actions {
+  display: inline-flex;
+}
+
+.dropdown-menu-item:hover .item-badge,
+.dropdown-menu-item:focus-within .item-badge {
+  display: none;
+}
+
+.branch-row-btn {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+
+.branch-row-btn:hover {
+  border-color: var(--line);
+  background: var(--hover);
+  color: var(--text);
+}
+
+.branch-row-btn.danger:hover {
+  color: #f85149;
+}
+
+.branch-row-btn svg {
+  width: 12px;
+  height: 12px;
+}
+
+.branch-modal {
+  width: min(460px, 92vw);
+  padding: 0 20px 20px;
+}
+
+.branch-modal .modal-head {
+  margin: 0 -20px;
+}
+
+/* ─── Commit search ───────────────────────────────────────────────────────── */
+
+mark.search-hit {
+  background: rgba(210, 153, 34, 0.35);
+  color: inherit;
+  border-radius: 2px;
+  padding: 0 1px;
+}
+
+/* ─── Diff view: toolbar, split view, word diff, syntax ───────────────────── */
+
+.diff-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--line-soft);
+  background: var(--panel);
+}
+
+.diff-toolbar-spacer {
+  flex: 1;
+}
+
+.diff-view-switch {
+  display: inline-flex;
+  padding: 2px;
+  border: 1px solid var(--line-soft);
+  border-radius: 7px;
+  gap: 2px;
+}
+
+.diff-view-btn {
+  white-space: nowrap;
+  min-height: 22px;
+  padding: 0 9px;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.diff-toolbar > .diff-view-btn {
+  border-color: var(--line-soft);
+}
+
+.diff-view-btn:hover {
+  color: var(--text);
+  background: var(--hover);
+}
+
+.diff-view-btn.active {
+  background: var(--panel-3);
+  border-color: var(--line);
+  color: var(--text);
+}
+
+.diff-file-header {
+  cursor: pointer;
+  user-select: none;
+}
+
+.diff-file-header:hover {
+  background: #171717;
+}
+
+.diff-file-chevron {
+  flex: none;
+  color: var(--text-dim);
+  transition: transform 0.15s ease;
+}
+
+.diff-file-block.collapsed .diff-file-chevron {
+  transform: rotate(-90deg);
+}
+
+.diff-file-block.collapsed .diff-file-body {
+  display: none;
+}
+
+.diff-file-header .diff-file-path {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text);
+}
+
+.diff-file-stats {
+  flex: none;
+  font-size: 10.5px;
+}
+
+.diff-file-stats b {
+  font-weight: 700;
+}
+
+.diff-split-row {
+  display: grid;
+  grid-template-columns: 46px minmax(0, 1fr) 46px minmax(0, 1fr);
+  min-height: 21px;
+  font-family: var(--mono);
+  font-size: 11.5px;
+}
+
+.diff-split-content {
+  min-width: 0;
+  overflow: auto hidden;
+  padding: 2px 10px;
+  color: var(--text);
+  white-space: pre;
+  tab-size: 2;
+}
+
+.diff-split-content.add,
+.diff-line-num.add {
+  background: rgba(167, 216, 173, 0.08);
+}
+
+.diff-split-content.delete,
+.diff-line-num.delete {
+  background: rgba(227, 154, 150, 0.08);
+}
+
+.diff-split-content.empty,
+.diff-line-num.empty {
+  background: repeating-linear-gradient(135deg, transparent 0 6px, rgba(255, 255, 255, 0.02) 6px 12px);
+}
+
+.diff-split-row .diff-split-content:nth-child(2) {
+  border-right: 1px solid var(--line-soft);
+}
+
+.diff-line.add .word-change,
+.diff-split-content.add .word-change {
+  background: rgba(167, 216, 173, 0.28);
+  border-radius: 2px;
+}
+
+.diff-line.delete .word-change,
+.diff-split-content.delete .word-change {
+  background: rgba(227, 154, 150, 0.3);
+  border-radius: 2px;
+}
+
+.pr-diff-content.diff-container {
+  padding: 0;
+  white-space: normal;
+  word-break: normal;
+  overflow: auto;
+}
+
+/* Syntax colors: muted to fit the monochrome theme. */
+.hljs-comment,
+.hljs-quote {
+  color: #6f6f6f;
+  font-style: italic;
+}
+
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-literal,
+.hljs-doctag {
+  color: #c9a7e8;
+}
+
+.hljs-string,
+.hljs-regexp,
+.hljs-template-tag,
+.hljs-addition {
+  color: #a7d8ad;
+}
+
+.hljs-number,
+.hljs-symbol,
+.hljs-bullet {
+  color: #e8bf8a;
+}
+
+.hljs-title,
+.hljs-title.function_,
+.hljs-section {
+  color: #9cc9f5;
+}
+
+.hljs-type,
+.hljs-title.class_,
+.hljs-built_in {
+  color: #86d1c6;
+}
+
+.hljs-attr,
+.hljs-attribute,
+.hljs-property,
+.hljs-variable,
+.hljs-template-variable,
+.hljs-selector-class,
+.hljs-selector-id {
+  color: #e3cf96;
+}
+
+.hljs-meta,
+.hljs-tag,
+.hljs-name {
+  color: #a0a0a0;
+}
+
+.hljs-deletion {
+  color: #e39a96;
+}
+
+.hljs-emphasis {
+  font-style: italic;
+}
+
+.hljs-strong {
+  font-weight: 700;
+}
+
+/* ─── Keyboard shortcuts ──────────────────────────────────────────────────── */
+
+kbd {
+  display: inline-block;
+  min-width: 18px;
+  padding: 1px 5px;
+  border: 1px solid var(--line);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  background: var(--panel-2);
+  color: var(--text-muted);
+  font-family: var(--mono);
+  font-size: 10px;
+  line-height: 1.4;
+  text-align: center;
+}
+
+kbd + kbd {
+  margin-left: 3px;
+}
+
+.statusbar-hint {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 10.5px;
+  cursor: pointer;
+}
+
+.statusbar-hint kbd {
+  font-size: 9px;
+  padding: 0 4px;
+}
+
+.statusbar-hint kbd:last-of-type {
+  margin-right: 6px;
+}
+
+.statusbar-hint:hover {
+  color: var(--text);
+}
+
+.shortcut-help-modal {
+  width: min(640px, 94vw);
+  max-height: 86vh;
+  padding: 0 20px 20px;
+}
+
+.shortcut-help-modal .modal-head {
+  margin: 0 -20px;
+}
+
+.shortcut-help-body {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px 24px;
+  overflow: auto;
+}
+
+.shortcut-group h3 {
+  margin: 0 0 6px;
+  color: var(--text-dim);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.shortcut-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--line-soft);
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.shortcut-keys {
+  flex: none;
+  white-space: nowrap;
+}
+
+/* ─── In-app update ───────────────────────────────────────────────────────── */
+
+.update-actions {
+  display: flex;
+  gap: 6px;
+  flex: none;
+}
+
+.update-progress {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.update-progress[hidden] {
+  display: none;
+}
+
+.update-progress-bar {
+  height: 4px;
+  border-radius: 999px;
+  background: var(--line-soft);
+  overflow: hidden;
+}
+
+.update-progress-bar span {
+  display: block;
+  width: 0;
+  height: 100%;
+  background: var(--accent-green);
+  transition: width 0.2s ease;
+}
+
+.update-progress small,
+.update-hint {
+  display: block;
+  margin-top: 6px;
+  color: var(--text-dim);
+  font-size: 11px;
+}

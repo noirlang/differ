@@ -5,7 +5,26 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>differ</title>
   <link rel="stylesheet" href="styles.css" />
-  <script src="main.js" defer></script>
+  <script src="vendor/highlight/highlight.min.js" defer></script>
+  <script src="js/core.js" defer></script>
+  <script src="js/utils.js" defer></script>
+  <script src="js/repo.js" defer></script>
+  <script src="js/search.js" defer></script>
+  <script src="js/timeline.js" defer></script>
+  <script src="js/diffview.js" defer></script>
+  <script src="js/diff.js" defer></script>
+  <script src="js/branches.js" defer></script>
+  <script src="js/commit.js" defer></script>
+  <script src="js/coauthors.js" defer></script>
+  <script src="js/sync.js" defer></script>
+  <script src="js/merge.js" defer></script>
+  <script src="js/contributors.js" defer></script>
+  <script src="js/settings.js" defer></script>
+  <script src="js/github.js" defer></script>
+  <script src="js/editor.js" defer></script>
+  <script src="js/update.js" defer></script>
+  <script src="js/shortcuts.js" defer></script>
+  <script src="js/init.js" defer></script>
 </head>
 <body>
   <div id="app">
@@ -43,7 +62,8 @@
           <circle cx="11" cy="11" r="7"></circle>
           <path d="m20 20-3.5-3.5"></path>
         </svg>
-        <input id="search-input" type="search" placeholder="commit, hash veya yazar ara..." autocomplete="off" />
+        <input id="search-input" type="search" placeholder="ara…  yazar:  dosya:  tarih>  hash:" autocomplete="off" spellcheck="false"
+          title="Commit ara (Ctrl+F)&#10;&#10;metin — mesaj, yazar veya hash&#10;yazar:ali — yazara göre&#10;dosya:src/app.js — o dosyaya dokunan commit'ler&#10;hash:abc123 — belirli bir commit&#10;tarih&gt;2026-01-01  tarih&lt;2026-02-01 — tarih aralığı&#10;Boşluklu değerler için tırnak: yazar:&quot;Ali Veli&quot;&#10;Esc — aramayı temizle" />
       </label>
 
       <div class="repo-info" id="repo-info" style="display:none;">
@@ -56,6 +76,10 @@
           <div class="pill-dropdown-menu branch-dropdown" id="branch-dropdown-menu" style="display: none;">
             <div class="dropdown-menu-header">
               <span>Dallar (<span id="branch-count">0</span>)</span>
+              <span class="dropdown-header-actions">
+              <button class="section-icon-btn" id="btn-new-branch" type="button" title="Yeni dal oluştur (Ctrl+Shift+N)" aria-label="Yeni dal">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg>
+              </button>
               <button class="section-icon-btn" id="btn-refresh-branches" type="button" title="Dalları origin'den getir (fetch)" aria-label="Dalları yenile">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M21 12a9 9 0 0 1-15.5 6.3L3 16"></path>
@@ -64,6 +88,7 @@
                   <path d="M21 3v5h-5"></path>
                 </svg>
               </button>
+              </span>
             </div>
             <div class="dropdown-menu-list" id="top-branch-list"></div>
           </div>
@@ -331,6 +356,10 @@
               <button class="gh-filter-btn" type="button" data-filter="merged">Birleştirildi</button>
               <button class="gh-filter-btn" type="button" data-filter="all">Tümü</button>
             </div>
+            <button class="icon-btn" id="btn-new-pr" type="button" title="Yeni Pull Request oluştur">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg>
+              <span>Yeni PR</span>
+            </button>
             <button class="icon-btn" id="btn-refresh-prs" type="button" title="PR'ları yenile">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 0 1-15.5 6.3L3 16"></path><path d="M3 21v-5h5"></path><path d="M3 12A9 9 0 0 1 18.5 5.7L21 8"></path><path d="M21 3v5h-5"></path></svg>
               <span>Yenile</span>
@@ -412,6 +441,15 @@
           </div>
 
           <div class="changed-files" id="changed-files"></div>
+          <div class="diff-toolbar" id="diff-toolbar" style="display:none;">
+            <div class="diff-view-switch" role="group" aria-label="Diff görünümü">
+              <button type="button" class="diff-view-btn" data-diff-view="unified" title="Satır içi görünüm (Ctrl+Shift+D)">Satır içi</button>
+              <button type="button" class="diff-view-btn" data-diff-view="split" title="Yan yana görünüm (Ctrl+Shift+D)">Yan yana</button>
+            </div>
+            <span class="diff-toolbar-spacer"></span>
+            <button type="button" class="diff-view-btn" id="btn-diff-collapse-all" title="Tüm dosyaları daralt">Tümünü daralt</button>
+            <button type="button" class="diff-view-btn" id="btn-diff-expand-all" title="Tüm dosyaları genişlet">Tümünü genişlet</button>
+          </div>
           <div class="diff-container" id="diff-container"></div>
           <div class="commit-description-view" id="commit-description-view" style="display: none;"></div>
         </div>
@@ -742,9 +780,9 @@
                   <div class="gemini-key-row">
                     <input type="password" id="setting-gemini-api-key" placeholder="AIza..." class="gemini-key-input" />
                     <button class="mini-btn" id="btn-toggle-gemini-key" type="button">Göster</button>
-                    <button class="mini-btn" id="btn-copy-gemini-key" type="button">Kopyala</button>
+                    <button class="mini-btn" id="btn-remove-gemini-key" type="button" style="display:none;">Kaldır</button>
                   </div>
-                  <small class="field-help"><a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a> adresinden ücretsiz anahtar. Yalnızca yerel olarak saklanır.</small>
+                  <small class="field-help"><a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a> adresinden ücretsiz anahtar. İşletim sisteminin anahtar zincirinde saklanır.</small>
                 </div>
 
                 <div class="settings-form-row">
@@ -945,7 +983,7 @@
             <div class="action-log-loading" id="pr-diff-loading" style="display:none;">
               <div class="spinner"></div><span>PR diff yükleniyor...</span>
             </div>
-            <pre class="pr-diff-content" id="pr-diff-content"></pre>
+            <div class="pr-diff-content diff-container" id="pr-diff-content"></div>
           </div>
 
           <div class="pr-tab-panel" id="pr-panel-commits" style="display:none;">
@@ -977,8 +1015,119 @@
       </div>
     </div>
 
+    <!-- Keyboard Shortcuts Modal -->
+    <div class="modal-overlay" id="shortcut-help-modal" hidden>
+      <div class="merge-modal shortcut-help-modal" role="dialog" aria-modal="true" aria-labelledby="shortcut-help-title">
+        <div class="modal-head">
+          <div>
+            <span>Yardım</span>
+            <h2 id="shortcut-help-title">Klavye Kısayolları</h2>
+          </div>
+          <button class="modal-close" id="btn-close-shortcut-help" type="button" aria-label="Kapat">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>
+          </button>
+        </div>
+        <div class="shortcut-help-body" id="shortcut-help-body"></div>
+      </div>
+    </div>
+
+    <!-- Branch Create / Rename Modal -->
+    <div class="modal-overlay" id="branch-modal" hidden>
+      <div class="merge-modal branch-modal" role="dialog" aria-modal="true" aria-labelledby="branch-modal-title">
+        <div class="modal-head">
+          <div>
+            <span>Dallar</span>
+            <h2 id="branch-modal-title">Yeni Dal</h2>
+          </div>
+          <button class="modal-close" id="btn-close-branch-modal" type="button" aria-label="Kapat">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>
+          </button>
+        </div>
+
+        <div class="merge-form-group">
+          <label for="branch-name-input">Dal adı</label>
+          <input type="text" id="branch-name-input" class="create-pr-input" placeholder="ornek: feature/giris-ekrani" autocomplete="off" spellcheck="false" />
+        </div>
+
+        <div class="merge-form-group" id="branch-start-group">
+          <label for="branch-start-select">Başlangıç noktası</label>
+          <select id="branch-start-select" class="create-pr-input"></select>
+        </div>
+
+        <div class="commit-option-field checkbox-field" id="branch-checkout-group">
+          <label class="toggle-switch small">
+            <input type="checkbox" id="branch-checkout-toggle" checked />
+            <span class="slider"></span>
+          </label>
+          <span>Oluşturduktan sonra bu dala geç</span>
+        </div>
+
+        <p class="create-pr-error" id="branch-modal-error" hidden></p>
+
+        <div class="merge-modal-actions">
+          <button class="mini-btn cancel" id="btn-cancel-branch-modal" type="button">İptal</button>
+          <button class="mini-btn primary" id="btn-confirm-branch-modal" type="button">Oluştur</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Create PR Modal -->
+    <div class="modal-overlay" id="create-pr-modal" hidden>
+      <div class="merge-modal create-pr-modal" role="dialog" aria-modal="true" aria-labelledby="create-pr-title">
+        <div class="modal-head">
+          <div>
+            <span>GitHub</span>
+            <h2 id="create-pr-title">Yeni Pull Request</h2>
+          </div>
+          <button class="modal-close" id="btn-close-create-pr" type="button" aria-label="Kapat">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>
+          </button>
+        </div>
+
+        <div class="merge-flow-diagram">
+          <div class="merge-form-group create-pr-branch">
+            <label for="create-pr-head">Kaynak (head)</label>
+            <select id="create-pr-head"></select>
+          </div>
+          <div class="merge-connector">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+          </div>
+          <div class="merge-form-group create-pr-branch">
+            <label for="create-pr-base">Hedef (base)</label>
+            <select id="create-pr-base"></select>
+          </div>
+        </div>
+
+        <div class="merge-form-group">
+          <label for="create-pr-title-input">Başlık</label>
+          <input type="text" id="create-pr-title-input" class="create-pr-input" placeholder="PR başlığı" autocomplete="off" />
+        </div>
+
+        <div class="merge-form-group">
+          <label for="create-pr-body">Açıklama</label>
+          <textarea id="create-pr-body" class="create-pr-input" rows="7" placeholder="Bu PR neyi değiştiriyor?"></textarea>
+        </div>
+
+        <div class="commit-option-field checkbox-field">
+          <label class="toggle-switch small">
+            <input type="checkbox" id="create-pr-draft" />
+            <span class="slider"></span>
+          </label>
+          <span>Taslak (draft) olarak aç</span>
+        </div>
+
+        <p class="create-pr-error" id="create-pr-error" hidden></p>
+
+        <div class="merge-modal-actions">
+          <button class="mini-btn cancel" id="btn-cancel-create-pr" type="button">İptal</button>
+          <button class="mini-btn primary" id="btn-confirm-create-pr" type="button">PR Oluştur</button>
+        </div>
+      </div>
+    </div>
+
     <footer class="statusbar" id="statusbar">
       <span id="status-text">Hazır</span>
+      <button class="statusbar-hint" type="button" onclick="toggleShortcutHelp(true)" title="Klavye kısayolları"><kbd>Shift</kbd><kbd>?</kbd> kısayollar</button>
     </footer>
   </div>
 </body>

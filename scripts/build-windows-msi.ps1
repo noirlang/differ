@@ -6,7 +6,7 @@ $projectRoot = Split-Path -Parent $PSScriptRoot
 Set-Location $projectRoot
 
 npm ci
-node --check src\main.js
+Get-ChildItem src\js\*.js | ForEach-Object { node --check $_.FullName }
 
 cargo test --locked
 

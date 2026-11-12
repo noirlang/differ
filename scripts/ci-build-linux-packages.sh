@@ -37,7 +37,7 @@ curl https://sh.rustup.rs -sSf | sh -s -- -y --profile minimal --component rustf
 . "${HOME}/.cargo/env"
 
 npm ci
-node --check src/main.js
+for f in src/js/*.js; do node --check "$f"; done
 cargo fmt --manifest-path src-tauri/Cargo.toml --all -- --check
 cargo test --manifest-path src-tauri/Cargo.toml --locked
 
@@ -118,8 +118,8 @@ depend = webkit2gtk-4.1
 depend = xdg-utils
 PKGINFO
 
-if [ -f src/main.js ]; then
-  cp src/main.js "$pkg_root/opt/differ/"
+if [ -d src/js ]; then
+  cp -r src/js "$pkg_root/opt/differ/"
 fi
 if [ -f src/index.html ]; then
   cp src/index.html "$pkg_root/opt/differ/"

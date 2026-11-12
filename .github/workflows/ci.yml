@@ -53,7 +53,7 @@ jobs:
         run: npm ci
 
       - name: Check JavaScript syntax
-        run: node --check src/main.js
+        run: for f in src/js/*.js; do node --check "$f"; done
 
       - name: Check Rust backend
         run: cargo check --manifest-path src-tauri/Cargo.toml --locked
