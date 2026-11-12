@@ -517,6 +517,21 @@ svg:not(.graph-svg) {
   display: none !important;
 }
 
+/* Pin each panel to its column so hiding one (e.g. the sidebar on narrow
+   windows) can't shift the others into the wrong tracks. */
+.main-content > .sidebar {
+  grid-column: 1;
+}
+
+.main-content > .history-panel,
+.main-content > .github-panel {
+  grid-column: 2;
+}
+
+.main-content > .detail-panel {
+  grid-column: 3;
+}
+
 .sidebar,
 .history-panel,
 .github-panel,
@@ -2524,8 +2539,13 @@ svg.graph-svg circle {
 }
 
 @media (max-width: 600px) {
-  .main-content {
-    grid-template-columns: 1fr;
+  .main-content,
+  .main-content.hide-detail-panel {
+    grid-template-columns: 0px minmax(0, 1fr) 0px !important;
+  }
+
+  .main-content:not(.hide-detail-panel) {
+    grid-template-columns: 0px minmax(200px, 1fr) minmax(0, 1.3fr) !important;
   }
 
   .sidebar {
@@ -4828,6 +4848,7 @@ mark.search-hit {
 
 .diff-toolbar {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 6px;
   padding: 6px 10px;
@@ -4848,6 +4869,7 @@ mark.search-hit {
 }
 
 .diff-view-btn {
+  white-space: nowrap;
   min-height: 22px;
   padding: 0 9px;
   border: 1px solid transparent;
