@@ -293,6 +293,7 @@ const els = {
   prMergeMethod: $('pr-merge-method'),
   btnConfirmPrMerge: $('btn-confirm-pr-merge'),
   btnNewPr: $('btn-new-pr'),
+  diffToolbar: $('diff-toolbar'),
   btnNewBranch: $('btn-new-branch'),
   branchModal: $('branch-modal'),
   branchModalTitle: $('branch-modal-title'),

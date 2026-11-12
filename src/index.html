@@ -5,11 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>differ</title>
   <link rel="stylesheet" href="styles.css" />
+  <script src="vendor/highlight/highlight.min.js" defer></script>
   <script src="js/core.js" defer></script>
   <script src="js/utils.js" defer></script>
   <script src="js/repo.js" defer></script>
   <script src="js/search.js" defer></script>
   <script src="js/timeline.js" defer></script>
+  <script src="js/diffview.js" defer></script>
   <script src="js/diff.js" defer></script>
   <script src="js/branches.js" defer></script>
   <script src="js/commit.js" defer></script>
@@ -438,6 +440,15 @@
           </div>
 
           <div class="changed-files" id="changed-files"></div>
+          <div class="diff-toolbar" id="diff-toolbar" style="display:none;">
+            <div class="diff-view-switch" role="group" aria-label="Diff görünümü">
+              <button type="button" class="diff-view-btn" data-diff-view="unified" title="Satır içi görünüm (Ctrl+Shift+D)">Satır içi</button>
+              <button type="button" class="diff-view-btn" data-diff-view="split" title="Yan yana görünüm (Ctrl+Shift+D)">Yan yana</button>
+            </div>
+            <span class="diff-toolbar-spacer"></span>
+            <button type="button" class="diff-view-btn" id="btn-diff-collapse-all" title="Tüm dosyaları daralt">Tümünü daralt</button>
+            <button type="button" class="diff-view-btn" id="btn-diff-expand-all" title="Tüm dosyaları genişlet">Tümünü genişlet</button>
+          </div>
           <div class="diff-container" id="diff-container"></div>
           <div class="commit-description-view" id="commit-description-view" style="display: none;"></div>
         </div>
@@ -971,7 +982,7 @@
             <div class="action-log-loading" id="pr-diff-loading" style="display:none;">
               <div class="spinner"></div><span>PR diff yükleniyor...</span>
             </div>
-            <pre class="pr-diff-content" id="pr-diff-content"></pre>
+            <div class="pr-diff-content diff-container" id="pr-diff-content"></div>
           </div>
 
           <div class="pr-tab-panel" id="pr-panel-commits" style="display:none;">

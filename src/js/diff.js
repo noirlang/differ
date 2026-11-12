@@ -69,40 +69,41 @@ function renderDiff() {
     });
   });
 
-  els.diffContainer.innerHTML = state.diffData.map((file, fileIndex) => {
-    const displayPath = file.new_path || file.old_path;
-    const config = statusConfig[file.status] || statusConfig.unknown;
-    const hunks = file.hunks.map((hunk) => `
-      <div class="diff-hunk">
-        <div class="diff-hunk-header">${escapeHtml(hunk.header)}</div>
-        ${hunk.lines.map((line) => `
-          <div class="diff-line ${line.line_type}">
-            <span class="diff-line-num">${line.old_lineno || ''}</span>
-            <span class="diff-line-num">${line.new_lineno || ''}</span>
-            <span class="diff-line-content">${escapeHtml(line.content.replace(/\n$/, ''))}</span>
-          </div>
-        `).join('')}
-      </div>
-    `).join('');
-
-    return `
-      <section class="diff-file-block" id="diff-file-${fileIndex}">
-        <div class="diff-file-header">
-          <span class="file-status ${file.status}">${config.label}</span>
-          <span>${escapeHtml(displayPath)}</span>
-          <small>${config.text}</small>
-        </div>
-        ${hunks || '<div class="diff-placeholder">Dosya değişti fakat gösterilecek satır yok.</div>'}
-      </section>
-    `;
-  }).join('');
+  renderDiffFiles(state.diffData, els.diffContainer, { scope: 'commit', idPrefix: 'diff-file-' });
+  updateDiffToolbar();
 
   activateDetailTab(state.detailTab);
 }
 
 function scrollToDiffFile(index) {
   const element = document.getElementById(`diff-file-${index}`);
-  if (element) element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  if (!element) return;
+  if (element.classList.contains('collapsed')) toggleDiffFile(element, state.diffData[index], true);
+  element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function updateDiffToolbar() {
+  if (!els.diffToolbar) return;
+  els.diffToolbar.querySelectorAll('[data-diff-view]').forEach((btn) => {
+    const active = btn.dataset.diffView === diffViewMode;
+    btn.classList.toggle('active', active);
+    btn.setAttribute('aria-pressed', String(active));
+  });
+}
+
+function switchDiffView(mode) {
+  if (mode === diffViewMode) return;
+  setDiffViewMode(mode);
+  const scrollTop = els.diffContainer.scrollTop;
+  renderDiffFiles(state.diffData, els.diffContainer, { scope: 'commit', idPrefix: 'diff-file-' });
+  els.diffContainer.scrollTop = scrollTop;
+  updateDiffToolbar();
+  if (currentPrDiffFiles && els.prDetailModal && !els.prDetailModal.hidden) renderPrDiff();
+}
+
+function toggleDiffViewMode() {
+  switchDiffView(diffViewMode === 'split' ? 'unified' : 'split');
+  setStatus(diffViewMode === 'split' ? 'Diff: yan yana görünüm' : 'Diff: satır içi görünüm');
 }
 
 function renderFileTree() {
@@ -136,6 +137,10 @@ function activateDetailTab(tabName) {
   document.querySelectorAll('.detail-tab').forEach((tab) => {
     tab.classList.toggle('active', tab.dataset.tab === targetTab);
   });
+
+  if (els.diffToolbar) {
+    els.diffToolbar.style.display = (targetTab === 'diff' || targetTab === 'changes') && state.diffData.length ? 'flex' : 'none';
+  }
 
   if (targetTab === 'diff' || targetTab === 'changes') {
     els.changedFiles.style.display = 'block';

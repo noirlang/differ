@@ -408,6 +408,12 @@ async function openUrl(url) {
 }
 
 let currentModalPr = null;
+let currentPrDiffFiles = null;
+
+function renderPrDiff() {
+  if (!els.prDiffContent || !currentPrDiffFiles) return;
+  renderDiffFiles(currentPrDiffFiles, els.prDiffContent, { scope: `pr${currentModalPr?.number || ''}`, idPrefix: 'pr-diff-file-' });
+}
 
 function activatePrTab(tabName) {
   if (els.btnPrTabDiff) els.btnPrTabDiff.classList.toggle('active', tabName === 'diff');
@@ -449,9 +455,12 @@ async function openPrModal(pr) {
   // Fetch PR Diff
   if (els.prDiffLoading) els.prDiffLoading.style.display = 'flex';
   if (els.prDiffContent) els.prDiffContent.textContent = '';
+  currentPrDiffFiles = null;
   try {
     const diff = await invoke('get_pr_diff', { prNumber: pr.number });
-    if (els.prDiffContent) els.prDiffContent.textContent = diff || 'Diff bulunamadı.';
+    currentPrDiffFiles = parseUnifiedDiff(diff || '');
+    if (currentPrDiffFiles.length) renderPrDiff();
+    else if (els.prDiffContent) els.prDiffContent.textContent = diff || 'Diff bulunamadı.';
   } catch (err) {
     if (els.prDiffContent) els.prDiffContent.textContent = `PR diff yüklenirken hata oluştu: ${err}`;
   } finally {

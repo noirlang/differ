@@ -4823,3 +4823,215 @@ mark.search-hit {
   border-radius: 2px;
   padding: 0 1px;
 }
+
+/* ─── Diff view: toolbar, split view, word diff, syntax ───────────────────── */
+
+.diff-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--line-soft);
+  background: var(--panel);
+}
+
+.diff-toolbar-spacer {
+  flex: 1;
+}
+
+.diff-view-switch {
+  display: inline-flex;
+  padding: 2px;
+  border: 1px solid var(--line-soft);
+  border-radius: 7px;
+  gap: 2px;
+}
+
+.diff-view-btn {
+  min-height: 22px;
+  padding: 0 9px;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.diff-toolbar > .diff-view-btn {
+  border-color: var(--line-soft);
+}
+
+.diff-view-btn:hover {
+  color: var(--text);
+  background: var(--hover);
+}
+
+.diff-view-btn.active {
+  background: var(--panel-3);
+  border-color: var(--line);
+  color: var(--text);
+}
+
+.diff-file-header {
+  cursor: pointer;
+  user-select: none;
+}
+
+.diff-file-header:hover {
+  background: #171717;
+}
+
+.diff-file-chevron {
+  flex: none;
+  color: var(--text-dim);
+  transition: transform 0.15s ease;
+}
+
+.diff-file-block.collapsed .diff-file-chevron {
+  transform: rotate(-90deg);
+}
+
+.diff-file-block.collapsed .diff-file-body {
+  display: none;
+}
+
+.diff-file-header .diff-file-path {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text);
+}
+
+.diff-file-stats {
+  flex: none;
+  font-size: 10.5px;
+}
+
+.diff-file-stats b {
+  font-weight: 700;
+}
+
+.diff-split-row {
+  display: grid;
+  grid-template-columns: 46px minmax(0, 1fr) 46px minmax(0, 1fr);
+  min-height: 21px;
+  font-family: var(--mono);
+  font-size: 11.5px;
+}
+
+.diff-split-content {
+  min-width: 0;
+  overflow: auto hidden;
+  padding: 2px 10px;
+  color: var(--text);
+  white-space: pre;
+  tab-size: 2;
+}
+
+.diff-split-content.add,
+.diff-line-num.add {
+  background: rgba(167, 216, 173, 0.08);
+}
+
+.diff-split-content.delete,
+.diff-line-num.delete {
+  background: rgba(227, 154, 150, 0.08);
+}
+
+.diff-split-content.empty,
+.diff-line-num.empty {
+  background: repeating-linear-gradient(135deg, transparent 0 6px, rgba(255, 255, 255, 0.02) 6px 12px);
+}
+
+.diff-split-row .diff-split-content:nth-child(2) {
+  border-right: 1px solid var(--line-soft);
+}
+
+.diff-line.add .word-change,
+.diff-split-content.add .word-change {
+  background: rgba(167, 216, 173, 0.28);
+  border-radius: 2px;
+}
+
+.diff-line.delete .word-change,
+.diff-split-content.delete .word-change {
+  background: rgba(227, 154, 150, 0.3);
+  border-radius: 2px;
+}
+
+.pr-diff-content.diff-container {
+  padding: 0;
+  white-space: normal;
+  word-break: normal;
+  overflow: auto;
+}
+
+/* Syntax colors: muted to fit the monochrome theme. */
+.hljs-comment,
+.hljs-quote {
+  color: #6f6f6f;
+  font-style: italic;
+}
+
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-literal,
+.hljs-doctag {
+  color: #c9a7e8;
+}
+
+.hljs-string,
+.hljs-regexp,
+.hljs-template-tag,
+.hljs-addition {
+  color: #a7d8ad;
+}
+
+.hljs-number,
+.hljs-symbol,
+.hljs-bullet {
+  color: #e8bf8a;
+}
+
+.hljs-title,
+.hljs-title.function_,
+.hljs-section {
+  color: #9cc9f5;
+}
+
+.hljs-type,
+.hljs-title.class_,
+.hljs-built_in {
+  color: #86d1c6;
+}
+
+.hljs-attr,
+.hljs-attribute,
+.hljs-property,
+.hljs-variable,
+.hljs-template-variable,
+.hljs-selector-class,
+.hljs-selector-id {
+  color: #e3cf96;
+}
+
+.hljs-meta,
+.hljs-tag,
+.hljs-name {
+  color: #a0a0a0;
+}
+
+.hljs-deletion {
+  color: #e39a96;
+}
+
+.hljs-emphasis {
+  font-style: italic;
+}
+
+.hljs-strong {
+  font-weight: 700;
+}

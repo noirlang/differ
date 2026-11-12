@@ -385,6 +385,13 @@ function initEventHandlers() {
   });
   els.btnConfirmPrMerge?.addEventListener('click', confirmPrMerge);
 
+  // Diff toolbar
+  els.diffToolbar?.querySelectorAll('[data-diff-view]').forEach((btn) => {
+    btn.addEventListener('click', () => switchDiffView(btn.dataset.diffView));
+  });
+  $('btn-diff-collapse-all')?.addEventListener('click', () => setAllDiffFilesOpen(els.diffContainer, state.diffData, false));
+  $('btn-diff-expand-all')?.addEventListener('click', () => setAllDiffFilesOpen(els.diffContainer, state.diffData, true));
+
   // Branch modal events
   els.btnNewBranch?.addEventListener('click', (e) => {
     e.stopPropagation();
