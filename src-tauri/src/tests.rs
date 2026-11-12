@@ -213,8 +213,7 @@ fn conflict_diff_shows_ours_vs_theirs() {
     );
 
     let repo = Repository::open(&dir).expect("repo should open");
-    let diff =
-        build_conflict_diff(&repo, "conflicted.txt").expect("conflict diff should build");
+    let diff = build_conflict_diff(&repo, "conflicted.txt").expect("conflict diff should build");
 
     // Mimic the app lifecycle: open the repo handle BEFORE the merge happens,
     // then create the conflict via an external git process.
@@ -232,8 +231,7 @@ fn conflict_diff_shows_ours_vs_theirs() {
     let early_repo = Repository::open(&dir2).expect("repo should open");
 
     test_git(&["checkout", "-b", "feature"], &dir2);
-    std::fs::write(dir2.join("conflicted.txt"), "line1\nINCOMING SIDE\nline3\n")
-        .expect("write");
+    std::fs::write(dir2.join("conflicted.txt"), "line1\nINCOMING SIDE\nline3\n").expect("write");
     test_git(&["commit", "-am", "memo"], &dir2);
     test_git(&["checkout", "master"], &dir2);
     std::fs::write(dir2.join("conflicted.txt"), "line1\nTARGET SIDE\nline3\n").expect("write");
@@ -302,7 +300,10 @@ fn secret_roundtrip() {
     let name = "differ-selftest";
     set_secret(name, "s3cret").unwrap();
     assert_eq!(get_secret(name).as_deref(), Some("s3cret"));
-    let in_keyring = keyring::Entry::new("differ", name).unwrap().get_password().is_ok();
+    let in_keyring = keyring::Entry::new("differ", name)
+        .unwrap()
+        .get_password()
+        .is_ok();
     println!("stored in OS keychain: {}", in_keyring);
     set_secret(name, "").unwrap();
     assert_eq!(get_secret(name), None);
@@ -315,8 +316,14 @@ fn branch_helpers_validate_names_and_split_remotes() {
     std::fs::create_dir_all(&dir).expect("temp dir");
 
     test_git(&["init", "-b", "main"], &dir);
-    test_git(&["remote", "add", "origin", "https://example.com/a.git"], &dir);
-    test_git(&["remote", "add", "team/fork", "https://example.com/b.git"], &dir);
+    test_git(
+        &["remote", "add", "origin", "https://example.com/a.git"],
+        &dir,
+    );
+    test_git(
+        &["remote", "add", "team/fork", "https://example.com/b.git"],
+        &dir,
+    );
 
     let repo = Repository::open(&dir).expect("repo should open");
     assert!(branches::validate_branch_name(&repo, "feature/login").is_ok());
@@ -353,31 +360,92 @@ fn commit_search_finds_by_text_author_path_and_hash() {
     std::fs::create_dir_all(dir.join("docs")).unwrap();
     std::fs::write(dir.join("docs/b.md"), "2").unwrap();
     test_git(&["add", "."], &dir);
-    test_git(&["-c", "user.name=Veli", "-c", "user.email=veli@t.co", "commit", "-m", "Write docs"], &dir);
+    test_git(
+        &[
+            "-c",
+            "user.name=Veli",
+            "-c",
+            "user.email=veli@t.co",
+            "commit",
+            "-m",
+            "Write docs",
+        ],
+        &dir,
+    );
 
     let repo = Repository::open(&dir).unwrap();
     let run = |s: CommitSearch| -> Vec<String> {
         search_commit_ids(&repo, &s, None, 100)
             .unwrap()
             .into_iter()
-            .map(|oid| repo.find_commit(oid).unwrap().summary().unwrap().to_string())
+            .map(|oid| {
+                repo.find_commit(oid)
+                    .unwrap()
+                    .summary()
+                    .unwrap()
+                    .to_string()
+            })
             .collect()
     };
 
     // Free text is case-insensitive and also matches the author.
-    assert_eq!(run(CommitSearch { text: "LOGIN".into(), ..Default::default() }), vec!["Add login screen"]);
-    assert_eq!(run(CommitSearch { text: "veli".into(), ..Default::default() }), vec!["Write docs"]);
+    assert_eq!(
+        run(CommitSearch {
+            text: "LOGIN".into(),
+            ..Default::default()
+        }),
+        vec!["Add login screen"]
+    );
+    assert_eq!(
+        run(CommitSearch {
+            text: "veli".into(),
+            ..Default::default()
+        }),
+        vec!["Write docs"]
+    );
     // Text + author must both match.
-    assert!(run(CommitSearch { text: "login".into(), author: "veli".into(), ..Default::default() }).is_empty());
-    assert_eq!(run(CommitSearch { text: "docs".into(), author: "veli".into(), ..Default::default() }), vec!["Write docs"]);
+    assert!(run(CommitSearch {
+        text: "login".into(),
+        author: "veli".into(),
+        ..Default::default()
+    })
+    .is_empty());
+    assert_eq!(
+        run(CommitSearch {
+            text: "docs".into(),
+            author: "veli".into(),
+            ..Default::default()
+        }),
+        vec!["Write docs"]
+    );
     // Plain author search returns every matching commit, newest first.
-    assert_eq!(run(CommitSearch { text: "t.co".into(), ..Default::default() }), vec!["Write docs", "Add login screen"]);
-    assert_eq!(run(CommitSearch { path: "docs".into(), ..Default::default() }), vec!["Write docs"]);
+    assert_eq!(
+        run(CommitSearch {
+            text: "t.co".into(),
+            ..Default::default()
+        }),
+        vec!["Write docs", "Add login screen"]
+    );
+    assert_eq!(
+        run(CommitSearch {
+            path: "docs".into(),
+            ..Default::default()
+        }),
+        vec!["Write docs"]
+    );
     // Regex characters are taken literally.
-    assert!(run(CommitSearch { text: "log.n".into(), ..Default::default() }).is_empty());
+    assert!(run(CommitSearch {
+        text: "log.n".into(),
+        ..Default::default()
+    })
+    .is_empty());
 
     let head = repo.head().unwrap().target().unwrap().to_string();
-    let found = repo.revparse_single(&head[..7]).unwrap().peel_to_commit().unwrap();
+    let found = repo
+        .revparse_single(&head[..7])
+        .unwrap()
+        .peel_to_commit()
+        .unwrap();
     assert_eq!(found.summary(), Some("Write docs"));
 
     let _ = std::fs::remove_dir_all(&dir);

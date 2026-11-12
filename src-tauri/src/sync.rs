@@ -104,9 +104,10 @@ pub async fn add_origin(state: State<'_, Mutex<AppState>>, url: String) -> Resul
     run_git(repo, &["remote", "add", "origin", url_trimmed])
 }
 
-
 #[tauri::command]
-pub async fn get_git_remotes(state: State<'_, Mutex<AppState>>) -> Result<Vec<GitRemoteInfo>, String> {
+pub async fn get_git_remotes(
+    state: State<'_, Mutex<AppState>>,
+) -> Result<Vec<GitRemoteInfo>, String> {
     let app_state = state.lock().map_err(|e| e.to_string())?;
     let repo = app_state.repo.as_ref().ok_or("Repository is not open")?;
 

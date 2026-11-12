@@ -24,7 +24,10 @@ pub async fn init_repository(
 }
 
 #[tauri::command]
-pub async fn open_repo(path: String, state: State<'_, Mutex<AppState>>) -> Result<RepoInfo, String> {
+pub async fn open_repo(
+    path: String,
+    state: State<'_, Mutex<AppState>>,
+) -> Result<RepoInfo, String> {
     let repo = Repository::discover(&path)
         .map_err(|e| format!("Repository could not be opened: {}", e))?;
 
@@ -88,7 +91,11 @@ pub async fn get_commits(
     Ok(commits)
 }
 
-pub fn commit_info(repo: &Repository, oid: Oid, unpushed: &HashSet<Oid>) -> Result<CommitInfo, String> {
+pub fn commit_info(
+    repo: &Repository,
+    oid: Oid,
+    unpushed: &HashSet<Oid>,
+) -> Result<CommitInfo, String> {
     let commit = repo.find_commit(oid).map_err(|e| e.to_string())?;
     let id = commit.id().to_string();
     let author = commit.author();
@@ -454,7 +461,6 @@ pub async fn get_worktree_status(
     files.sort_by(|a, b| a.path.to_lowercase().cmp(&b.path.to_lowercase()));
     Ok(files)
 }
-
 
 #[tauri::command]
 pub async fn get_repo_fingerprint(state: State<'_, Mutex<AppState>>) -> Result<String, String> {

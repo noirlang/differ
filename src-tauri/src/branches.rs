@@ -99,7 +99,9 @@ pub async fn delete_branch(
     let app_state = state.lock().map_err(|e| e.to_string())?;
     let repo = app_state.repo.as_ref().ok_or("Repository is not open")?;
     if current_branch_name(repo).as_deref() == Some(name.as_str()) {
-        return Err("The current branch cannot be deleted. Switch to another branch first.".to_string());
+        return Err(
+            "The current branch cannot be deleted. Switch to another branch first.".to_string(),
+        );
     }
     run_git(repo, &["branch", if force { "-D" } else { "-d" }, &name])
 }

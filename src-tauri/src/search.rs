@@ -88,9 +88,14 @@ pub fn search_commit_ids(
         let args = build_search_args(search, field, branch, limit);
         let arg_refs: Vec<&str> = args.iter().map(String::as_str).collect();
         for line in run_git(repo, &arg_refs)?.lines() {
-            let Ok(oid) = Oid::from_str(line.trim()) else { continue };
+            let Ok(oid) = Oid::from_str(line.trim()) else {
+                continue;
+            };
             if seen.insert(oid) {
-                let time = repo.find_commit(oid).map(|c| c.time().seconds()).unwrap_or(0);
+                let time = repo
+                    .find_commit(oid)
+                    .map(|c| c.time().seconds())
+                    .unwrap_or(0);
                 found.push((time, oid));
             }
         }
@@ -115,10 +120,12 @@ pub async fn search_commits(
     let hash = search.hash.trim();
     if !hash.is_empty() {
         // A hash (or prefix) identifies one commit; other filters don't apply.
-        return Ok(match repo.revparse_single(hash).and_then(|o| o.peel_to_commit()) {
-            Ok(commit) => vec![commit_info(repo, commit.id(), &unpushed)?],
-            Err(_) => Vec::new(),
-        });
+        return Ok(
+            match repo.revparse_single(hash).and_then(|o| o.peel_to_commit()) {
+                Ok(commit) => vec![commit_info(repo, commit.id(), &unpushed)?],
+                Err(_) => Vec::new(),
+            },
+        );
     }
 
     let limit = limit.unwrap_or(500).min(5000);

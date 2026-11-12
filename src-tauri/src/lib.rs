@@ -20,41 +20,41 @@ use tauri::State;
 #[cfg(target_os = "windows")]
 const CREATE_NO_WINDOW: u32 = 0x08000000;
 
-mod models;
-mod git_util;
-mod http;
-mod system;
-mod repo;
-mod commit;
-mod sync;
-mod merge;
 mod ai;
-mod settings;
-mod github;
-mod update;
-mod editor;
-mod secrets;
 mod branches;
+mod commit;
+mod editor;
+mod git_util;
+mod github;
+mod http;
+mod merge;
+mod models;
+mod repo;
 mod search;
+mod secrets;
+mod settings;
+mod sync;
+mod system;
 #[cfg(test)]
 mod tests;
+mod update;
 
-use models::*;
-use git_util::*;
-use http::*;
-use system::*;
-use repo::*;
-use commit::*;
-use sync::*;
-use merge::*;
 use ai::*;
-use settings::*;
-use github::*;
-use update::*;
-use editor::*;
-use secrets::*;
 use branches::*;
+use commit::*;
+use editor::*;
+use git_util::*;
+use github::*;
+use http::*;
+use merge::*;
+use models::*;
+use repo::*;
 use search::*;
+use secrets::*;
+use settings::*;
+use sync::*;
+use system::*;
+use update::*;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {

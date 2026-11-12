@@ -195,7 +195,6 @@ pub fn build_conflict_diff(repo: &Repository, path: &str) -> Result<DiffFile, St
         .ok_or_else(|| "Diff could not be built".to_string())
 }
 
-
 #[tauri::command]
 pub async fn abort_in_progress(state: State<'_, Mutex<AppState>>) -> Result<String, String> {
     let app_state = state.lock().map_err(|e| e.to_string())?;

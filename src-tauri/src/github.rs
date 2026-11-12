@@ -218,7 +218,10 @@ pub async fn get_github_actions(
 }
 
 #[tauri::command]
-pub async fn get_pr_diff(state: State<'_, Mutex<AppState>>, pr_number: u64) -> Result<String, String> {
+pub async fn get_pr_diff(
+    state: State<'_, Mutex<AppState>>,
+    pr_number: u64,
+) -> Result<String, String> {
     let app_state = state.lock().map_err(|e| e.to_string())?;
     let cwd = app_state.repo_path.as_deref().map(Path::new);
     let num_str = pr_number.to_string();
@@ -324,13 +327,26 @@ pub async fn get_pr_create_context(
     let cwd = repo_path.as_deref().map(Path::new);
 
     let default_branch = run_gh(
-        &["repo", "view", "--json", "defaultBranchRef", "-q", ".defaultBranchRef.name"],
+        &[
+            "repo",
+            "view",
+            "--json",
+            "defaultBranchRef",
+            "-q",
+            ".defaultBranchRef.name",
+        ],
         cwd,
     )
     .unwrap_or_else(|_| "main".to_string());
 
     let branches_out = run_gh(
-        &["api", "repos/{owner}/{repo}/branches", "--paginate", "-q", ".[].name"],
+        &[
+            "api",
+            "repos/{owner}/{repo}/branches",
+            "--paginate",
+            "-q",
+            ".[].name",
+        ],
         cwd,
     )
     .unwrap_or_default();
@@ -383,7 +399,10 @@ pub async fn create_github_pr(
 }
 
 #[tauri::command]
-pub async fn get_action_log(state: State<'_, Mutex<AppState>>, run_id: u64) -> Result<String, String> {
+pub async fn get_action_log(
+    state: State<'_, Mutex<AppState>>,
+    run_id: u64,
+) -> Result<String, String> {
     let app_state = state.lock().map_err(|e| e.to_string())?;
     let cwd = app_state.repo_path.as_deref().map(Path::new);
     let id_str = run_id.to_string();

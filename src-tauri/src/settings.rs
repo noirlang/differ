@@ -43,7 +43,6 @@ pub fn save_smtp_settings_to_file(settings: &SmtpSettings) -> Result<(), String>
     std::fs::write(&path, json).map_err(|e| format!("Could not write SMTP config: {}", e))
 }
 
-
 pub fn get_gpg_keys() -> Vec<GpgKey> {
     let mut keys = Vec::new();
     let mut gpg_cmd = Command::new("gpg");
