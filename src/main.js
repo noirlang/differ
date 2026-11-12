@@ -285,6 +285,17 @@ const els = {
   prBodyContent: $('pr-body-content'),
   prMergeMethod: $('pr-merge-method'),
   btnConfirmPrMerge: $('btn-confirm-pr-merge'),
+  btnNewPr: $('btn-new-pr'),
+  createPrModal: $('create-pr-modal'),
+  createPrHead: $('create-pr-head'),
+  createPrBase: $('create-pr-base'),
+  createPrTitleInput: $('create-pr-title-input'),
+  createPrBody: $('create-pr-body'),
+  createPrDraft: $('create-pr-draft'),
+  createPrError: $('create-pr-error'),
+  btnCloseCreatePr: $('btn-close-create-pr'),
+  btnCancelCreatePr: $('btn-cancel-create-pr'),
+  btnConfirmCreatePr: $('btn-confirm-create-pr'),
   editorActions: $('editor-actions'),
   remotesBar: $('remotes-bar'),
   remotesCount: $('remotes-count'),
@@ -3853,6 +3864,16 @@ function initEventHandlers() {
   });
   els.btnConfirmPrMerge?.addEventListener('click', confirmPrMerge);
 
+  // Create PR Modal events
+  els.btnNewPr?.addEventListener('click', openCreatePrModal);
+  els.btnCloseCreatePr?.addEventListener('click', closeCreatePrModal);
+  els.btnCancelCreatePr?.addEventListener('click', closeCreatePrModal);
+  els.btnConfirmCreatePr?.addEventListener('click', submitCreatePr);
+  els.createPrHead?.addEventListener('change', prefillCreatePrTitle);
+  els.createPrModal?.addEventListener('click', (e) => {
+    if (e.target === els.createPrModal) closeCreatePrModal();
+  });
+
   els.btnPrTabDiff?.addEventListener('click', () => activatePrTab('diff'));
   els.btnPrTabCommits?.addEventListener('click', () => activatePrTab('commits'));
   els.btnPrTabBody?.addEventListener('click', () => activatePrTab('body'));
@@ -3878,6 +3899,10 @@ function initEventHandlers() {
     }
     if (event.key === 'Escape' && !els.prDetailModal.hidden) {
       closePrModal();
+      return;
+    }
+    if (event.key === 'Escape' && els.createPrModal && !els.createPrModal.hidden) {
+      closeCreatePrModal();
       return;
     }
     if (event.key === 'Escape' && !els.contributorsModal.hidden) {
@@ -4814,3 +4839,102 @@ async function confirmPrMerge() {
 }
 
 
+
+// ─── Create Pull Request ─────────────────────────────────────────────────────
+
+function setCreatePrError(message) {
+  if (!els.createPrError) return;
+  els.createPrError.textContent = message || '';
+  els.createPrError.hidden = !message;
+}
+
+function fillSelect(select, values, selected) {
+  select.innerHTML = values
+    .map((v) => `<option value="${escapeHtml(v)}"${v === selected ? ' selected' : ''}>${escapeHtml(v)}</option>`)
+    .join('');
+}
+
+function prefillCreatePrTitle() {
+  const head = els.createPrHead.value;
+  const branch = state.branches.find((b) => !b.is_remote && b.name === head);
+  const commit = branch && state.commits.find((c) => c.id === branch.commit_id);
+  const subject = commit ? commit.message.split('\n')[0].trim() : '';
+  els.createPrTitleInput.value = subject || head;
+}
+
+async function openCreatePrModal() {
+  setCreatePrError('');
+  els.createPrBody.value = '';
+  els.createPrDraft.checked = false;
+  els.btnConfirmCreatePr.disabled = true;
+  els.createPrModal.hidden = false;
+  setStatus('PR bilgileri yükleniyor...');
+
+  try {
+    const ctx = await invoke('get_pr_create_context');
+    const localBranches = state.branches.filter((b) => !b.is_remote && !b.is_tag).map((b) => b.name);
+    const heads = localBranches.length ? localBranches : [ctx.currentBranch];
+    fillSelect(els.createPrHead, heads, ctx.currentBranch);
+    fillSelect(els.createPrBase, ctx.branches, ctx.defaultBranch);
+    prefillCreatePrTitle();
+    els.btnConfirmCreatePr.disabled = false;
+    els.createPrTitleInput.focus();
+    setStatus('Hazır');
+  } catch (err) {
+    setCreatePrError(`GitHub bilgileri alınamadı: ${err}`);
+    setStatus('PR bilgileri alınamadı');
+  }
+}
+
+function closeCreatePrModal() {
+  if (els.createPrModal) els.createPrModal.hidden = true;
+}
+
+async function submitCreatePr() {
+  const head = els.createPrHead.value;
+  const base = els.createPrBase.value;
+  const title = els.createPrTitleInput.value.trim();
+  const body = els.createPrBody.value;
+  const draft = els.createPrDraft.checked;
+
+  if (!title) return setCreatePrError('Başlık boş olamaz.');
+  if (head === base) return setCreatePrError('Kaynak ve hedef dal aynı olamaz.');
+  setCreatePrError('');
+
+  els.btnConfirmCreatePr.disabled = true;
+  const originalLabel = els.btnConfirmCreatePr.textContent;
+
+  try {
+    // The head branch must exist on GitHub. If it is the current branch and has
+    // unpushed commits (or no upstream yet), offer to push it first.
+    const remote = state.activeRemote || 'origin';
+    const sync = await invoke('get_sync_status', { targetRemote: remote });
+    if (sync.current_branch === head && (!sync.upstream || sync.unpushed_count > 0)) {
+      const reason = sync.upstream
+        ? `${sync.unpushed_count} commit henüz gönderilmedi`
+        : 'dal henüz GitHub\'a gönderilmedi';
+      if (!confirm(`"${head}": ${reason}.\n\nPR açmadan önce ${remote} deposuna push edilsin mi?`)) {
+        els.btnConfirmCreatePr.disabled = false;
+        return;
+      }
+      els.btnConfirmCreatePr.textContent = 'Gönderiliyor...';
+      setStatus(`${head} dalı ${remote} deposuna gönderiliyor...`);
+      await invoke('push_origin', { targetRemote: remote });
+    }
+
+    els.btnConfirmCreatePr.textContent = 'Oluşturuluyor...';
+    setStatus('Pull Request oluşturuluyor...');
+    const url = await invoke('create_github_pr', { base, head, title, body, draft });
+    closeCreatePrModal();
+    setStatus(`Pull Request oluşturuldu: ${url}`);
+    state.ghPrFilter = 'open';
+    await loadGhPrs('open');
+    refreshRepositoryData().catch(() => {});
+  } catch (err) {
+    setCreatePrError(`PR oluşturulamadı: ${err}`);
+    setStatus('PR oluşturulamadı');
+  } finally {
+    els.btnConfirmCreatePr.disabled = false;
+    els.btnConfirmCreatePr.textContent = originalLabel;
+  }
+}

@@ -4654,6 +4654,87 @@ async fn merge_github_pr(
     )
 }
 
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct PrCreateContext {
+    current_branch: String,
+    default_branch: String,
+    branches: Vec<String>,
+}
+
+#[tauri::command]
+async fn get_pr_create_context(
+    state: State<'_, Mutex<AppState>>,
+) -> Result<PrCreateContext, String> {
+    let (repo_path, current_branch) = {
+        let app_state = state.lock().map_err(|e| e.to_string())?;
+        let repo = app_state.repo.as_ref().ok_or("Repository is not open")?;
+        (
+            app_state.repo_path.clone(),
+            current_branch_name(repo).unwrap_or_default(),
+        )
+    };
+    let cwd = repo_path.as_deref().map(Path::new);
+
+    let default_branch = run_gh(
+        &["repo", "view", "--json", "defaultBranchRef", "-q", ".defaultBranchRef.name"],
+        cwd,
+    )
+    .unwrap_or_else(|_| "main".to_string());
+
+    let branches_out = run_gh(
+        &["api", "repos/{owner}/{repo}/branches", "--paginate", "-q", ".[].name"],
+        cwd,
+    )
+    .unwrap_or_default();
+    let mut branches: Vec<String> = branches_out
+        .lines()
+        .map(str::trim)
+        .filter(|l| !l.is_empty())
+        .map(str::to_string)
+        .collect();
+    if !branches.contains(&default_branch) {
+        branches.insert(0, default_branch.clone());
+    }
+
+    Ok(PrCreateContext {
+        current_branch,
+        default_branch,
+        branches,
+    })
+}
+
+#[tauri::command]
+async fn create_github_pr(
+    state: State<'_, Mutex<AppState>>,
+    base: String,
+    head: String,
+    title: String,
+    body: String,
+    draft: bool,
+) -> Result<String, String> {
+    if title.trim().is_empty() {
+        return Err("PR title cannot be empty".to_string());
+    }
+    if base == head {
+        return Err("Base and head branches must be different".to_string());
+    }
+    let repo_path = {
+        let app_state = state.lock().map_err(|e| e.to_string())?;
+        app_state.repo_path.clone()
+    };
+    let cwd = repo_path.as_deref().map(Path::new);
+
+    let mut args = vec![
+        "pr", "create", "--base", &base, "--head", &head, "--title", &title, "--body", &body,
+    ];
+    if draft {
+        args.push("--draft");
+    }
+    // gh prints the new PR URL on stdout
+    run_gh(&args, cwd)
+}
+
 #[tauri::command]
 async fn get_action_log(state: State<'_, Mutex<AppState>>, run_id: u64) -> Result<String, String> {
     let app_state = state.lock().map_err(|e| e.to_string())?;
@@ -5239,6 +5320,8 @@ pub fn run() {
             get_pr_diff,
             get_pr_commits,
             merge_github_pr,
+            get_pr_create_context,
+            create_github_pr,
             detect_installed_editors,
             open_in_editor,
             get_git_remotes,

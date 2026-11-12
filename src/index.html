@@ -331,6 +331,10 @@
               <button class="gh-filter-btn" type="button" data-filter="merged">Birleştirildi</button>
               <button class="gh-filter-btn" type="button" data-filter="all">Tümü</button>
             </div>
+            <button class="icon-btn" id="btn-new-pr" type="button" title="Yeni Pull Request oluştur">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg>
+              <span>Yeni PR</span>
+            </button>
             <button class="icon-btn" id="btn-refresh-prs" type="button" title="PR'ları yenile">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 0 1-15.5 6.3L3 16"></path><path d="M3 21v-5h5"></path><path d="M3 12A9 9 0 0 1 18.5 5.7L21 8"></path><path d="M21 3v5h-5"></path></svg>
               <span>Yenile</span>
@@ -973,6 +977,60 @@
             </button>
           </div>
           <button class="mini-btn cancel" id="btn-close-pr-modal-bottom" type="button">Kapat</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Create PR Modal -->
+    <div class="modal-overlay" id="create-pr-modal" hidden>
+      <div class="merge-modal create-pr-modal" role="dialog" aria-modal="true" aria-labelledby="create-pr-title">
+        <div class="modal-head">
+          <div>
+            <span>GitHub</span>
+            <h2 id="create-pr-title">Yeni Pull Request</h2>
+          </div>
+          <button class="modal-close" id="btn-close-create-pr" type="button" aria-label="Kapat">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>
+          </button>
+        </div>
+
+        <div class="merge-flow-diagram">
+          <div class="merge-form-group create-pr-branch">
+            <label for="create-pr-head">Kaynak (head)</label>
+            <select id="create-pr-head"></select>
+          </div>
+          <div class="merge-connector">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+          </div>
+          <div class="merge-form-group create-pr-branch">
+            <label for="create-pr-base">Hedef (base)</label>
+            <select id="create-pr-base"></select>
+          </div>
+        </div>
+
+        <div class="merge-form-group">
+          <label for="create-pr-title-input">Başlık</label>
+          <input type="text" id="create-pr-title-input" class="create-pr-input" placeholder="PR başlığı" autocomplete="off" />
+        </div>
+
+        <div class="merge-form-group">
+          <label for="create-pr-body">Açıklama</label>
+          <textarea id="create-pr-body" class="create-pr-input" rows="7" placeholder="Bu PR neyi değiştiriyor?"></textarea>
+        </div>
+
+        <div class="commit-option-field checkbox-field">
+          <label class="toggle-switch small">
+            <input type="checkbox" id="create-pr-draft" />
+            <span class="slider"></span>
+          </label>
+          <span>Taslak (draft) olarak aç</span>
+        </div>
+
+        <p class="create-pr-error" id="create-pr-error" hidden></p>
+
+        <div class="merge-modal-actions">
+          <button class="mini-btn cancel" id="btn-cancel-create-pr" type="button">İptal</button>
+          <button class="mini-btn primary" id="btn-confirm-create-pr" type="button">PR Oluştur</button>
         </div>
       </div>
     </div>

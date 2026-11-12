@@ -4694,3 +4694,58 @@ input:checked + .slider:before {
 }
 
 
+
+/* ─── Create PR Modal ─────────────────────────────────────────────────────── */
+
+.create-pr-modal {
+  width: min(560px, 92vw);
+  padding: 0 20px 20px;
+}
+
+.create-pr-modal .modal-head {
+  margin: 0 -20px;
+}
+
+.create-pr-branch {
+  flex: 1;
+  min-width: 0;
+}
+
+.create-pr-branch select,
+.create-pr-input {
+  width: 100%;
+  min-height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #080808;
+  color: var(--text);
+  outline: none;
+  font-size: 12.5px;
+  font-family: inherit;
+}
+
+textarea.create-pr-input {
+  padding: 8px 10px;
+  resize: vertical;
+  line-height: 1.5;
+}
+
+.create-pr-branch select:focus,
+.create-pr-input:focus {
+  border-color: #6a6a6a;
+}
+
+.create-pr-modal .merge-connector {
+  padding: 18px 10px 0;
+}
+
+.create-pr-error {
+  margin: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-size: 12px;
+  color: var(--text);
+  white-space: pre-wrap;
+}
