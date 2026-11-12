@@ -5035,3 +5035,92 @@ mark.search-hit {
 .hljs-strong {
   font-weight: 700;
 }
+
+/* ─── Keyboard shortcuts ──────────────────────────────────────────────────── */
+
+kbd {
+  display: inline-block;
+  min-width: 18px;
+  padding: 1px 5px;
+  border: 1px solid var(--line);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  background: var(--panel-2);
+  color: var(--text-muted);
+  font-family: var(--mono);
+  font-size: 10px;
+  line-height: 1.4;
+  text-align: center;
+}
+
+kbd + kbd {
+  margin-left: 3px;
+}
+
+.statusbar-hint {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 10.5px;
+  cursor: pointer;
+}
+
+.statusbar-hint kbd {
+  font-size: 9px;
+  padding: 0 4px;
+}
+
+.statusbar-hint kbd:last-of-type {
+  margin-right: 6px;
+}
+
+.statusbar-hint:hover {
+  color: var(--text);
+}
+
+.shortcut-help-modal {
+  width: min(640px, 94vw);
+  max-height: 86vh;
+  padding: 0 20px 20px;
+}
+
+.shortcut-help-modal .modal-head {
+  margin: 0 -20px;
+}
+
+.shortcut-help-body {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px 24px;
+  overflow: auto;
+}
+
+.shortcut-group h3 {
+  margin: 0 0 6px;
+  color: var(--text-dim);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.shortcut-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--line-soft);
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.shortcut-keys {
+  flex: none;
+  white-space: nowrap;
+}

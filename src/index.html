@@ -23,6 +23,7 @@
   <script src="js/github.js" defer></script>
   <script src="js/editor.js" defer></script>
   <script src="js/update.js" defer></script>
+  <script src="js/shortcuts.js" defer></script>
   <script src="js/init.js" defer></script>
 </head>
 <body>
@@ -1014,6 +1015,22 @@
       </div>
     </div>
 
+    <!-- Keyboard Shortcuts Modal -->
+    <div class="modal-overlay" id="shortcut-help-modal" hidden>
+      <div class="merge-modal shortcut-help-modal" role="dialog" aria-modal="true" aria-labelledby="shortcut-help-title">
+        <div class="modal-head">
+          <div>
+            <span>Yardım</span>
+            <h2 id="shortcut-help-title">Klavye Kısayolları</h2>
+          </div>
+          <button class="modal-close" id="btn-close-shortcut-help" type="button" aria-label="Kapat">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>
+          </button>
+        </div>
+        <div class="shortcut-help-body" id="shortcut-help-body"></div>
+      </div>
+    </div>
+
     <!-- Branch Create / Rename Modal -->
     <div class="modal-overlay" id="branch-modal" hidden>
       <div class="merge-modal branch-modal" role="dialog" aria-modal="true" aria-labelledby="branch-modal-title">
@@ -1110,6 +1127,7 @@
 
     <footer class="statusbar" id="statusbar">
       <span id="status-text">Hazır</span>
+      <button class="statusbar-hint" type="button" onclick="toggleShortcutHelp(true)" title="Klavye kısayolları"><kbd>Shift</kbd><kbd>?</kbd> kısayollar</button>
     </footer>
   </div>
 </body>

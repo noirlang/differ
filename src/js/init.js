@@ -422,16 +422,7 @@ function initEventHandlers() {
   els.btnPrTabBody?.addEventListener('click', () => activatePrTab('body'));
 
   document.addEventListener('keydown', (event) => {
-    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'o') {
-      event.preventDefault();
-      openRepo();
-    }
-
-    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'f') {
-      event.preventDefault();
-      if (els.searchBox.style.display !== 'none') els.searchInput.focus();
-    }
-
+    // Ctrl/Shift shortcuts live in shortcuts.js.
     if (event.key === 'Escape') {
       closeAllDropdowns();
     }
@@ -442,6 +433,10 @@ function initEventHandlers() {
     }
     if (event.key === 'Escape' && !els.prDetailModal.hidden) {
       closePrModal();
+      return;
+    }
+    if (event.key === 'Escape' && els.shortcutHelpModal && !els.shortcutHelpModal.hidden) {
+      toggleShortcutHelp(false);
       return;
     }
     if (event.key === 'Escape' && els.branchModal && !els.branchModal.hidden) {
@@ -462,6 +457,9 @@ function initEventHandlers() {
     }
 
     if (!['ArrowDown', 'ArrowUp'].includes(event.key) || state.filteredCommitIds.length === 0) return;
+    // Arrow keys belong to text fields, selects and open dialogs.
+    if (event.shiftKey || event.ctrlKey || event.metaKey || event.altKey) return;
+    if (isTypingTarget(event.target) || isAnyModalOpen()) return;
 
     const currentIndex = state.filteredCommitIds.indexOf(state.selectedCommit);
     const fallback = event.key === 'ArrowDown' ? -1 : state.filteredCommitIds.length;
@@ -487,6 +485,7 @@ function initEventHandlers() {
 document.addEventListener('DOMContentLoaded', async () => {
   applyUiScale(appSettings.uiScale);
   initEventHandlers();
+  initShortcuts();
   updateAiModelSelectOptions();
   renderRecentRepos();
 
