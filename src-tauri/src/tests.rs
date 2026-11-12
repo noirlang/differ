@@ -450,3 +450,17 @@ fn commit_search_finds_by_text_author_path_and_hash() {
 
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn updater_config_in_tauri_conf_is_valid() {
+    let conf: serde_json::Value =
+        serde_json::from_str(include_str!("../tauri.conf.json")).expect("tauri.conf.json parses");
+    let updater: tauri_plugin_updater::Config =
+        serde_json::from_value(conf["plugins"]["updater"].clone())
+            .expect("updater config is valid");
+    assert!(!updater.pubkey.is_empty());
+    assert_eq!(updater.endpoints.len(), 1);
+    assert!(updater.endpoints[0]
+        .as_str()
+        .ends_with("/releases/latest/download/latest.json"));
+}
